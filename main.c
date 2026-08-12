@@ -1,5 +1,4 @@
 // Test
-printf("Hello, World!\n");
-printf("This is a test program.\n");
-output("Testing output function.\n");
-
+print("hello");
+print("this is my branch");
+print("this is my branch");
