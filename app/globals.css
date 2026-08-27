@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* ============================================================
+   운중고 스마트 캠퍼스 · 디자인 토큰
+   Tailwind v4 는 tailwind.config.js 대신 이 @theme 블록을 씁니다.
+   여기서 정한 이름이 그대로 유틸리티 클래스가 됩니다.
+   예) --color-navy-900  →  bg-navy-900 / text-navy-900 / border-navy-900
+   ============================================================ */
+@theme {
+  /* 글꼴 — 외부 폰트를 내려받지 않아 네트워크 없이도 항상 같은 방식으로 뜹니다 */
+  --font-sans: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo",
+    "Malgun Gothic", "맑은 고딕", "Noto Sans KR", system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+
+  /* 색상 테마 — 남색·파랑 계열 */
+  --color-navy-50: #f2f6fc;
+  --color-navy-100: #e3edfa;
+  --color-navy-200: #c4d9f4;
+  --color-navy-300: #95bce9;
+  --color-navy-400: #5e97da;
+  --color-navy-500: #3576c4;
+  --color-navy-600: #245ba3;
+  --color-navy-700: #1b4682;
+  --color-navy-800: #153663;
+  --color-navy-900: #0e2748;
+  --color-navy-950: #081930;
+
+  /* 앱 최대 폭 (모바일 기준) → max-w-app */
+  --container-app: 480px;
+
+  /* 그림자 → shadow-card / shadow-nav */
+  --shadow-card: 0 1px 2px rgba(14, 39, 72, 0.06),
+    0 8px 24px -12px rgba(14, 39, 72, 0.25);
+  --shadow-nav: 0 -1px 0 rgba(14, 39, 72, 0.08),
+    0 -8px 24px -16px rgba(14, 39, 72, 0.3);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-navy-50);
+    color: var(--color-navy-900);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+}
+
+@layer components {
+  /* 앱 전체를 모바일 폭으로 가운데 정렬하는 컨테이너 */
+  .app-shell {
+    @apply mx-auto flex min-h-dvh w-full max-w-app flex-col bg-white shadow-card;
+  }
+}
+
+/* 모바일 가로 스크롤바 숨기기 */
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
