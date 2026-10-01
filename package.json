@@ -1,12 +1,15 @@
 {
-  "name": "unjung-app-local",
+  "name": "unjung-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "work": "node scripts/work.mjs",
+    "ai": "node scripts/ai.mjs",
+    "save": "node scripts/save.mjs"
   },
   "dependencies": {
     "next": "16.3.2",
@@ -18,5 +21,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   }
 }
