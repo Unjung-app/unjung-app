@@ -8,7 +8,7 @@ export default function MealPage() {
   return (
     <ComingSoon
       title="급식 정보"
-      desc="오늘·이번 주 식단과 영양 정보를 보여줄 화면입니다. 곧 만나요!"
+      desc="오늘 점심 메뉴가 곧 이곳에 표시됩니다!"
       icon="meal"
     />
   );
