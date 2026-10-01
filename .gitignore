@@ -10,3 +10,6 @@ yarn-error.log*
 .env*.local
 .vercel
 next-env.d.ts
+
+# AI에게 붙여넣을 내용 (npm run ai가 만듦, 올리지 않음)
+ai-context.md

@@ -5,18 +5,26 @@
 
 현재는 전체 틀만 잡은 단계로, 9개 기능 페이지는 모두 "준비 중" 화면입니다.
 
-## 실행 방법
+## 참여원: 이 세 명령만 기억하세요
 
 ```bash
-npm install     # 처음 한 번만 (1~2분)
-npm run dev     # http://localhost:3000
+npm run work    # 작업 시작 준비 (내 기능 브랜치로 이동 + 부품 설치)
+npm run ai      # AI 채팅에 붙여넣을 내용(규칙 + 내 코드)을 클립보드에 복사
+npm run save    # 내 폴더 저장 → GitHub에 올리기 → PR 화면 열기
 ```
 
-> **중요 — 이 폴더에서만 실행하세요.**
-> `unjung-app-local` 이라는 이름의 폴더가 여러 개 있으면 엉뚱한 폴더에서 서버가 돌아
-> "코드를 고쳤는데 화면이 안 바뀐다"는 문제가 생깁니다.
-> 터미널에서 `npm run dev` 를 치기 전에 프롬프트 경로가
-> `...\Documents\InCloud_project\unjung-app-local` 인지 꼭 확인하세요.
+앱 실행은 `npm run dev` → 브라우저에서 http://localhost:3000
+
+처음(또는 컴퓨터실 PC에서 매번) 시작할 때:
+
+```bash
+git clone https://github.com/Unjung-app/unjung-app.git
+cd unjung-app
+npm run work
+```
+
+AI(Claude Code·Codex·웹 채팅)가 지켜야 할 규칙은 `AGENTS.md`에 있습니다.
+Claude Code와 Codex는 이 파일을 자동으로 읽고, 웹 채팅은 `npm run ai`로 붙여넣습니다.
 
 ## 폴더 구조
 
