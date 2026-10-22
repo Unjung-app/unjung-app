@@ -16,3 +16,6 @@ ai-context.md
 
 # 기능 목록 자동 생성 파일 (npm run dev/build 때 만들어짐)
 lib/features.generated.js
+
+# 충돌 도우미 요청문 (npm run work/save가 만듦)
+conflict-help.md

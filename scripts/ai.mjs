@@ -1,18 +1,26 @@
-// npm run ai — AI 채팅창에 붙여넣을 내용을 만들어 클립보드에 복사합니다.
+// npm run ai — AI 채팅창에 붙여넣을 내용을 만들어 줍니다.
 // 내용 = 프로젝트 규칙(AGENTS.md) + 내 기능 정보 + 내 기능 폴더의 현재 코드 전체
+// 컴퓨터에서는 클립보드에 바로 복사하고, Codespaces에서는 편집기 탭으로 열어 줍니다.
 
 import fs from "node:fs";
 import path from "node:path";
 import {
-  title, say, ok, warn, fail, ensureRepoRoot, currentBranch, parseBranch, copyFileToClipboard,
+  IN_CODESPACES, title, say, ok, warn, fail, ensureRepoRoot, currentBranch, parseBranch,
+  copyFileToClipboard, openInEditor,
 } from "./common.mjs";
 
 ensureRepoRoot();
 
 const info = parseBranch(currentBranch());
 if (!info) fail("내 기능 브랜치가 아닙니다. 먼저 'npm run work'를 실행하세요.");
-const { feature } = info;
-const folder = path.join("app", feature.key);
+const folder = path.join("app", info.slug);
+let meta = {};
+try {
+  meta = JSON.parse(fs.readFileSync(path.join(folder, "feature.json"), "utf8"));
+} catch {
+  /* 무시 */
+}
+const label = meta.title || info.slug;
 
 // 내 기능 폴더 안의 코드 파일 모으기
 const TEXT_EXT = new Set([".js", ".jsx", ".mjs", ".css", ".json", ".md"]);
@@ -36,9 +44,9 @@ text += "───────────────────────�
 text += rules.trim() + "\n";
 text += "────────────────────────────────────────\n\n";
 text += "# 지금 내 작업\n\n";
-text += `- 내 기능: ${feature.label}\n`;
+text += `- 내 기능: ${label}${meta.desc ? ` — ${meta.desc}` : ""}\n`;
 text += `- 내가 수정할 수 있는 폴더: \`${slash(folder)}/\` (이 밖은 수정 금지)\n`;
-text += `- 확인 주소: http://localhost:3000/${feature.key}\n\n`;
+text += `- 확인 주소: (앱 주소)/${info.slug}\n\n`;
 text += `# 내 폴더의 현재 코드 (${files.length}개 파일)\n\n`;
 for (const f of files) {
   const body = fs.readFileSync(f, "utf8");
@@ -50,18 +58,23 @@ const outFile = path.resolve("ai-context.md");
 fs.writeFileSync(outFile, text, "utf8");
 
 title("AI에게 보낼 내용 준비 완료");
-say(`  내 기능 : ${feature.label} (${slash(folder)}/, 파일 ${files.length}개)`);
+say(`  내 기능 : ${label} (${slash(folder)}/, 파일 ${files.length}개)`);
 say(`  글자 수 : 약 ${text.length.toLocaleString()}자`);
 say("");
-if (copyFileToClipboard(outFile)) {
+
+if (!IN_CODESPACES && copyFileToClipboard(outFile)) {
   ok("클립보드에 복사했습니다.");
   say("");
   say("  1) AI 채팅을 새로 시작하고   2) Ctrl+V (맥은 Cmd+V)로 붙여넣어 보내세요.");
-  say("  3) AI가 '준비됐어'라고 하면, 만들고 싶은 것을 요청하세요.");
 } else {
-  warn("자동 복사가 안 되는 환경입니다. 아래 파일을 열어 전체 복사하거나 채팅에 업로드하세요.");
+  const opened = openInEditor("ai-context.md");
+  if (opened) ok("편집기에 ai-context.md 탭을 열었습니다.");
+  else warn("ai-context.md 파일을 VS Code 왼쪽 목록에서 직접 열어 주세요.");
+  say("");
+  say("  1) 열린 탭을 클릭하고 Ctrl+A (전체 선택) → Ctrl+C (복사)");
+  say("  2) AI 채팅을 새로 시작하고 Ctrl+V 로 붙여넣어 보내세요.");
 }
+say("  3) AI가 '준비됐어'라고 하면, 만들고 싶은 것을 이야기하세요.");
 say("");
-say(`  (같은 내용이 파일로도 저장됨: ai-context.md)`);
 say("  코드를 고친 뒤 새 채팅을 시작할 때는 이 명령을 다시 실행하세요.");
 say("");
