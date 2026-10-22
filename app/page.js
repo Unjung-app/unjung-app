@@ -86,7 +86,13 @@ export default function HomePage() {
           );
         })}
 
-        <p className="mt-8 text-center text-xs text-navy-400">
+        <a
+          href="/guide.html"
+          className="mt-8 block rounded-2xl bg-navy-50 px-4 py-3 text-center text-sm font-medium text-navy-700 transition hover:bg-navy-100"
+        >
+          이 앱 만들기에 참여하기 · 참여 안내서 →
+        </a>
+        <p className="mt-4 text-center text-xs text-navy-400">
           NERD LAB × 알고리즘 동아리
         </p>
       </div>
