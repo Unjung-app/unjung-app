@@ -1,21 +1,16 @@
 name: 🆘 도움 요청
-description: 10분 넘게 막혔을 때. 대표나 다른 참여원이 답해 줍니다.
+description: 10분 넘게 막혔을 때 남겨요.
 title: "[도움] "
 labels: ["도움 요청"]
 body:
-  - type: input
-    id: feature
-    attributes:
-      label: 내 기능 (폴더 이름)
-      placeholder: 예) music-request
   - type: textarea
     id: did
     attributes:
-      label: 무엇을 하려다가 막혔나요?
+      label: 무엇을 하다가 막혔나요?
     validations:
       required: true
   - type: textarea
     id: error
     attributes:
-      label: 화면에 나온 글자 (에러 메시지 전부 붙여넣기)
+      label: 화면에 나온 글자 (npm run check 결과나 에러를 그대로 붙여넣기)
       render: text

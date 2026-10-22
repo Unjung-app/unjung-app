@@ -48,7 +48,8 @@ components/ lib/ scripts/              공용 (대표)
 
 자동 검사(GitHub Actions)가 feature.json 형식 · 비밀 키 · 공용 파일 변경 · 빌드를 확인합니다.
 학생 브랜치(`feat/**`)는 Vercel에 배포하지 않습니다(`vercel.json`, 무료 요금제 하루 100회 배포 한도 보호). 확인은 Codespaces 미리보기로 합니다.
-검토는 "고쳐"보다 "어떻게 생각해?"로, 좋은 점 한 가지와 함께.
+**검토하는 대표에게:** PR의 주인은 만든 학생입니다. "고쳐"보다 "이건 어떻게 생각해?"로, 좋은 점 한 가지와 함께 남겨 주세요.
+병합은 **Create a merge commit**으로 합니다. 수업 기간에는 PR 화면의 Update branch·Commit suggestion을 써도 되지만(학생 스크립트가 자동으로 합침), `.github/workflows/`는 바꾸지 마세요.
 
 AI가 지켜야 할 규칙은 `AGENTS.md`에 있습니다.
 

@@ -51,10 +51,8 @@ const mine = changed.filter((f) => f.startsWith(folder));
 const others = changed.filter((f) => !f.startsWith(folder));
 
 if (others.length > 0) {
-  warn("내 폴더 밖에서 바뀐 파일이 있습니다. 이 파일들은 올라가지 않고 따로 보관됩니다:");
-  others.forEach((f) => say(`        - ${f}`));
-  say(`        · 내 화면이 이 파일을 쓰고 있다면, AI에게 "이 파일을 ${folder}_components/ 안으로 옮겨 줘"라고 하세요.`);
-  say("        · 공용 파일을 꼭 바꿔야 한다면 대표에게 요청하세요.");
+  warn(`내 폴더 밖에서 바뀐 파일은 올라가지 않아요: ${others.join(", ")}`);
+  say(`        내 화면에 필요한 파일이면 AI에게 "이 파일을 ${folder}_components/ 안으로 옮겨 줘"`);
   say("");
 }
 
@@ -81,23 +79,21 @@ if (weakFiles.length > 0) {
 
 // ── 3. 커밋 ───────────────────────────────────────────────
 if (mine.length > 0) {
-  say(`  저장할 파일 (${mine.length}개):`);
-  mine.forEach((f) => say(`        + ${f}`));
-  say("");
-  let msg = await ask("  무엇을 했는지 한 줄로 적어 주세요 (예: 오늘 급식 카드 화면 추가): ");
+  say(`  저장할 파일 ${mine.length}개: ${mine.map((f) => f.slice(folder.length)).join(", ")}`);
+  let msg = await ask("  무엇을 했는지 한 줄로 (예: 급식 카드 화면 추가): ");
   doneAsking();
   if (!msg) msg = `${label} 작업`;
   git(["add", "--all", "--", folder]);
   git(["commit", "-m", `feat: ${msg}`, "--quiet"]);
-  ok(`저장(커밋): feat: ${msg}`);
+  ok(`저장했어요: ${msg}`);
 } else {
   doneAsking();
-  say("  내 폴더에 새로 바뀐 파일이 없습니다. (이미 저장한 작업만 올립니다)");
+  say("  새로 바뀐 파일은 없어요.");
 }
 
 // ── 4. 최신 main 합치기 ─────────────────────────────────────
 say("");
-say("  다른 사람들의 최신 작업을 받아오는 중...");
+say("  최신 내용을 확인하고 올리는 중...");
 if (!gitLive(["fetch", "origin", "--prune", "--quiet"])) {
   fail("GitHub에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 실행하세요. (저장한 내용은 안전합니다)");
 }
@@ -117,11 +113,10 @@ if (wasOnGitHub) {
   const ahead = git(["rev-list", "--count", `origin/${branch}..HEAD`]).out;
   if (ahead === "0") {
     say("");
-    ok("GitHub와 이미 같은 상태입니다. 올릴 것이 없습니다.");
+    ok("이미 다 올라가 있어요. 할 일 끝!");
     process.exit(0);
   }
 }
-say("  GitHub에 올리는 중... (처음이면 로그인 창이 뜰 수 있습니다)");
 if (!gitLive(["push", "--quiet", "-u", "origin", branch])) {
   fail(explainPushFailure());
 }
@@ -149,19 +144,13 @@ async function findOpenPr() {
 }
 const pr = await findOpenPr();
 const url = `${REPO_URL}/compare/main...${branch}?expand=1`;
-title("마지막 단계: PR 확인");
 if (pr) {
-  ok(`열려 있는 PR #${pr.number}에 방금 올린 내용이 자동으로 추가되었습니다. 새로 만들 필요 없어요.`);
-  say(`  ${pr.html_url}`);
-} else if (pr === null) {
-  say("  새 PR을 만들어 주세요. 아래 주소를 열고 [Create pull request] 클릭." + (IN_CODESPACES ? " (Ctrl 누른 채로 클릭)" : ""));
-  say(`  ${url}`);
-  if (!IN_CODESPACES) openBrowser(url);
+  ok(`열려 있는 PR #${pr.number}에 자동으로 추가됐어요. 할 일 끝!`);
 } else {
-  say("  아래 주소를 열어 주세요." + (IN_CODESPACES ? " (Ctrl 누른 채로 클릭)" : ""));
+  title("한 단계 남았어요");
+  say("  아래 주소를 Ctrl+클릭 → 초록색 [Create pull request]");
   say(`  ${url}`);
-  say("  · 'Create pull request' 버튼이 보이면 → 눌러서 PR 만들기");
-  say("  · 이미 열린 PR이 있다고 나오면 → 새로 만들 필요 없음. 내용이 자동으로 추가됨");
+  if (pr === undefined) say("  (이미 열린 PR이 있다고 나오면 그냥 닫으면 돼요)");
   if (!IN_CODESPACES) openBrowser(url);
 }
 say("");

@@ -57,8 +57,13 @@ export function gitLive(args) {
   return r.status === 0;
 }
 
+// npm 명령 실행. 성공하면 조용히, 실패하면 마지막 출력만 보여 줍니다.
 export function npmLive(command) {
-  const r = spawnSync(`npm ${command}`, { stdio: "inherit", shell: true });
+  const r = spawnSync(`npm ${command}`, { encoding: "utf8", shell: true, maxBuffer: 20 * 1024 * 1024 });
+  if (r.status !== 0) {
+    const out = `${r.stdout || ""}${r.stderr || ""}`.trim().split("\n").slice(-15).join("\n");
+    console.log(out);
+  }
   return r.status === 0;
 }
 
@@ -284,16 +289,13 @@ export function syncWith(ref) {
 export function explainConflict() {
   const files = conflictedFiles();
   say("");
-  warn("다른 사람이 같은 파일을 고쳐서 '충돌'이 났습니다. 망가진 게 아니니 걱정하지 마세요.");
-  say("  충돌난 파일:");
-  files.forEach((f) => say(`        - ${f}`));
+  warn("'충돌'이 났어요. 다른 사람과 같은 곳을 고친 것뿐, 망가진 게 아니에요.");
+  say(`  충돌난 파일: ${files.join(", ")}`);
   say("");
-  say("  해결 방법:");
-  say(`   1) 방금 열린 ${CONFLICT_FILE} 내용을 전부 복사해서(Ctrl+A → Ctrl+C) AI 채팅에 붙여넣기`);
-  say("   2) AI가 준 '파일 전체 코드'로 그 파일 내용을 통째로 바꾸고 저장(Ctrl+S)");
-  say("   3) 미리보기를 새로고침해서 내 기능과 다른 사람 기능이 둘 다 잘 되는지 확인");
-  say("   4) npm run save");
-  say("  AI가 '한쪽 코드를 지워야 한다'고 하면, 진행하기 전에 대표에게 물어보세요.");
+  say(`   1) 열린 ${CONFLICT_FILE} 탭에서 Ctrl+A → Ctrl+C → AI 채팅에 붙여넣기`);
+  say("   2) AI가 준 코드로 그 파일을 통째로 바꾸기");
+  say("   3) 미리보기에서 두 사람 기능이 다 되는지 확인 → npm run save");
+  say("  (AI가 '한쪽 코드를 지워야 한다'고 하면 먼저 대표에게 물어보세요)");
   say("");
   if (!openInEditor(CONFLICT_FILE)) say(`  (${CONFLICT_FILE} 파일을 VS Code에서 직접 열어 주세요)`);
 }
@@ -318,9 +320,7 @@ export function prepareForSync(folder, { quiet = false } = {}) {
       { allowFail: true }
     );
     if (r.code === 0 && !quiet) {
-      warn("내 폴더 밖에서 바뀐 파일을 따로 보관해 두었습니다 (올라가지 않는 파일):");
-      others.forEach((f) => say(`        - ${f}`));
-      say("        필요한 파일이었다면 대표에게 'git stash list'로 찾아 달라고 하세요.");
+      warn(`내 폴더 밖에서 바뀐 파일은 따로 보관했어요 (올라가지 않아요): ${others.join(", ")}`);
     } else if (r.code !== 0) {
       warn("내 폴더 밖의 변경을 보관하지 못했습니다. 이 화면을 대표에게 보여 주세요.");
     }
@@ -328,7 +328,7 @@ export function prepareForSync(folder, { quiet = false } = {}) {
   if (mine.length > 0) {
     git(["add", "--all", "--", folder]);
     git(["commit", "-m", "feat: (자동 저장) 작업 중", "--quiet"]);
-    ok("내 폴더의 저장 안 된 작업을 자동 저장(커밋)했습니다. GitHub에는 아직 안 올라갔어요.");
+    ok("저장 안 된 작업을 안전하게 보관했어요.");
   }
 }
 
