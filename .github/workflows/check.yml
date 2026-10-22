@@ -1,0 +1,37 @@
+# PR이 올라오면 자동으로 검사합니다. 결과는 PR 화면 아래 'Checks'에 표시됩니다.
+name: 자동 검사
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 부품 설치
+        run: npm ci --no-audit --no-fund
+
+      - name: 규칙 검사 (feature.json · 비밀 키 · 공용 파일)
+        run: node scripts/check-pr.mjs "origin/${{ github.base_ref }}"
+
+      - name: 앱 만들기 (빌드)
+        run: npm run build
