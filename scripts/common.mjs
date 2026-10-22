@@ -12,15 +12,24 @@ export const REPO_URL = "https://github.com/Unjung-app/unjung-app";
 // GitHub Codespaces(브라우저 개발 환경) 안에서 실행 중인지
 export const IN_CODESPACES = !!process.env.CODESPACES;
 
+// 네트워크가 멈췄을 때 git 이 끝없이 기다리지 않도록 (20초 동안 거의 안 움직이면 실패 처리)
+process.env.GIT_HTTP_LOW_SPEED_LIMIT ??= "1000";
+process.env.GIT_HTTP_LOW_SPEED_TIME ??= "20";
+// 점검용 git 명령이 로그인 창을 띄우지 않도록 쓰는 환경
+export const NO_PROMPT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" };
+
 const isWin = process.platform === "win32";
 
 // ── 화면 출력 ──────────────────────────────────────────────
 export const say = (msg = "") => console.log(msg);
 export const ok = (msg) => console.log(`  [완료] ${msg}`);
 export const warn = (msg) => console.log(`  [주의] ${msg}`);
+const isTTY = !!process.stdout.isTTY;
+const paint = (code, s) => (isTTY ? `\x1b[${code}m${s}\x1b[0m` : s);
 export function fail(msg) {
   console.log("");
-  console.log(`  [멈춤] ${msg}`);
+  console.log(paint("41;97;1", "  ■ 여기서 멈췄어요 ■  ") + "  아래 글을 읽어 주세요.");
+  console.log(paint("31;1", `  [멈춤] ${msg}`));
   console.log("");
   process.exit(1);
 }
@@ -48,8 +57,13 @@ export function gitLive(args) {
   return r.status === 0;
 }
 
+// npm 명령 실행. 성공하면 조용히, 실패하면 마지막 출력만 보여 줍니다.
 export function npmLive(command) {
-  const r = spawnSync(`npm ${command}`, { stdio: "inherit", shell: true });
+  const r = spawnSync(`npm ${command}`, { encoding: "utf8", shell: true, maxBuffer: 20 * 1024 * 1024 });
+  if (r.status !== 0) {
+    const out = `${r.stdout || ""}${r.stderr || ""}`.trim().split("\n").slice(-15).join("\n");
+    console.log(out);
+  }
   return r.status === 0;
 }
 
@@ -200,7 +214,7 @@ function writeConflictHelp(files) {
   let t = "";
   t += "내 학교 앱 프로젝트(Next.js 16 App Router + JavaScript + Tailwind CSS v4)에서 Git 충돌이 났어.\n";
   t += "아래 파일 안의 <<<<<<< 와 >>>>>>> 사이에 두 사람의 코드가 함께 들어 있어.\n";
-  t += "(======= 위쪽이 내 코드, 아래쪽이 이미 main에 합쳐진 다른 사람의 코드야.)\n\n";
+  t += "(======= 위쪽이 내 코드, 아래쪽이 GitHub에 먼저 올라가 있던 코드야. 다른 사람이나 대표가 고친 코드일 수 있어.)\n\n";
   t += "다음 규칙대로 도와줘.\n";
   t += "1. 기본은 **두 사람의 기능을 모두 살리는 것**이야.\n";
   t += "2. 어느 한쪽 코드가 사라져야만 한다면, 고치기 전에 무엇이 사라지는지 쉬운 말로 설명하고 나에게 먼저 물어봐.\n";
@@ -242,14 +256,21 @@ function autoMergeFeatureJson(file) {
 // 최신 main을 내 브랜치에 합칩니다. 결과: "ok" | "conflict"
 // (먼저 git fetch origin 이 되어 있어야 합니다)
 export function syncWithMain() {
-  const behind = git(["rev-list", "--count", "HEAD..origin/main"], { allowFail: true }).out;
+  return syncWith("origin/main");
+}
+
+// ref(예: origin/main, origin/feat/meal-howon)의 내용을 내 브랜치에 합칩니다. 결과: "ok" | "conflict"
+// (GitHub에서 대표가 내 PR에 [Update branch]·[Commit suggestion] 등을 눌러 브랜치가 앞서 있을 때도 씀)
+export function syncWith(ref) {
+  if (git(["rev-parse", "--verify", "--quiet", ref], { allowFail: true }).code !== 0) return "ok";
+  const behind = git(["rev-list", "--count", `HEAD..${ref}`], { allowFail: true }).out;
   if (behind === "0" || behind === "") return "ok";
-  const r = git(["merge", "--no-edit", "origin/main"], { allowFail: true });
+  const r = git(["merge", "--no-edit", ref], { allowFail: true });
   if (r.code === 0) return "ok";
   let files = conflictedFiles();
   if (files.length === 0) {
     git(["merge", "--abort"], { allowFail: true });
-    fail(`최신 main을 합치지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.\n\n${r.err || r.out}`);
+    fail(`최신 작업(${ref})을 합치지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.\n\n${r.err || r.out}`);
   }
   // feature.json 충돌(만든 사람 목록 등)은 사람이 고칠 필요 없이 자동으로 합칩니다.
   for (const f of files.filter((f) => /^app\/[^/]+\/feature\.json$/.test(f))) {
@@ -268,16 +289,13 @@ export function syncWithMain() {
 export function explainConflict() {
   const files = conflictedFiles();
   say("");
-  warn("다른 사람이 같은 파일을 고쳐서 '충돌'이 났습니다. 망가진 게 아니니 걱정하지 마세요.");
-  say("  충돌난 파일:");
-  files.forEach((f) => say(`        - ${f}`));
+  warn("'충돌'이 났어요. 다른 사람과 같은 곳을 고친 것뿐, 망가진 게 아니에요.");
+  say(`  충돌난 파일: ${files.join(", ")}`);
   say("");
-  say("  해결 방법:");
-  say(`   1) 방금 열린 ${CONFLICT_FILE} 내용을 전부 복사해서(Ctrl+A → Ctrl+C) AI 채팅에 붙여넣기`);
-  say("   2) AI가 준 '파일 전체 코드'로 그 파일 내용을 통째로 바꾸고 저장(Ctrl+S)");
-  say("   3) 미리보기를 새로고침해서 내 기능과 다른 사람 기능이 둘 다 잘 되는지 확인");
-  say("   4) npm run save");
-  say("  AI가 '한쪽 코드를 지워야 한다'고 하면, 진행하기 전에 대표에게 물어보세요.");
+  say(`   1) 열린 ${CONFLICT_FILE} 안을 클릭 → Ctrl+A → Ctrl+C → AI 채팅에 붙여넣기`);
+  say("   2) AI가 준 코드로 그 파일을 통째로 바꾸기");
+  say("   3) 미리보기에서 두 사람 기능이 다 되는지 확인 → npm run save");
+  say("  (AI가 '한쪽 코드를 지워야 한다'고 하면 먼저 대표에게 물어보세요)");
   say("");
   if (!openInEditor(CONFLICT_FILE)) say(`  (${CONFLICT_FILE} 파일을 VS Code에서 직접 열어 주세요)`);
 }
@@ -302,9 +320,7 @@ export function prepareForSync(folder, { quiet = false } = {}) {
       { allowFail: true }
     );
     if (r.code === 0 && !quiet) {
-      warn("내 폴더 밖에서 바뀐 파일을 따로 보관해 두었습니다 (올라가지 않는 파일):");
-      others.forEach((f) => say(`        - ${f}`));
-      say("        필요한 파일이었다면 대표에게 'git stash list'로 찾아 달라고 하세요.");
+      warn(`내 폴더 밖에서 바뀐 파일은 따로 보관했어요 (올라가지 않아요): ${others.join(", ")}`);
     } else if (r.code !== 0) {
       warn("내 폴더 밖의 변경을 보관하지 못했습니다. 이 화면을 대표에게 보여 주세요.");
     }
@@ -312,6 +328,26 @@ export function prepareForSync(folder, { quiet = false } = {}) {
   if (mine.length > 0) {
     git(["add", "--all", "--", folder]);
     git(["commit", "-m", "feat: (자동 저장) 작업 중", "--quiet"]);
-    ok("내 폴더의 저장 안 된 작업을 자동 저장(커밋)했습니다. GitHub에는 아직 안 올라갔어요.");
+    ok("저장 안 된 작업을 안전하게 보관했어요.");
   }
+}
+
+// push(올리기)가 실패했을 때 이유를 알아내서 쉬운 말로 알려 줍니다.
+export function explainPushFailure() {
+  const r = spawnSync("git", ["push", "--dry-run", "origin", "HEAD"], {
+    encoding: "utf8",
+    timeout: 30000,
+    env: NO_PROMPT_ENV,
+  });
+  const t = `${r.stderr || ""}${r.stdout || ""}`;
+  if (/403|denied|not have permission|Permission to|Authentication failed/i.test(t)) {
+    return "이 저장소에 올릴 권한이 없습니다.\n  대표에게 'Unjung-app 조직에 내 GitHub 아이디가 들어가 있는지(초대 수락 포함)' 확인해 달라고 하세요.";
+  }
+  if (/could not resolve|unable to access|timed out|Failed to connect|Connection/i.test(t)) {
+    return "GitHub 연결이 끊겼습니다. 잠시 뒤 다시 npm run save 하세요. (저장한 내용은 안전합니다)";
+  }
+  if (/rejected|non-fast-forward|fetch first/i.test(t)) {
+    return "GitHub에 있는 내 브랜치가 이 컴퓨터보다 앞서 있습니다.\n  npm run save 를 한 번 더 실행하세요. (GitHub의 내용을 자동으로 합친 뒤 올립니다)";
+  }
+  return "GitHub에 올리지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.";
 }

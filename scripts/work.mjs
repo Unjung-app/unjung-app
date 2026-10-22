@@ -6,7 +6,7 @@ import fs from "node:fs";
 import {
   IN_CODESPACES, NAME_RE, title, say, ok, warn, fail, ask, doneAsking, git, gitLive, npmLive,
   ensureRepoRoot, currentBranch, parseBranch, changedFiles, suggestName, featuresAt,
-  regenerateMenu, mergeInProgress, restoreLockfile, syncWithMain, explainConflict, prepareForSync,
+  regenerateMenu, mergeInProgress, restoreLockfile, syncWithMain, syncWith, explainConflict, prepareForSync,
 } from "./common.mjs";
 import { STATUSES } from "./features.mjs";
 import { newFeature } from "./new.mjs";
@@ -26,7 +26,7 @@ if (mergeInProgress()) {
 }
 
 // ── 0. 최신 정보 받기 ────────────────────────────────────────
-say("  GitHub에서 최신 정보를 받아오는 중...");
+say("  준비하는 중...");
 if (!gitLive(["fetch", "origin", "--prune", "--quiet"])) {
   fail("GitHub에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 실행하세요.");
 }
@@ -34,8 +34,28 @@ if (!gitLive(["fetch", "origin", "--prune", "--quiet"])) {
 const before = parseBranch(currentBranch());
 
 // ── 1. 내 이름 ──────────────────────────────────────────────
+// 지난번에 다른 Codespace에서 쓴 이름 찾기: 내 이메일로 올린 feat/ 브랜치에서
+function nameFromMyBranches() {
+  const email = git(["config", "user.email"], { allowFail: true }).out;
+  if (!email) return "";
+  const refs = git(["for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/feat/"], {
+    allowFail: true,
+  }).out.split("\n").filter(Boolean);
+  for (const ref of refs) {
+    // 그 브랜치의 (main에 없는) 커밋 중에 내 이메일로 만든 것이 있으면 내 브랜치
+    const mine = git(["log", "-1", "--format=%H", "--fixed-strings", `--author=${email}`, `origin/main..${ref}`], {
+      allowFail: true,
+    }).out;
+    if (mine) {
+      const p = parseBranch(ref.replace(/^origin\//, ""));
+      if (p) return p.name;
+    }
+  }
+  return "";
+}
 const guess =
   before?.name ||
+  nameFromMyBranches() ||
   suggestName(git(["config", "--local", "user.name"], { allowFail: true }).out) ||
   suggestName(process.env.GITHUB_USER);
 let name;
@@ -108,7 +128,26 @@ while (!feature) {
   }
   if (!a && beforeIdx >= 0) feature = features[beforeIdx];
   else feature = features[Number(a) - 1];
-  if (!feature) say(`  0~${features.length} 중에서 입력하세요.`);
+  if (!feature) {
+    say(`  0~${features.length} 중에서 입력하세요.`);
+    continue;
+  }
+  // 다른 사람이 이미 만들고 있는 기능이면 한 번 확인합니다 (같은 파일을 함께 고치면 충돌이 나기 쉬움)
+  const others = feature.makers.filter((m) => m !== name);
+  const alreadyMine =
+    before?.slug === feature.slug ||
+    git(["rev-parse", "--verify", "--quiet", `refs/heads/feat/${feature.slug}-${name}`], { allowFail: true }).code === 0 ||
+    git(["rev-parse", "--verify", "--quiet", `refs/remotes/origin/feat/${feature.slug}-${name}`], { allowFail: true }).code === 0;
+  if (feature.status !== "idea" && others.length > 0 && !feature.makers.includes(name) && !alreadyMine) {
+    say("");
+    say(`  '${feature.title}'은(는) ${others.join(", ")}이(가) 만들고 있어요.`);
+    say("  함께 만들려면 먼저 그 친구와 나눠서 할 부분을 이야기하세요.");
+    const c = (await ask("  함께 만들기로 했으면 y(또는 '네'), 다른 번호를 고르려면 그냥 Enter: ")).toLowerCase().trim();
+    if (!["y", "yes", "ㅛ", "네", "예", "응", "ㅇ", "ok"].includes(c)) {
+      say("  알겠어요. 번호를 다시 골라 주세요.");
+      feature = null;
+    }
+  }
 }
 doneAsking();
 
@@ -131,13 +170,11 @@ const hasLocal = exists(`refs/heads/${branch}`);
 if (hasRemote) {
   if (hasLocal) {
     if (now !== branch) git(["switch", branch]);
-    if (!gitLive(["pull", "--ff-only", "--quiet", "origin", branch])) {
-      fail("내 브랜치를 최신으로 맞추지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.");
-    }
+    // GitHub 쪽 내 브랜치의 새 내용은 아래(정리 후)에서 합칩니다.
   } else {
     git(["switch", "--track", "-c", branch, `origin/${branch}`]);
   }
-  ok(`GitHub에 있던 내 브랜치로 이동: ${branch}`);
+  ok("지난 작업을 불러왔어요.");
 } else if (hasLocal) {
   // GitHub에서는 지워졌다 = 보통 PR이 합쳐진 것. 내 폴더 내용이 main과 같으면 최신 main에서 새로 시작합니다.
   // (스쿼시 병합이었어도 지난 작업과 충돌하지 않도록)
@@ -146,18 +183,24 @@ if (hasRemote) {
     if (now === branch) git(["switch", "--detach", "origin/main"]);
     git(["branch", "-D", branch]);
     git(["switch", "--no-track", "-c", branch, "origin/main"]);
-    ok(`지난 작업은 이미 main에 들어갔습니다. 최신 main에서 새로 시작: ${branch}`);
+    ok("지난 작업은 이미 앱에 들어갔어요. 이어서 새로 시작해요.");
   } else {
     if (now !== branch) git(["switch", branch]);
-    ok(`이 컴퓨터에 있던 내 브랜치로 이동: ${branch}`);
+    ok("지난 작업을 불러왔어요.");
   }
 } else {
   git(["switch", "--no-track", "-c", branch, "origin/main"]);
-  ok(`최신 main에서 새 브랜치를 만들었습니다: ${branch}`);
+  ok("새로 시작해요.");
 }
 
 // 합치기 전에 저장 안 된 작업 정리 (내 폴더 = 자동 저장, 폴더 밖 = 따로 보관)
 prepareForSync(`app/${feature.slug}/`);
+
+// GitHub 쪽 내 브랜치가 더 앞서 있으면(다른 컴퓨터에서 올렸거나, 대표가 PR에서 고쳤거나) 먼저 합칩니다.
+if (hasRemote && syncWith(`origin/${branch}`) === "conflict") {
+  explainConflict();
+  process.exit(1);
+}
 
 // 다른 사람들이 그동안 main에 합친 작업을 내 브랜치에도 가져옵니다.
 // (이걸 해야 내 화면에서도 다른 사람의 기능이 보이고, 나중에 충돌이 줄어듭니다)
@@ -165,7 +208,6 @@ if (syncWithMain() === "conflict") {
   explainConflict();
   process.exit(1);
 }
-ok("다른 사람들의 최신 작업을 받아왔습니다.");
 
 // ── 4. 만든 사람 목록에 내 이름 올리기 ──────────────────────────
 const metaFile = `app/${feature.slug}/feature.json`;
@@ -185,7 +227,6 @@ try {
     fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2) + "\n", "utf8");
     git(["add", "--", metaFile]);
     git(["commit", "-m", `chore: ${feature.title} 만든 사람에 ${name} 추가`, "--quiet"]);
-    ok(`'${feature.title}'의 만든 사람에 ${name} 추가 (저장하면 홈 화면에 표시됩니다)`);
   }
 } catch {
   warn(`${metaFile} 을 읽지 못했습니다. 대표에게 알려 주세요.`);
@@ -193,19 +234,17 @@ try {
 
 // ── 5. 부품 설치 ───────────────────────────────────────────
 say("");
-say("  앱 실행에 필요한 부품을 확인하는 중... (처음엔 1~2분)");
+say("  앱 부품을 확인하는 중... (처음엔 1~2분)");
 if (!npmLive("install --no-audit --no-fund --loglevel=error")) {
   fail("npm install 중 문제가 생겼습니다. 이 화면을 캡처해서 대표에게 보여 주세요.");
 }
 restoreLockfile();
-ok("부품 준비");
 regenerateMenu();
 
 title("준비 끝!");
-say(`  기능     : ${feature.title}`);
-say(`  브랜치   : ${branch}`);
-say(`  내 폴더  : app/${feature.slug}/   ← 이 폴더 안의 파일만 고칩니다`);
-say(`  내 화면  : (앱 주소)/${feature.slug}`);
+say(`  내 기능   : ${feature.title.replace(" (내 새 기능)", "")}`);
+say(`  내 화면   : 미리보기 홈 → "${feature.title.replace(" (내 새 기능)", "")}"`);
+say(`  고칠 폴더 : app/${feature.slug}/`);
 say("");
-say("  다음: npm run ai  → AI에게 무엇을 만들고 싶은지 이야기하기");
+say("  다음 → npm run ai");
 say("");

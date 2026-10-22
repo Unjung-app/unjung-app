@@ -58,23 +58,13 @@ const outFile = path.resolve("ai-context.md");
 fs.writeFileSync(outFile, text, "utf8");
 
 title("AI에게 보낼 내용 준비 완료");
-say(`  내 기능 : ${label} (${slash(folder)}/, 파일 ${files.length}개)`);
-say(`  글자 수 : 약 ${text.length.toLocaleString()}자`);
+say(`  내 기능 : ${label}`);
 say("");
-
 if (!IN_CODESPACES && copyFileToClipboard(outFile)) {
-  ok("클립보드에 복사했습니다.");
-  say("");
-  say("  1) AI 채팅을 새로 시작하고   2) Ctrl+V (맥은 Cmd+V)로 붙여넣어 보내세요.");
+  ok("복사했어요. AI 채팅에 Ctrl+V (맥은 Cmd+V)로 붙여넣으세요.");
 } else {
-  const opened = openInEditor("ai-context.md");
-  if (opened) ok("편집기에 ai-context.md 탭을 열었습니다.");
-  else warn("ai-context.md 파일을 VS Code 왼쪽 목록에서 직접 열어 주세요.");
-  say("");
-  say("  1) 열린 탭을 클릭하고 Ctrl+A (전체 선택) → Ctrl+C (복사)");
-  say("  2) AI 채팅을 새로 시작하고 Ctrl+V 로 붙여넣어 보내세요.");
+  const where = openInEditor("ai-context.md") ? "열린 ai-context.md 안을 한 번 클릭" : "왼쪽 목록에서 ai-context.md 를 열고 안을 클릭";
+  ok(`${where} → Ctrl+A → Ctrl+C → AI 채팅에 붙여넣으세요.`);
 }
-say("  3) AI가 '준비됐어'라고 하면, 만들고 싶은 것을 이야기하세요.");
-say("");
-say("  코드를 고친 뒤 새 채팅을 시작할 때는 이 명령을 다시 실행하세요.");
+say("  AI가 '준비됐어'라고 하면, 만들고 싶은 것을 이야기하세요.");
 say("");
