@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/gen-features.mjs",
     "dev": "next dev",
     "prebuild": "node scripts/gen-features.mjs --strict",
     "build": "next build",

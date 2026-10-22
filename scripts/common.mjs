@@ -275,7 +275,7 @@ export function explainConflict() {
   say("  해결 방법:");
   say(`   1) 방금 열린 ${CONFLICT_FILE} 내용을 전부 복사해서(Ctrl+A → Ctrl+C) AI 채팅에 붙여넣기`);
   say("   2) AI가 준 '파일 전체 코드'로 그 파일 내용을 통째로 바꾸고 저장(Ctrl+S)");
-  say("   3) npm run dev 로 내 기능과 다른 사람 기능이 둘 다 잘 되는지 확인");
+  say("   3) 미리보기를 새로고침해서 내 기능과 다른 사람 기능이 둘 다 잘 되는지 확인");
   say("   4) npm run save");
   say("  AI가 '한쪽 코드를 지워야 한다'고 하면, 진행하기 전에 대표에게 물어보세요.");
   say("");
@@ -286,4 +286,32 @@ export function explainConflict() {
 // 학생 작업과 상관없는 이 변경은 되돌립니다. (부품 목록은 대표만 바꿉니다)
 export function restoreLockfile() {
   git(["checkout", "--", "package-lock.json"], { allowFail: true });
+}
+
+// 최신 main을 합치기 전에 정리합니다.
+//  - 내 폴더의 저장 안 된 변경 → '자동 저장' 커밋 (합치다가 덮어써지지 않도록)
+//  - 내 폴더 밖의 변경 → 따로 보관(stash). 어차피 올라가지 않는 파일들입니다.
+export function prepareForSync(folder, { quiet = false } = {}) {
+  restoreLockfile();
+  const changed = changedFiles();
+  const mine = changed.filter((f) => f.startsWith(folder));
+  const others = changed.filter((f) => !f.startsWith(folder));
+  if (others.length > 0) {
+    const r = git(
+      ["stash", "push", "--include-untracked", "-m", `폴더 밖 변경 자동 보관 (${folder})`, "--", ...others],
+      { allowFail: true }
+    );
+    if (r.code === 0 && !quiet) {
+      warn("내 폴더 밖에서 바뀐 파일을 따로 보관해 두었습니다 (올라가지 않는 파일):");
+      others.forEach((f) => say(`        - ${f}`));
+      say("        필요한 파일이었다면 대표에게 'git stash list'로 찾아 달라고 하세요.");
+    } else if (r.code !== 0) {
+      warn("내 폴더 밖의 변경을 보관하지 못했습니다. 이 화면을 대표에게 보여 주세요.");
+    }
+  }
+  if (mine.length > 0) {
+    git(["add", "--all", "--", folder]);
+    git(["commit", "-m", "feat: (자동 저장) 작업 중", "--quiet"]);
+    ok("내 폴더의 저장 안 된 작업을 자동 저장(커밋)했습니다. GitHub에는 아직 안 올라갔어요.");
+  }
 }

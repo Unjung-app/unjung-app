@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
-import { readFeatures } from "./features.mjs";
+import { readFeatures, scanSecrets } from "./features.mjs";
 
 const base = process.argv[2] || "origin/main";
 const sh = (args) => execFileSync("git", args, { encoding: "utf8", maxBuffer: 50 * 1024 * 1024 }).trim();
@@ -19,16 +19,11 @@ const shared = changed.filter((f) => !isFeatureFile(f));
 const touchedFeatures = [...new Set(changed.filter(isFeatureFile).map(featureOf))];
 
 // 새로 추가된 줄에서 비밀 값 찾기
-const SECRET = [
-  /eyJhbGciOi[A-Za-z0-9_-]{20,}/,
-  /sk-[A-Za-z0-9_-]{20,}/,
-  /ghp_[A-Za-z0-9]{20,}/,
-  /(api[_-]?key|secret|password)\s*[:=]\s*["'][^"']{8,}["']/i,
-];
 const added = sh(["diff", "-U0", `${base}...HEAD`])
   .split("\n")
   .filter((l) => l.startsWith("+") && !l.startsWith("+++"));
-const secrets = added.filter((l) => SECRET.some((re) => re.test(l)));
+const strongSecrets = added.filter((l) => scanSecrets(l).strong);
+const weakSecrets = added.filter((l) => !scanSecrets(l).strong && scanSecrets(l).weak);
 
 const { errors } = readFeatures(process.cwd());
 
@@ -45,10 +40,13 @@ if (errors.length) {
   errors.forEach((e) => note("❌", e));
 } else note("✅", "feature.json 형식 정상");
 
-if (secrets.length) {
+if (strongSecrets.length) {
   failed = true;
-  note("❌", `비밀 키처럼 보이는 값이 ${secrets.length}줄 있습니다. 키는 코드에 넣지 말고 대표에게 문의하세요.`);
+  note("❌", `API 키·토큰처럼 보이는 값이 ${strongSecrets.length}줄 있습니다. 키는 코드에 넣지 말고 대표에게 문의하세요.`);
 } else note("✅", "비밀 키 없음");
+if (weakSecrets.length) {
+  note("⚠️", `비밀번호처럼 보이는 글이 ${weakSecrets.length}줄 있습니다. 가짜 예시인지 확인해 주세요.`);
+}
 
 if (shared.length) {
   note("⚠️", `공용 파일을 바꿉니다 (대표 확인 필요): ${shared.join(", ")}`);

@@ -6,7 +6,7 @@ import fs from "node:fs";
 import {
   IN_CODESPACES, NAME_RE, title, say, ok, warn, fail, ask, doneAsking, git, gitLive, npmLive,
   ensureRepoRoot, currentBranch, parseBranch, changedFiles, suggestName, featuresAt,
-  regenerateMenu, mergeInProgress, restoreLockfile, syncWithMain, explainConflict,
+  regenerateMenu, mergeInProgress, restoreLockfile, syncWithMain, explainConflict, prepareForSync,
 } from "./common.mjs";
 import { STATUSES } from "./features.mjs";
 import { newFeature } from "./new.mjs";
@@ -80,6 +80,15 @@ for (const ref of myRefs) {
     /* 무시 */
   }
 }
+// 지금 브랜치의 기능이 목록에 없으면(아직 한 번도 올리지 않은 새 기능) 이 컴퓨터의 파일에서 읽어 넣습니다.
+if (before && before.name === name && !features.some((f) => f.slug === before.slug)) {
+  try {
+    const f = JSON.parse(fs.readFileSync(`app/${before.slug}/feature.json`, "utf8"));
+    features.push({ slug: before.slug, title: `${f.title || before.slug} (내 새 기능)`, status: "building", makers: f.makers || [name] });
+  } catch {
+    /* 무시 */
+  }
+}
 say("");
 say("  어떤 기능을 작업할까요?");
 say("    0. ✨ 새 기능 만들기 (내 아이디어로 시작)");
@@ -137,6 +146,9 @@ if (hasRemote) {
   ok(`최신 main에서 새 브랜치를 만들었습니다: ${branch}`);
 }
 
+// 합치기 전에 저장 안 된 작업 정리 (내 폴더 = 자동 저장, 폴더 밖 = 따로 보관)
+prepareForSync(`app/${feature.slug}/`);
+
 // 다른 사람들이 그동안 main에 합친 작업을 내 브랜치에도 가져옵니다.
 // (이걸 해야 내 화면에서도 다른 사람의 기능이 보이고, 나중에 충돌이 줄어듭니다)
 if (syncWithMain() === "conflict") {
@@ -161,6 +173,8 @@ try {
   }
   if (changed) {
     fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2) + "\n", "utf8");
+    git(["add", "--", metaFile]);
+    git(["commit", "-m", `chore: ${feature.title} 만든 사람에 ${name} 추가`, "--quiet"]);
     ok(`'${feature.title}'의 만든 사람에 ${name} 추가 (저장하면 홈 화면에 표시됩니다)`);
   }
 } catch {

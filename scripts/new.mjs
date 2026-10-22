@@ -4,12 +4,11 @@
 // (npm run work 에서 0번을 골라도 여기로 옵니다)
 
 import fs from "node:fs";
-import { pathToFileURL } from "node:url";
 import {
   IN_CODESPACES, NAME_RE, REPO_URL, title, say, ok, fail, ask, doneAsking, git, gitLive, npmLive,
-  ensureRepoRoot, changedFiles, suggestName, featuresAt, regenerateMenu, mergeInProgress, restoreLockfile,
+  ensureRepoRoot, changedFiles, parseBranch, suggestName, featuresAt, regenerateMenu, mergeInProgress, restoreLockfile,
 } from "./common.mjs";
-import { SLUG_RE, ICON_NAMES } from "./features.mjs";
+import { SLUG_RE, ICON_NAMES, RESERVED, isValidIcon, isMain } from "./features.mjs";
 
 export async function newFeature(opts = {}) {
   ensureRepoRoot();
@@ -70,9 +69,11 @@ export async function newFeature(opts = {}) {
     const a = (await ask("  주소로 쓸 영어 이름 (소문자·숫자·하이픈, 예: music-request): ")).toLowerCase();
     if (!SLUG_RE.test(a)) {
       say("  영어 소문자로 시작하고, 소문자·숫자·하이픈(-)만 2~30글자로 입력하세요.");
+    } else if (RESERVED.has(a)) {
+      say("  이 이름은 앱에서 이미 쓰고 있어요. 다른 이름을 써 주세요.");
     } else if (taken.has(a) || fs.existsSync(`app/${a}`)) {
       say("  이미 있는 기능 이름입니다. 다른 이름을 쓰거나, 그 기능에 함께하려면 npm run work 에서 고르세요.");
-    } else if (remoteBranches.some((b) => b.startsWith(`origin/feat/${a}-`))) {
+    } else if (remoteBranches.some((b) => parseBranch(b.replace(/^origin\//, ""))?.slug === a)) {
       say("  누군가 같은 이름으로 이미 만들고 있어요. 다른 이름을 쓰거나 그 사람과 이야기해 보세요.");
     } else {
       slug = a;
@@ -80,8 +81,13 @@ export async function newFeature(opts = {}) {
   }
 
   say(`  아이콘: 이모지 한 개를 붙여넣거나, 이 중 하나를 쓰세요: ${ICON_NAMES.join(", ")}`);
-  const iconIn = await ask("  아이콘 (Enter = ✨): ");
-  const icon = iconIn || "✨";
+  let icon = "";
+  while (!icon) {
+    const a = await ask("  아이콘 (Enter = ✨): ");
+    if (!a) icon = "✨";
+    else if (isValidIcon(a)) icon = a;
+    else say("  이모지 한 개(예: 🎵)나 위 영어 이름 중 하나만 입력하세요. 모르겠으면 그냥 Enter.");
+  }
   doneAsking();
 
   // ── 브랜치 + 파일 만들기 ────────────────────────────────────
@@ -115,6 +121,8 @@ export async function newFeature(opts = {}) {
   }
   `;
   fs.writeFileSync(`app/${slug}/page.js`, page, "utf8");
+  git(["add", "--", `app/${slug}`]);
+  git(["commit", "-m", `feat: 새 기능 시작 — ${featTitle}`, "--quiet"]);
   ok(`app/${slug}/ 폴더와 첫 화면을 만들었습니다.`);
 
   if (!fs.existsSync("node_modules")) {
@@ -138,6 +146,6 @@ export async function newFeature(opts = {}) {
 }
 
 // 'npm run new' 으로 직접 실행했을 때
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isMain(import.meta.url)) {
   await newFeature();
 }
