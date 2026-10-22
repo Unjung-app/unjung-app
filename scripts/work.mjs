@@ -139,8 +139,18 @@ if (hasRemote) {
   }
   ok(`GitHub에 있던 내 브랜치로 이동: ${branch}`);
 } else if (hasLocal) {
-  if (now !== branch) git(["switch", branch]);
-  ok(`이 컴퓨터에 있던 내 브랜치로 이동: ${branch}`);
+  // GitHub에서는 지워졌다 = 보통 PR이 합쳐진 것. 내 폴더 내용이 main과 같으면 최신 main에서 새로 시작합니다.
+  // (스쿼시 병합이었어도 지난 작업과 충돌하지 않도록)
+  const same = git(["diff", "--quiet", "origin/main", branch, "--", `app/${feature.slug}`], { allowFail: true }).code === 0;
+  if (same && changedFiles().length === 0) {
+    if (now === branch) git(["switch", "--detach", "origin/main"]);
+    git(["branch", "-D", branch]);
+    git(["switch", "--no-track", "-c", branch, "origin/main"]);
+    ok(`지난 작업은 이미 main에 들어갔습니다. 최신 main에서 새로 시작: ${branch}`);
+  } else {
+    if (now !== branch) git(["switch", branch]);
+    ok(`이 컴퓨터에 있던 내 브랜치로 이동: ${branch}`);
+  }
 } else {
   git(["switch", "--no-track", "-c", branch, "origin/main"]);
   ok(`최신 main에서 새 브랜치를 만들었습니다: ${branch}`);
