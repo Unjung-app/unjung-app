@@ -1,0 +1,9 @@
+{
+  "title": "도서관 장서 검색",
+  "short": "도서관",
+  "desc": "장서 검색과 대출 현황",
+  "icon": "book",
+  "status": "idea",
+  "makers": [],
+  "order": 5
+}

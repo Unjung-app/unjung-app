@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/gen-features.mjs --strict",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "new": "node scripts/new.mjs",
     "work": "node scripts/work.mjs",
     "ai": "node scripts/ai.mjs",
     "save": "node scripts/save.mjs"

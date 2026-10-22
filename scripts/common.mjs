@@ -1,23 +1,16 @@
 // 참여원용 도우미 스크립트들이 함께 쓰는 기능 모음.
 // 대표만 수정합니다.
 
+import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import readline from "node:readline";
 import { stdin, stdout } from "node:process";
 
 export const REPO_URL = "https://github.com/Unjung-app/unjung-app";
 
-export const FEATURES = [
-  { key: "meal", label: "급식 정보" },
-  { key: "timetable", label: "시간표 · 학사일정" },
-  { key: "sports", label: "교내 스포츠 허브" },
-  { key: "voice", label: "운중 보이스" },
-  { key: "library", label: "도서관 장서 검색" },
-  { key: "notice", label: "통합 공지" },
-  { key: "meal-review", label: "급식 메뉴 평가" },
-  { key: "quiz", label: "학업 연계 미니게임" },
-  { key: "study", label: "전학년 공부시간 경쟁" },
-];
+// 기능 목록은 각 기능 폴더의 feature.json 에서 읽습니다 (scripts/features.mjs).
+// GitHub Codespaces(브라우저 개발 환경) 안에서 실행 중인지
+export const IN_CODESPACES = !!process.env.CODESPACES;
 
 const isWin = process.platform === "win32";
 
@@ -69,12 +62,47 @@ export function ensureRepoRoot() {
 
 export const currentBranch = () => git(["rev-parse", "--abbrev-ref", "HEAD"]).out;
 
-// feat/meal-review-howon → { feature: "meal-review", name: "howon" }
+// feat/meal-review-howon → { slug: "meal-review", name: "howon" }
+// (기능 이름에는 하이픈이 들어갈 수 있고, 사람 이름에는 들어가지 않습니다)
 export function parseBranch(branch) {
-  const m = /^feat\/(.+)-([a-z0-9]+)$/.exec(branch);
-  if (!m) return null;
-  const feature = FEATURES.find((f) => f.key === m[1]);
-  return feature ? { feature, name: m[2] } : null;
+  const m = /^feat\/([a-z][a-z0-9-]+)-([a-z][a-z0-9]+)$/.exec(branch || "");
+  return m ? { slug: m[1], name: m[2] } : null;
+}
+
+// 사람 이름 규칙: 영어 소문자로 시작, 소문자·숫자 2~20글자
+export const NAME_RE = /^[a-z][a-z0-9]{1,19}$/;
+
+// GitHub 아이디 등에서 이름 후보 만들기 (예: "25035-Lang" → "lang25035")
+export function suggestName(raw) {
+  if (!raw) return "";
+  const s = String(raw).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const letters = s.replace(/[0-9]/g, "");
+  const digits = s.replace(/[a-z]/g, "");
+  const name = (letters + digits).slice(0, 20);
+  return NAME_RE.test(name) ? name : "";
+}
+
+// 어떤 커밋(예: origin/main)에 들어 있는 기능 목록 읽기 (파일을 바꾸지 않고)
+export function featuresAt(ref) {
+  const r = git(["ls-tree", "-d", "--name-only", `${ref}:app`], { allowFail: true });
+  if (r.code !== 0) return [];
+  const list = [];
+  for (const slug of r.out.split("\n").filter(Boolean)) {
+    const j = git(["show", `${ref}:app/${slug}/feature.json`], { allowFail: true });
+    if (j.code !== 0) continue;
+    try {
+      const f = JSON.parse(j.out);
+      list.push({ slug, title: f.title || slug, status: f.status || "idea", makers: f.makers || [], order: f.order ?? 1000 });
+    } catch {
+      /* 깨진 파일은 건너뜀 */
+    }
+  }
+  return list.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, "ko"));
+}
+
+// 기능 목록(메뉴) 다시 만들기 — 브랜치를 옮기거나 기능을 추가한 뒤 호출
+export function regenerateMenu() {
+  spawnSync("node", ["scripts/gen-features.mjs"], { stdio: "ignore" });
 }
 
 // 저장(커밋)하지 않은 변경 파일 목록
@@ -139,4 +167,151 @@ export function copyFileToClipboard(filePath) {
     return r.status === 0;
   }
   return false;
+}
+
+// ── 편집기에서 파일 열기 (VS Code / Codespaces) ─────────────────
+export function openInEditor(file) {
+  const r = spawnSync("code", [file], { stdio: "ignore", shell: isWin });
+  return r.status === 0;
+}
+
+// ── 최신 main 합치기 + 충돌 도우미 ───────────────────────────────
+// 충돌은 "같은 파일의 같은 부분을 두 사람이 다르게 고쳤을 때" 생깁니다.
+// 이때 Git은 멈추고 두 사람의 코드를 파일 안에 함께 남겨 둡니다.
+// 아래 함수는 그 내용을 AI에게 보낼 요청문(conflict-help.md)으로 만들어 줍니다.
+export const CONFLICT_FILE = "conflict-help.md";
+const MARKER_RE = /^(<<<<<<<|>>>>>>>)( |$)/m;
+
+export const mergeInProgress = () =>
+  git(["rev-parse", "-q", "--verify", "MERGE_HEAD"], { allowFail: true }).code === 0;
+
+export const conflictedFiles = () =>
+  git(["diff", "--name-only", "--diff-filter=U"], { allowFail: true }).out.split("\n").filter(Boolean);
+
+export function hasConflictMarkers(file) {
+  try {
+    return MARKER_RE.test(fs.readFileSync(file, "utf8"));
+  } catch {
+    return false;
+  }
+}
+
+function writeConflictHelp(files) {
+  let t = "";
+  t += "내 학교 앱 프로젝트(Next.js 16 App Router + JavaScript + Tailwind CSS v4)에서 Git 충돌이 났어.\n";
+  t += "아래 파일 안의 <<<<<<< 와 >>>>>>> 사이에 두 사람의 코드가 함께 들어 있어.\n";
+  t += "(======= 위쪽이 내 코드, 아래쪽이 이미 main에 합쳐진 다른 사람의 코드야.)\n\n";
+  t += "다음 규칙대로 도와줘.\n";
+  t += "1. 기본은 **두 사람의 기능을 모두 살리는 것**이야.\n";
+  t += "2. 어느 한쪽 코드가 사라져야만 한다면, 고치기 전에 무엇이 사라지는지 쉬운 말로 설명하고 나에게 먼저 물어봐.\n";
+  t += "3. 답할 때는 충돌 표시(<<<<<<<, =======, >>>>>>>)가 하나도 없는 **파일 전체 코드**를 파일 경로와 함께 줘.\n";
+  t += "4. 무엇을 어떻게 합쳤는지 3줄 이내로 요약해 줘.\n\n";
+  for (const f of files) {
+    let body = "";
+    try {
+      body = fs.readFileSync(f, "utf8");
+    } catch {
+      body = "(파일을 읽지 못함)";
+    }
+    t += `## ${f}\n\n\`\`\`\n${body.trimEnd()}\n\`\`\`\n\n`;
+  }
+  fs.writeFileSync(CONFLICT_FILE, t, "utf8");
+}
+
+// 두 버전의 feature.json 을 합치기: 내용은 main 쪽 기준, 만든 사람은 양쪽 모두, 상태는 더 진행된 쪽
+function autoMergeFeatureJson(file) {
+  const read = (stage) => {
+    const r = git(["show", `:${stage}:${file}`], { allowFail: true });
+    try {
+      return r.code === 0 ? JSON.parse(r.out) : null;
+    } catch {
+      return null;
+    }
+  };
+  const ours = read(2);
+  const theirs = read(3);
+  if (!ours || !theirs) return false;
+  const rank = { idea: 0, building: 1, ready: 2 };
+  const merged = { ...ours, ...theirs };
+  merged.makers = [...new Set([...(theirs.makers || []), ...(ours.makers || [])])];
+  merged.status = (rank[ours.status] ?? 0) > (rank[theirs.status] ?? 0) ? ours.status : theirs.status;
+  fs.writeFileSync(file, JSON.stringify(merged, null, 2) + "\n", "utf8");
+  return true;
+}
+
+// 최신 main을 내 브랜치에 합칩니다. 결과: "ok" | "conflict"
+// (먼저 git fetch origin 이 되어 있어야 합니다)
+export function syncWithMain() {
+  const behind = git(["rev-list", "--count", "HEAD..origin/main"], { allowFail: true }).out;
+  if (behind === "0" || behind === "") return "ok";
+  const r = git(["merge", "--no-edit", "origin/main"], { allowFail: true });
+  if (r.code === 0) return "ok";
+  let files = conflictedFiles();
+  if (files.length === 0) {
+    git(["merge", "--abort"], { allowFail: true });
+    fail(`최신 main을 합치지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.\n\n${r.err || r.out}`);
+  }
+  // feature.json 충돌(만든 사람 목록 등)은 사람이 고칠 필요 없이 자동으로 합칩니다.
+  for (const f of files.filter((f) => /^app\/[^/]+\/feature\.json$/.test(f))) {
+    if (autoMergeFeatureJson(f)) git(["add", "--", f]);
+  }
+  files = conflictedFiles();
+  if (files.length === 0) {
+    git(["commit", "--no-edit", "--quiet"]);
+    return "ok";
+  }
+  writeConflictHelp(files);
+  return "conflict";
+}
+
+// 충돌이 났을 때 화면 안내
+export function explainConflict() {
+  const files = conflictedFiles();
+  say("");
+  warn("다른 사람이 같은 파일을 고쳐서 '충돌'이 났습니다. 망가진 게 아니니 걱정하지 마세요.");
+  say("  충돌난 파일:");
+  files.forEach((f) => say(`        - ${f}`));
+  say("");
+  say("  해결 방법:");
+  say(`   1) 방금 열린 ${CONFLICT_FILE} 내용을 전부 복사해서(Ctrl+A → Ctrl+C) AI 채팅에 붙여넣기`);
+  say("   2) AI가 준 '파일 전체 코드'로 그 파일 내용을 통째로 바꾸고 저장(Ctrl+S)");
+  say("   3) 미리보기를 새로고침해서 내 기능과 다른 사람 기능이 둘 다 잘 되는지 확인");
+  say("   4) npm run save");
+  say("  AI가 '한쪽 코드를 지워야 한다'고 하면, 진행하기 전에 대표에게 물어보세요.");
+  say("");
+  if (!openInEditor(CONFLICT_FILE)) say(`  (${CONFLICT_FILE} 파일을 VS Code에서 직접 열어 주세요)`);
+}
+
+// npm install 이 컴퓨터마다 package-lock.json 을 조금씩 바꾸는 일이 있어,
+// 학생 작업과 상관없는 이 변경은 되돌립니다. (부품 목록은 대표만 바꿉니다)
+export function restoreLockfile() {
+  git(["checkout", "--", "package-lock.json"], { allowFail: true });
+}
+
+// 최신 main을 합치기 전에 정리합니다.
+//  - 내 폴더의 저장 안 된 변경 → '자동 저장' 커밋 (합치다가 덮어써지지 않도록)
+//  - 내 폴더 밖의 변경 → 따로 보관(stash). 어차피 올라가지 않는 파일들입니다.
+export function prepareForSync(folder, { quiet = false } = {}) {
+  restoreLockfile();
+  const changed = changedFiles();
+  const mine = changed.filter((f) => f.startsWith(folder));
+  const others = changed.filter((f) => !f.startsWith(folder));
+  if (others.length > 0) {
+    const r = git(
+      ["stash", "push", "--include-untracked", "-m", `폴더 밖 변경 자동 보관 (${folder})`, "--", ...others],
+      { allowFail: true }
+    );
+    if (r.code === 0 && !quiet) {
+      warn("내 폴더 밖에서 바뀐 파일을 따로 보관해 두었습니다 (올라가지 않는 파일):");
+      others.forEach((f) => say(`        - ${f}`));
+      say("        필요한 파일이었다면 대표에게 'git stash list'로 찾아 달라고 하세요.");
+    } else if (r.code !== 0) {
+      warn("내 폴더 밖의 변경을 보관하지 못했습니다. 이 화면을 대표에게 보여 주세요.");
+    }
+  }
+  if (mine.length > 0) {
+    git(["add", "--all", "--", folder]);
+    git(["commit", "-m", "feat: (자동 저장) 작업 중", "--quiet"]);
+    ok("내 폴더의 저장 안 된 작업을 자동 저장(커밋)했습니다. GitHub에는 아직 안 올라갔어요.");
+  }
 }

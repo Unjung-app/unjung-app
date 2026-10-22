@@ -79,7 +79,25 @@ const PATHS = {
 
 export default function Icon({ name, className = "h-6 w-6" }) {
   const path = PATHS[name];
-  if (!path) return null;
+  // 이름이 아니라 이모지(예: "🎵")가 오면 글자로 보여줍니다.
+  if (!path) {
+    if (!name) return null;
+    return (
+      <span
+        className={`${className} inline-grid place-items-center leading-none`}
+        style={{
+          fontSize: /\bh-(8|9|10|12)\b/.test(className)
+            ? "1.75rem"
+            : /\bh-6\b/.test(className)
+              ? "1.3rem"
+              : "1.1rem",
+        }}
+        aria-hidden="true"
+      >
+        {name}
+      </span>
+    );
+  }
 
   return (
     <svg
