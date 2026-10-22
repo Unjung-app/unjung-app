@@ -12,6 +12,12 @@ export const REPO_URL = "https://github.com/Unjung-app/unjung-app";
 // GitHub Codespaces(브라우저 개발 환경) 안에서 실행 중인지
 export const IN_CODESPACES = !!process.env.CODESPACES;
 
+// 네트워크가 멈췄을 때 git 이 끝없이 기다리지 않도록 (20초 동안 거의 안 움직이면 실패 처리)
+process.env.GIT_HTTP_LOW_SPEED_LIMIT ??= "1000";
+process.env.GIT_HTTP_LOW_SPEED_TIME ??= "20";
+// 점검용 git 명령이 로그인 창을 띄우지 않도록 쓰는 환경
+export const NO_PROMPT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never" };
+
 const isWin = process.platform === "win32";
 
 // ── 화면 출력 ──────────────────────────────────────────────
@@ -22,7 +28,7 @@ const isTTY = !!process.stdout.isTTY;
 const paint = (code, s) => (isTTY ? `\x1b[${code}m${s}\x1b[0m` : s);
 export function fail(msg) {
   console.log("");
-  console.log(paint("41;97;1", "  ■ 여기서 멈췄어요 ■  ") + "  아래 글을 읽어 주세요. 모르겠으면 이 화면을 대표에게 보여 주세요.");
+  console.log(paint("41;97;1", "  ■ 여기서 멈췄어요 ■  ") + "  아래 글을 읽어 주세요.");
   console.log(paint("31;1", `  [멈춤] ${msg}`));
   console.log("");
   process.exit(1);
@@ -203,7 +209,7 @@ function writeConflictHelp(files) {
   let t = "";
   t += "내 학교 앱 프로젝트(Next.js 16 App Router + JavaScript + Tailwind CSS v4)에서 Git 충돌이 났어.\n";
   t += "아래 파일 안의 <<<<<<< 와 >>>>>>> 사이에 두 사람의 코드가 함께 들어 있어.\n";
-  t += "(======= 위쪽이 내 코드, 아래쪽이 이미 main에 합쳐진 다른 사람의 코드야.)\n\n";
+  t += "(======= 위쪽이 내 코드, 아래쪽이 GitHub에 먼저 올라가 있던 코드야. 다른 사람이나 대표가 고친 코드일 수 있어.)\n\n";
   t += "다음 규칙대로 도와줘.\n";
   t += "1. 기본은 **두 사람의 기능을 모두 살리는 것**이야.\n";
   t += "2. 어느 한쪽 코드가 사라져야만 한다면, 고치기 전에 무엇이 사라지는지 쉬운 말로 설명하고 나에게 먼저 물어봐.\n";
@@ -245,14 +251,21 @@ function autoMergeFeatureJson(file) {
 // 최신 main을 내 브랜치에 합칩니다. 결과: "ok" | "conflict"
 // (먼저 git fetch origin 이 되어 있어야 합니다)
 export function syncWithMain() {
-  const behind = git(["rev-list", "--count", "HEAD..origin/main"], { allowFail: true }).out;
+  return syncWith("origin/main");
+}
+
+// ref(예: origin/main, origin/feat/meal-howon)의 내용을 내 브랜치에 합칩니다. 결과: "ok" | "conflict"
+// (GitHub에서 대표가 내 PR에 [Update branch]·[Commit suggestion] 등을 눌러 브랜치가 앞서 있을 때도 씀)
+export function syncWith(ref) {
+  if (git(["rev-parse", "--verify", "--quiet", ref], { allowFail: true }).code !== 0) return "ok";
+  const behind = git(["rev-list", "--count", `HEAD..${ref}`], { allowFail: true }).out;
   if (behind === "0" || behind === "") return "ok";
-  const r = git(["merge", "--no-edit", "origin/main"], { allowFail: true });
+  const r = git(["merge", "--no-edit", ref], { allowFail: true });
   if (r.code === 0) return "ok";
   let files = conflictedFiles();
   if (files.length === 0) {
     git(["merge", "--abort"], { allowFail: true });
-    fail(`최신 main을 합치지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.\n\n${r.err || r.out}`);
+    fail(`최신 작업(${ref})을 합치지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.\n\n${r.err || r.out}`);
   }
   // feature.json 충돌(만든 사람 목록 등)은 사람이 고칠 필요 없이 자동으로 합칩니다.
   for (const f of files.filter((f) => /^app\/[^/]+\/feature\.json$/.test(f))) {
@@ -321,7 +334,11 @@ export function prepareForSync(folder, { quiet = false } = {}) {
 
 // push(올리기)가 실패했을 때 이유를 알아내서 쉬운 말로 알려 줍니다.
 export function explainPushFailure() {
-  const r = spawnSync("git", ["push", "--dry-run", "origin", "HEAD"], { encoding: "utf8", timeout: 30000 });
+  const r = spawnSync("git", ["push", "--dry-run", "origin", "HEAD"], {
+    encoding: "utf8",
+    timeout: 30000,
+    env: NO_PROMPT_ENV,
+  });
   const t = `${r.stderr || ""}${r.stdout || ""}`;
   if (/403|denied|not have permission|Permission to|Authentication failed/i.test(t)) {
     return "이 저장소에 올릴 권한이 없습니다.\n  대표에게 'Unjung-app 조직에 내 GitHub 아이디가 들어가 있는지(초대 수락 포함)' 확인해 달라고 하세요.";
@@ -330,7 +347,7 @@ export function explainPushFailure() {
     return "GitHub 연결이 끊겼습니다. 잠시 뒤 다시 npm run save 하세요. (저장한 내용은 안전합니다)";
   }
   if (/rejected|non-fast-forward|fetch first/i.test(t)) {
-    return "GitHub에 있는 내 브랜치가 이 컴퓨터보다 앞서 있습니다. (다른 컴퓨터에서 올렸나요?)\n  npm run work 를 실행한 뒤 다시 npm run save 하세요.";
+    return "GitHub에 있는 내 브랜치가 이 컴퓨터보다 앞서 있습니다.\n  npm run save 를 한 번 더 실행하세요. (GitHub의 내용을 자동으로 합친 뒤 올립니다)";
   }
   return "GitHub에 올리지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.";
 }

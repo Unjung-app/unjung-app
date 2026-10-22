@@ -6,7 +6,7 @@ import fs from "node:fs";
 import {
   IN_CODESPACES, NAME_RE, title, say, ok, warn, fail, ask, doneAsking, git, gitLive, npmLive,
   ensureRepoRoot, currentBranch, parseBranch, changedFiles, suggestName, featuresAt,
-  regenerateMenu, mergeInProgress, restoreLockfile, syncWithMain, explainConflict, prepareForSync,
+  regenerateMenu, mergeInProgress, restoreLockfile, syncWithMain, syncWith, explainConflict, prepareForSync,
 } from "./common.mjs";
 import { STATUSES } from "./features.mjs";
 import { newFeature } from "./new.mjs";
@@ -34,8 +34,28 @@ if (!gitLive(["fetch", "origin", "--prune", "--quiet"])) {
 const before = parseBranch(currentBranch());
 
 // ── 1. 내 이름 ──────────────────────────────────────────────
+// 지난번에 다른 Codespace에서 쓴 이름 찾기: 내 이메일로 올린 feat/ 브랜치에서
+function nameFromMyBranches() {
+  const email = git(["config", "user.email"], { allowFail: true }).out;
+  if (!email) return "";
+  const refs = git(["for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/feat/"], {
+    allowFail: true,
+  }).out.split("\n").filter(Boolean);
+  for (const ref of refs) {
+    // 그 브랜치의 (main에 없는) 커밋 중에 내 이메일로 만든 것이 있으면 내 브랜치
+    const mine = git(["log", "-1", "--format=%H", "--fixed-strings", `--author=${email}`, `origin/main..${ref}`], {
+      allowFail: true,
+    }).out;
+    if (mine) {
+      const p = parseBranch(ref.replace(/^origin\//, ""));
+      if (p) return p.name;
+    }
+  }
+  return "";
+}
 const guess =
   before?.name ||
+  nameFromMyBranches() ||
   suggestName(git(["config", "--local", "user.name"], { allowFail: true }).out) ||
   suggestName(process.env.GITHUB_USER);
 let name;
@@ -114,12 +134,19 @@ while (!feature) {
   }
   // 다른 사람이 이미 만들고 있는 기능이면 한 번 확인합니다 (같은 파일을 함께 고치면 충돌이 나기 쉬움)
   const others = feature.makers.filter((m) => m !== name);
-  if (feature.status !== "idea" && others.length > 0 && !feature.makers.includes(name)) {
+  const alreadyMine =
+    before?.slug === feature.slug ||
+    git(["rev-parse", "--verify", "--quiet", `refs/heads/feat/${feature.slug}-${name}`], { allowFail: true }).code === 0 ||
+    git(["rev-parse", "--verify", "--quiet", `refs/remotes/origin/feat/${feature.slug}-${name}`], { allowFail: true }).code === 0;
+  if (feature.status !== "idea" && others.length > 0 && !feature.makers.includes(name) && !alreadyMine) {
     say("");
     say(`  '${feature.title}'은(는) ${others.join(", ")}이(가) 만들고 있어요.`);
     say("  같은 화면을 함께 고치면 충돌이 나기 쉬우니, 먼저 그 친구와 나눠서 할 부분을 이야기하세요.");
-    const c = (await ask("  함께 만들기로 이야기했으면 y, 다른 번호를 고르려면 Enter: ")).toLowerCase();
-    if (c !== "y" && c !== "예") feature = null;
+    const c = (await ask("  함께 만들기로 했으면 y(또는 '네'), 다른 번호를 고르려면 그냥 Enter: ")).toLowerCase().trim();
+    if (!["y", "yes", "ㅛ", "네", "예", "응", "ㅇ", "ok"].includes(c)) {
+      say("  알겠어요. 번호를 다시 골라 주세요.");
+      feature = null;
+    }
   }
 }
 doneAsking();
@@ -143,9 +170,7 @@ const hasLocal = exists(`refs/heads/${branch}`);
 if (hasRemote) {
   if (hasLocal) {
     if (now !== branch) git(["switch", branch]);
-    if (!gitLive(["pull", "--ff-only", "--quiet", "origin", branch])) {
-      fail("내 브랜치를 최신으로 맞추지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.");
-    }
+    // GitHub 쪽 내 브랜치의 새 내용은 아래(정리 후)에서 합칩니다.
   } else {
     git(["switch", "--track", "-c", branch, `origin/${branch}`]);
   }
@@ -170,6 +195,12 @@ if (hasRemote) {
 
 // 합치기 전에 저장 안 된 작업 정리 (내 폴더 = 자동 저장, 폴더 밖 = 따로 보관)
 prepareForSync(`app/${feature.slug}/`);
+
+// GitHub 쪽 내 브랜치가 더 앞서 있으면(다른 컴퓨터에서 올렸거나, 대표가 PR에서 고쳤거나) 먼저 합칩니다.
+if (hasRemote && syncWith(`origin/${branch}`) === "conflict") {
+  explainConflict();
+  process.exit(1);
+}
 
 // 다른 사람들이 그동안 main에 합친 작업을 내 브랜치에도 가져옵니다.
 // (이걸 해야 내 화면에서도 다른 사람의 기능이 보이고, 나중에 충돌이 줄어듭니다)

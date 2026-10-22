@@ -5,7 +5,7 @@ import fs from "node:fs";
 import {
   IN_CODESPACES, REPO_URL, title, say, ok, warn, fail, ask, doneAsking, git, gitLive,
   ensureRepoRoot, currentBranch, parseBranch, changedFiles, openBrowser, regenerateMenu,
-  mergeInProgress, restoreLockfile, conflictedFiles, hasConflictMarkers, syncWithMain, explainConflict, CONFLICT_FILE, prepareForSync, explainPushFailure,
+  mergeInProgress, restoreLockfile, conflictedFiles, hasConflictMarkers, syncWithMain, syncWith, explainConflict, CONFLICT_FILE, prepareForSync, explainPushFailure,
 } from "./common.mjs";
 import { scanSecrets } from "./features.mjs";
 
@@ -102,7 +102,8 @@ if (!gitLive(["fetch", "origin", "--prune", "--quiet"])) {
   fail("GitHub에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 실행하세요. (저장한 내용은 안전합니다)");
 }
 prepareForSync(folder, { quiet: true }); // 폴더 밖 변경은 따로 보관 (합치다가 멈추지 않도록)
-if (syncWithMain() === "conflict") {
+// GitHub 쪽 내 브랜치가 앞서 있으면(대표가 PR에서 고쳤거나 다른 컴퓨터에서 올림) 먼저 합칩니다.
+if (syncWith(`origin/${branch}`) === "conflict" || syncWithMain() === "conflict") {
   explainConflict();
   process.exit(1);
 }

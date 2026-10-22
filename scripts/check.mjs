@@ -2,10 +2,11 @@
 // 막혔을 때 이 결과를 캡처해서 대표에게 보여 주면, 원인을 바로 찾을 수 있어요.
 
 import fs from "node:fs";
+import net from "node:net";
 import { spawnSync } from "node:child_process";
 import {
   IN_CODESPACES, title, say, git, ensureRepoRoot, currentBranch, parseBranch, changedFiles,
-  mergeInProgress, restoreLockfile,
+  mergeInProgress, restoreLockfile, NO_PROMPT_ENV,
 } from "./common.mjs";
 import { readFeatures } from "./features.mjs";
 
@@ -29,7 +30,11 @@ if (fs.existsSync("node_modules/next")) good("앱 부품(node_modules)", "설치
 else bad("앱 부품(node_modules)", "없음", "npm run work 를 실행하면 설치됩니다.");
 
 // 4. GitHub 연결
-const ls = spawnSync("git", ["ls-remote", "--heads", "origin", "main"], { encoding: "utf8", timeout: 20000 });
+const ls = spawnSync("git", ["ls-remote", "--heads", "origin", "main"], {
+  encoding: "utf8",
+  timeout: 20000,
+  env: NO_PROMPT_ENV,
+});
 if (ls.status === 0) good("GitHub 연결", "정상");
 else bad("GitHub 연결", "실패", "인터넷 연결을 확인하세요. 학교 와이파이가 막혀 있으면 대표에게 알려 주세요.");
 
@@ -38,6 +43,7 @@ if (ls.status === 0) {
   const p = spawnSync("git", ["push", "--dry-run", "origin", "HEAD:refs/heads/permission-check-only"], {
     encoding: "utf8",
     timeout: 30000,
+    env: NO_PROMPT_ENV,
   });
   const t = `${p.stderr || ""}${p.stdout || ""}`;
   if (p.status === 0) good("올리기 권한", "있음");
@@ -72,21 +78,24 @@ const { errors } = readFeatures(process.cwd());
 if (errors.length === 0) good("feature.json 형식", "정상");
 else bad("feature.json 형식", errors[0], "AI에게 이 문장을 보여 주고 고쳐 달라고 하세요.");
 
-// 10. 앱 실행 중인지
-let running = false;
-try {
-  const res = await fetch("http://localhost:3000/", { signal: AbortSignal.timeout(4000) });
-  running = res.status < 500;
-} catch {
-  running = false;
-}
+// 10. 앱 실행 중인지 (3000번 포트가 열려 있는지만 확인 — 첫 화면 준비가 느려도 오판하지 않게)
+const running = await new Promise((resolve) => {
+  const sock = net.connect({ port: 3000, host: "127.0.0.1" });
+  const done = (v) => {
+    sock.destroy();
+    resolve(v);
+  };
+  sock.setTimeout(3000, () => done(false));
+  sock.once("connect", () => done(true));
+  sock.once("error", () => done(false));
+});
 if (running) good("앱 실행(3000번)", "켜져 있음");
 else bad("앱 실행(3000번)", "꺼져 있음", "새 터미널을 열어 npm run dev 를 입력하고, 그 터미널은 닫지 마세요.");
 
 // ── 결과 ─────────────────────────────────────────────────
 say("");
 for (const r of rows) {
-  say(`  ${r.ok ? "✅" : "❌"} ${r.label.padEnd(14, " ")} ${r.detail}`);
+  say(`  ${r.ok ? "✅" : "❌"} ${r.label} : ${r.detail}`);
   if (!r.ok) say(`       → ${r.fix}`);
 }
 const problems = rows.filter((r) => !r.ok).length;
