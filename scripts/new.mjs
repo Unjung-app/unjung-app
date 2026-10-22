@@ -1,5 +1,5 @@
 // npm run new — 내 아이디어로 새 기능을 시작합니다.
-//  1) 기능 이름·설명·주소·아이콘 묻기  2) 최신 main에서 내 브랜치 만들기
+//  1) 기능 이름·설명·주소 묻기 (아이콘은 ✨로 시작)  2) 최신 main에서 내 브랜치 만들기
 //  3) app/<주소>/ 폴더에 feature.json + 첫 화면(page.js) 만들기  4) 메뉴 갱신
 // (npm run work 에서 0번을 골라도 여기로 옵니다)
 
@@ -8,7 +8,7 @@ import {
   IN_CODESPACES, NAME_RE, REPO_URL, title, say, ok, fail, ask, doneAsking, git, gitLive, npmLive,
   ensureRepoRoot, changedFiles, parseBranch, suggestName, featuresAt, regenerateMenu, mergeInProgress, restoreLockfile,
 } from "./common.mjs";
-import { SLUG_RE, ICON_NAMES, RESERVED, isValidIcon, isMain } from "./features.mjs";
+import { SLUG_RE, RESERVED, isMain } from "./features.mjs";
 
 export async function newFeature(opts = {}) {
   ensureRepoRoot();
@@ -80,14 +80,9 @@ export async function newFeature(opts = {}) {
     }
   }
 
-  say(`  아이콘: 이모지 한 개를 붙여넣거나, 이 중 하나를 쓰세요: ${ICON_NAMES.join(", ")}`);
-  let icon = "";
-  while (!icon) {
-    const a = await ask("  아이콘 (Enter = ✨): ");
-    if (!a) icon = "✨";
-    else if (isValidIcon(a)) icon = a;
-    else say("  이모지 한 개(예: 🎵)나 위 영어 이름 중 하나만 입력하세요. 모르겠으면 그냥 Enter.");
-  }
+  // 아이콘은 묻지 않고 ✨로 시작합니다 (질문을 줄여 중간에 멈추는 일을 막기 위해).
+  // 바꾸고 싶으면 나중에 AI에게 "feature.json의 icon을 🎵로 바꿔 줘"라고 하면 됩니다.
+  const icon = "✨";
   doneAsking();
 
   // ── 브랜치 + 파일 만들기 ────────────────────────────────────
@@ -102,7 +97,7 @@ export async function newFeature(opts = {}) {
   const meta = { title: featTitle, short: featTitle.slice(0, 6), desc, icon, status: "building", makers: [name] };
   fs.writeFileSync(`app/${slug}/feature.json`, JSON.stringify(meta, null, 2) + "\n", "utf8");
 
-  const iconShown = ICON_NAMES.includes(icon) ? "✨" : icon;
+  const iconShown = icon;
   const page = `// '${featTitle}' 기능의 첫 화면입니다.
   // 이 폴더(app/${slug}/) 안이라면 무엇이든 AI와 함께 마음껏 바꿔도 됩니다.
 
@@ -138,6 +133,8 @@ export async function newFeature(opts = {}) {
   say(`  기능     : ${featTitle}`);
   say(`  내 폴더  : app/${slug}/`);
   say(`  내 화면  : (앱 주소)/${slug}   ← 홈 화면 '만드는 중'에도 나타납니다`);
+  say("");
+  say("  아이콘은 ✨로 시작해요. 바꾸려면 AI에게 \"feature.json의 icon을 🎵로 바꿔 줘\"라고 하세요.");
   say("");
   say("  다음: npm run ai  → AI에게 무엇을 만들고 싶은지 이야기하기");
   say("  (선택) 다른 사람도 볼 수 있게 아이디어를 올려 두세요:");

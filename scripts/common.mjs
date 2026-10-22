@@ -18,9 +18,12 @@ const isWin = process.platform === "win32";
 export const say = (msg = "") => console.log(msg);
 export const ok = (msg) => console.log(`  [완료] ${msg}`);
 export const warn = (msg) => console.log(`  [주의] ${msg}`);
+const isTTY = !!process.stdout.isTTY;
+const paint = (code, s) => (isTTY ? `\x1b[${code}m${s}\x1b[0m` : s);
 export function fail(msg) {
   console.log("");
-  console.log(`  [멈춤] ${msg}`);
+  console.log(paint("41;97;1", "  ■ 여기서 멈췄어요 ■  ") + "  아래 글을 읽어 주세요. 모르겠으면 이 화면을 대표에게 보여 주세요.");
+  console.log(paint("31;1", `  [멈춤] ${msg}`));
   console.log("");
   process.exit(1);
 }
@@ -314,4 +317,20 @@ export function prepareForSync(folder, { quiet = false } = {}) {
     git(["commit", "-m", "feat: (자동 저장) 작업 중", "--quiet"]);
     ok("내 폴더의 저장 안 된 작업을 자동 저장(커밋)했습니다. GitHub에는 아직 안 올라갔어요.");
   }
+}
+
+// push(올리기)가 실패했을 때 이유를 알아내서 쉬운 말로 알려 줍니다.
+export function explainPushFailure() {
+  const r = spawnSync("git", ["push", "--dry-run", "origin", "HEAD"], { encoding: "utf8", timeout: 30000 });
+  const t = `${r.stderr || ""}${r.stdout || ""}`;
+  if (/403|denied|not have permission|Permission to|Authentication failed/i.test(t)) {
+    return "이 저장소에 올릴 권한이 없습니다.\n  대표에게 'Unjung-app 조직에 내 GitHub 아이디가 들어가 있는지(초대 수락 포함)' 확인해 달라고 하세요.";
+  }
+  if (/could not resolve|unable to access|timed out|Failed to connect|Connection/i.test(t)) {
+    return "GitHub 연결이 끊겼습니다. 잠시 뒤 다시 npm run save 하세요. (저장한 내용은 안전합니다)";
+  }
+  if (/rejected|non-fast-forward|fetch first/i.test(t)) {
+    return "GitHub에 있는 내 브랜치가 이 컴퓨터보다 앞서 있습니다. (다른 컴퓨터에서 올렸나요?)\n  npm run work 를 실행한 뒤 다시 npm run save 하세요.";
+  }
+  return "GitHub에 올리지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.";
 }

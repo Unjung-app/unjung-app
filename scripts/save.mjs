@@ -5,7 +5,7 @@ import fs from "node:fs";
 import {
   IN_CODESPACES, REPO_URL, title, say, ok, warn, fail, ask, doneAsking, git, gitLive,
   ensureRepoRoot, currentBranch, parseBranch, changedFiles, openBrowser, regenerateMenu,
-  mergeInProgress, restoreLockfile, conflictedFiles, hasConflictMarkers, syncWithMain, explainConflict, CONFLICT_FILE, prepareForSync,
+  mergeInProgress, restoreLockfile, conflictedFiles, hasConflictMarkers, syncWithMain, explainConflict, CONFLICT_FILE, prepareForSync, explainPushFailure,
 } from "./common.mjs";
 import { scanSecrets } from "./features.mjs";
 
@@ -122,7 +122,7 @@ if (wasOnGitHub) {
 }
 say("  GitHub에 올리는 중... (처음이면 로그인 창이 뜰 수 있습니다)");
 if (!gitLive(["push", "--quiet", "-u", "origin", branch])) {
-  fail("GitHub에 올리지 못했습니다. 이 화면을 캡처해서 대표에게 보여 주세요.");
+  fail(explainPushFailure());
 }
 ok("GitHub에 올림");
 

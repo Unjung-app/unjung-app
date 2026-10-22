@@ -108,7 +108,19 @@ while (!feature) {
   }
   if (!a && beforeIdx >= 0) feature = features[beforeIdx];
   else feature = features[Number(a) - 1];
-  if (!feature) say(`  0~${features.length} 중에서 입력하세요.`);
+  if (!feature) {
+    say(`  0~${features.length} 중에서 입력하세요.`);
+    continue;
+  }
+  // 다른 사람이 이미 만들고 있는 기능이면 한 번 확인합니다 (같은 파일을 함께 고치면 충돌이 나기 쉬움)
+  const others = feature.makers.filter((m) => m !== name);
+  if (feature.status !== "idea" && others.length > 0 && !feature.makers.includes(name)) {
+    say("");
+    say(`  '${feature.title}'은(는) ${others.join(", ")}이(가) 만들고 있어요.`);
+    say("  같은 화면을 함께 고치면 충돌이 나기 쉬우니, 먼저 그 친구와 나눠서 할 부분을 이야기하세요.");
+    const c = (await ask("  함께 만들기로 이야기했으면 y, 다른 번호를 고르려면 Enter: ")).toLowerCase();
+    if (c !== "y" && c !== "예") feature = null;
+  }
 }
 doneAsking();
 

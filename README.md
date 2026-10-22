@@ -11,13 +11,14 @@ Next.js 16 (App Router) · Tailwind CSS v4 · JavaScript · Vercel 배포
 저장소 화면 초록색 **Code** → **Codespaces** → **Create codespace on main**
 → 브라우저에 VS Code가 열리고 앱이 자동으로 켜집니다.
 
-## 참여원 명령 4개
+## 참여원 명령
 
 ```bash
 npm run work   # 작업 시작: 기능 고르기(0번 = 새 기능) + 최신 작업 받아오기
 npm run new    # 내 아이디어로 새 기능 바로 만들기
 npm run ai     # AI 채팅에 붙여넣을 내용(규칙 + 내 코드) 준비
 npm run save   # 저장 → 최신 작업 합치기 → GitHub에 올리기 → PR 주소 안내
+npm run check  # 막혔을 때: 환경·권한·브랜치·앱 실행 상태 점검
 ```
 
 ## 구조
@@ -46,6 +47,7 @@ components/ lib/ scripts/              공용 (대표)
 ## PR이 올라오면
 
 자동 검사(GitHub Actions)가 feature.json 형식 · 비밀 키 · 공용 파일 변경 · 빌드를 확인합니다.
+학생 브랜치(`feat/**`)는 Vercel에 배포하지 않습니다(`vercel.json`, 무료 요금제 하루 100회 배포 한도 보호). 확인은 Codespaces 미리보기로 합니다.
 검토는 "고쳐"보다 "어떻게 생각해?"로, 좋은 점 한 가지와 함께.
 
 AI가 지켜야 할 규칙은 `AGENTS.md`에 있습니다.
