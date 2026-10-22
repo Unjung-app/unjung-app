@@ -13,3 +13,6 @@ next-env.d.ts
 
 # AI에게 붙여넣을 내용 (npm run ai가 만듦, 올리지 않음)
 ai-context.md
+
+# 기능 목록 자동 생성 파일 (npm run dev/build 때 만들어짐)
+lib/features.generated.js

@@ -1,0 +1,9 @@
+{
+  "title": "급식 정보",
+  "short": "급식",
+  "desc": "오늘·이번 주 식단과 영양 정보",
+  "icon": "meal",
+  "status": "idea",
+  "makers": [],
+  "order": 1
+}
