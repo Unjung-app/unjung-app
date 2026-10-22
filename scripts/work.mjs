@@ -243,7 +243,7 @@ regenerateMenu();
 
 title("준비 끝!");
 say(`  내 기능   : ${feature.title.replace(" (내 새 기능)", "")}`);
-say(`  내 화면   : 미리보기 주소 끝에 /${feature.slug}`);
+say(`  내 화면   : 미리보기 홈 → "${feature.title.replace(" (내 새 기능)", "")}"`);
 say(`  고칠 폴더 : app/${feature.slug}/`);
 say("");
 say("  다음 → npm run ai");

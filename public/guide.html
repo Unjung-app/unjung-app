@@ -70,14 +70,15 @@ footer{margin-top:48px;color:var(--ink-3);font-size:13px;text-align:center}
 <main>
 <h1>4단계만 따라 하세요</h1>
 <p class="lead">무엇을 만들지는 내가 정하고, 코드는 AI가 씁니다. 설치할 프로그램은 없어요.</p>
-<p class="rules"><b>지킬 것 3가지</b> · 내 기능 폴더 안에서만 고치기 · 비밀번호·개인정보 넣지 않기 · 10분 막히면 도움 요청</p>
+<p class="rules"><b>지킬 것 3가지</b> · 내 기능 폴더 안에서만 고치기 · 비밀번호·개인정보 넣지 않기 · 10분 막히면 대표에게</p>
 
 <section class="step">
   <h2><span class="n">1</span>열기</h2>
   <ul>
-    <li><b>처음:</b> <a href="https://github.com/Unjung-app/unjung-app" target="_blank" rel="noopener">저장소</a>에서 초록색 <b>Code</b> → <b>Codespaces</b> → <b>Create codespace on main</b> (2~3분)</li>
+    <li>GitHub에 로그인 (계정이 없거나 초대를 못 받았으면 대표에게)</li>
+    <li><b>처음:</b> <a href="https://github.com/Unjung-app/unjung-app" target="_blank" rel="noopener">앱 GitHub 페이지</a>에서 초록색 <b>Code</b> → <b>Codespaces</b> → <b>Create codespace on main</b> (2~3분)</li>
     <li><b>다음부터:</b> <a href="https://github.com/codespaces" target="_blank" rel="noopener">github.com/codespaces</a>에서 내 것을 다시 열기. 새로 만들지 마세요.</li>
-    <li>화면 아래 터미널 패널의 <b>+</b>를 눌러 새 터미널을 엽니다. 명령은 여기에 입력해요.</li>
+    <li>화면 아래 터미널 패널의 <b>+</b>를 눌러 새 터미널을 열고, 명령은 여기에 입력해요. ('앱 실행' 터미널은 그대로 두기)</li>
   </ul>
   <p class="done">오른쪽(또는 새 탭)에 앱 미리보기가 보이면 성공</p>
 </section>
@@ -89,17 +90,17 @@ footer{margin-top:48px;color:var(--ink-3);font-size:13px;text-align:center}
     <li>영문 이름을 입력하고, 기능 번호를 고릅니다.</li>
     <li><b>0번</b> = 내 아이디어로 새 기능 만들기</li>
   </ul>
-  <p class="done"><b>준비 끝!</b>이 나오면 성공. 미리보기 주소 끝에 <code class="k">/내기능</code>을 붙이면 내 화면이에요.</p>
+  <p class="done"><b>준비 끝!</b>이 나오면 성공. 미리보기 홈의 "만드는 중이에요"에서 내 기능을 누르면 내 화면이에요.</p>
 </section>
 
 <section class="step">
   <h2><span class="n">3</span>만들기</h2>
   <div class="cmd"><code>npm run ai</code><button type="button">복사</button></div>
   <ol>
-    <li>열린 탭에서 <kbd>Ctrl</kbd>+<kbd>A</kbd> → <kbd>Ctrl</kbd>+<kbd>C</kbd></li>
+    <li>열린 <code class="k">ai-context.md</code> 안을 한 번 클릭 → <kbd>Ctrl</kbd>+<kbd>A</kbd> → <kbd>Ctrl</kbd>+<kbd>C</kbd></li>
     <li>AI 채팅(ChatGPT·Gemini 등)에 붙여넣기 → AI가 "준비됐어"</li>
     <li>만들고 싶은 것을 <b>한 번에 하나씩</b> 말하기</li>
-    <li>AI가 준 코드를 같은 이름의 파일에 <b>통째로</b> 붙여넣기 → 미리보기 확인</li>
+    <li>AI가 말한 파일(예: <code class="k">app/music/page.js</code>)을 왼쪽 목록에서 열고 <b>통째로</b> 바꾸기 → 미리보기 확인</li>
   </ol>
   <p class="note">3~4번을 반복하며 완성해 가요. 채팅을 새로 열 때만 <code class="k">npm run ai</code>를 다시 해요.</p>
 </section>
@@ -109,9 +110,9 @@ footer{margin-top:48px;color:var(--ink-3);font-size:13px;text-align:center}
   <div class="cmd"><code>npm run save</code><button type="button">복사</button></div>
   <ul>
     <li>무엇을 했는지 한 줄로 적기</li>
-    <li><b>처음 올릴 때만:</b> 나온 주소를 <kbd>Ctrl</kbd>+클릭 → 초록색 <b>Create pull request</b></li>
+    <li>주소가 나오면 <kbd>Ctrl</kbd>+클릭 → 초록색 <b>Create pull request</b></li>
   </ul>
-  <p class="done"><b>GitHub에 올림</b>이 나오면 성공. 대표가 확인하고 합치면 실제 앱에 나와요.</p>
+  <p class="done"><b>할 일 끝!</b>이 나오거나 PR을 만들면 성공. 대표가 확인하고 합치면 실제 앱에 나와요.</p>
   <p class="note">작은 것이라도 될 때마다 올리세요. 끝날 때도 한 번 더.</p>
 </section>
 
@@ -123,11 +124,11 @@ footer{margin-top:48px;color:var(--ink-3);font-size:13px;text-align:center}
     <p>먼저 이것부터. ❌가 나온 줄의 안내를 따라 하세요.</p>
     <div class="cmd"><code>npm run check</code><button type="button">복사</button></div>
     <table>
-      <tr><td>미리보기가 안 보임</td><td>아래 <b>포트</b> 탭 → 3000번의 🌐 아이콘</td></tr>
+      <tr><td>미리보기가 안 보임</td><td>아래 <b>PORTS</b> 탭 → 3000번의 🌐 아이콘</td></tr>
       <tr><td>화면에 빨간 에러</td><td>빨간 글자를 전부 복사해서 AI에게 "이 에러가 떠"</td></tr>
       <tr><td>코드를 넣었는데 그대로</td><td>미리보기 새로고침</td></tr>
       <tr><td>한글 입력 후 Enter가 안 먹힘</td><td><kbd>Enter</kbd> 한 번 더</td></tr>
-      <tr><td>30초 넘게 반응 없음</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> 후 같은 명령 다시</td></tr>
+      <tr><td>2분 넘게 반응 없음</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> 후 같은 명령 다시</td></tr>
       <tr><td>그래도 안 됨</td><td><code class="k">npm run check</code> 화면을 캡처해서 대표에게</td></tr>
     </table>
   </div>
@@ -168,8 +169,7 @@ footer{margin-top:48px;color:var(--ink-3);font-size:13px;text-align:center}
   <div class="in">
     <ul>
       <li>☐ 학교 컴퓨터에서 GitHub 로그인이 된다 (인증용 휴대폰 준비)</li>
-      <li>☐ Codespace가 열리고 미리보기가 보인다</li>
-      <li>☐ <code class="k">npm run work</code> 후 <code class="k">npm run check</code>가 모두 ✅</li>
+      <li>☐ <code class="k">npm run check</code>가 모두 ✅</li>
       <li>☐ 학교 와이파이에서 AI 채팅이 대답한다</li>
     </ul>
     <p class="note">AI 서비스마다 나이 제한이 있어요(예: Claude.ai는 만 18세 이상). 내가 쓸 수 있는 서비스를 쓰세요.</p>

@@ -150,7 +150,7 @@ if (pr) {
   title("한 단계 남았어요");
   say("  아래 주소를 Ctrl+클릭 → 초록색 [Create pull request]");
   say(`  ${url}`);
-  if (pr === undefined) say("  (이미 열린 PR이 있다고 나오면 그냥 닫으면 돼요)");
+  if (pr === undefined) say("  (이미 있다고 나오면 그냥 닫으세요)");
   if (!IN_CODESPACES) openBrowser(url);
 }
 say("");

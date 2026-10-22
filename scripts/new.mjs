@@ -130,7 +130,7 @@ export async function newFeature(opts = {}) {
 
   title("새 기능 준비 끝!");
   say(`  내 기능   : ${featTitle}`);
-  say(`  내 화면   : 미리보기 주소 끝에 /${slug}`);
+  say(`  내 화면   : 미리보기 새로고침 → 홈의 "${featTitle}"`);
   say(`  고칠 폴더 : app/${slug}/`);
   say("");
   say("  다음 → npm run ai");

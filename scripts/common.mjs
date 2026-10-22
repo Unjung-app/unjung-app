@@ -292,7 +292,7 @@ export function explainConflict() {
   warn("'충돌'이 났어요. 다른 사람과 같은 곳을 고친 것뿐, 망가진 게 아니에요.");
   say(`  충돌난 파일: ${files.join(", ")}`);
   say("");
-  say(`   1) 열린 ${CONFLICT_FILE} 탭에서 Ctrl+A → Ctrl+C → AI 채팅에 붙여넣기`);
+  say(`   1) 열린 ${CONFLICT_FILE} 안을 클릭 → Ctrl+A → Ctrl+C → AI 채팅에 붙여넣기`);
   say("   2) AI가 준 코드로 그 파일을 통째로 바꾸기");
   say("   3) 미리보기에서 두 사람 기능이 다 되는지 확인 → npm run save");
   say("  (AI가 '한쪽 코드를 지워야 한다'고 하면 먼저 대표에게 물어보세요)");

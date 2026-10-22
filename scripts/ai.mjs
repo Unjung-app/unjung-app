@@ -63,8 +63,8 @@ say("");
 if (!IN_CODESPACES && copyFileToClipboard(outFile)) {
   ok("복사했어요. AI 채팅에 Ctrl+V (맥은 Cmd+V)로 붙여넣으세요.");
 } else {
-  const where = openInEditor("ai-context.md") ? "열린 ai-context.md 탭에서" : "왼쪽 목록에서 ai-context.md 를 열고";
-  ok(`${where} Ctrl+A → Ctrl+C → AI 채팅에 붙여넣으세요.`);
+  const where = openInEditor("ai-context.md") ? "열린 ai-context.md 안을 한 번 클릭" : "왼쪽 목록에서 ai-context.md 를 열고 안을 클릭";
+  ok(`${where} → Ctrl+A → Ctrl+C → AI 채팅에 붙여넣으세요.`);
 }
 say("  AI가 '준비됐어'라고 하면, 만들고 싶은 것을 이야기하세요.");
 say("");
