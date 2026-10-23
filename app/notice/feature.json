@@ -3,7 +3,9 @@
   "short": "공지",
   "desc": "학교·학년·학급 공지 모아보기",
   "icon": "bell",
-  "status": "idea",
-  "makers": [],
+  "status": "building",
+  "makers": [
+    "jihyun"
+  ],
   "order": 6
 }
