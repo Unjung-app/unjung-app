@@ -52,7 +52,7 @@ export default function NoticePage() {
             className="group flex min-h-28 items-center gap-4 rounded-2xl border border-navy-100 bg-white p-5 shadow-sm transition hover:border-navy-300 hover:shadow-md active:scale-[0.99]"
           >
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-navy-900 text-white">
-              <Icon name="bell" className="h-7 w-7" />
+              <Icon name={item.icon} className="h-7 w-7" />
             </div>
 
             <div className="min-w-0 flex-1">
