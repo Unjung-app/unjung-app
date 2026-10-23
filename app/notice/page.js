@@ -11,18 +11,21 @@ const grades = [
     title: "1학년",
     desc: "1학년 공지사항 확인하기",
     href: "/notice/grade1",
+    icon: "sprout",
   },
   {
     grade: 2,
     title: "2학년",
     desc: "2학년 공지사항 확인하기",
     href: "/notice/grade2",
+    icon: "flower-2",
   },
   {
     grade: 3,
     title: "3학년",
     desc: "3학년 공지사항 확인하기",
     href: "/notice/grade3",
+    icon: "tree-deciduous",
   },
 ];
 
