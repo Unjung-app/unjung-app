@@ -3,7 +3,9 @@
   "short": "도서관",
   "desc": "장서 검색과 대출 현황",
   "icon": "book",
-  "status": "idea",
-  "makers": [],
+  "status": "building",
+  "makers": [
+    "yongwon"
+  ],
   "order": 5
 }
