@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "운중고",
+    "slug": "unjung-app",
+    "version": "3.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "unjung",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.unjungapp.campus",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.unjungapp.campus",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E2748",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "name": "운중고 스마트 캠퍼스",
+      "shortName": "운중고",
+      "themeColor": "#0E2748",
+      "backgroundColor": "#F3F5F9"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0E2748",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false,
+      "reactCompiler": true
+    }
+  }
+}

@@ -1,24 +1,2 @@
-# PR 검토 담당자 지정
-# (저장소 설정의 규칙에서 "Code Owners 검토 필요"를 켜면, 아래 담당자의 승인이 있어야 병합됩니다)
-
-# 1) 기본: 모든 파일 → 대표(Leads 팀)
-*                     @Unjung-app/leads
-
-# 2) 기능 폴더(app/<기능>/)도 지금은 대표가 검토합니다.
-#    나중에 "동료 1명 승인"으로 바꾸고 싶으면, 아래 줄 앞에 #을 붙여 끄고
-#    저장소 규칙의 'Require review from Code Owners'를 끄면 됩니다.
-/app/*/               @Unjung-app/leads
-
-# 3) 공용 파일은 항상 대표가 검토합니다.
-/app/layout.js        @Unjung-app/leads
-/app/page.js          @Unjung-app/leads
-/app/globals.css      @Unjung-app/leads
-/components/          @Unjung-app/leads
-/lib/                 @Unjung-app/leads
-/scripts/             @Unjung-app/leads
-/.github/             @Unjung-app/leads
-/.devcontainer/       @Unjung-app/leads
-/.vscode/             @Unjung-app/leads
-/package.json         @Unjung-app/leads
-/package-lock.json    @Unjung-app/leads
-/AGENTS.md            @Unjung-app/leads
+# PR 검토 담당자: 대표(Leads 팀)
+*   @Unjung-app/leads

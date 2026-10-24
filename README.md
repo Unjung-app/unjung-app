@@ -1,60 +1,59 @@
-# 운중고 학교 앱 (unjung-app)
+# 운중고 앱 v3
 
-운중고 학생이 **직접 제안하고 만드는** 학교 앱.
-Next.js 16 (App Router) · Tailwind CSS v4 · JavaScript · Vercel 배포
-
-- 실제 앱: https://unjung-app.vercel.app
-- 참여 안내서: 대표가 공유한 「운중고 앱 참여 안내서」
-
-## 시작하기 (설치 없이)
-
-저장소 화면 초록색 **Code** → **Codespaces** → **Create codespace on main**
-→ 브라우저에 VS Code가 열리고 앱이 자동으로 켜집니다.
-
-## 참여원 명령
-
-```bash
-npm run work   # 작업 시작: 기능 고르기(0번 = 새 기능) + 최신 작업 받아오기
-npm run new    # 내 아이디어로 새 기능 바로 만들기
-npm run ai     # AI 채팅에 붙여넣을 내용(규칙 + 내 코드) 준비
-npm run save   # 저장 → 최신 작업 합치기 → GitHub에 올리기 → PR 주소 안내
-npm run check  # 막혔을 때: 환경·권한·브랜치·앱 실행 상태 점검
-```
+운중고 학생 전용 학교 앱. **iOS · Android 앱 + 웹을 한 코드로** 만든다.
+Expo SDK 58 (React Native 0.88) · Expo Router · TypeScript · Vercel(웹 + 서버 함수)
 
 ## 구조
 
 ```
-app/
-  <기능>/              기능 하나 = 폴더 하나 (참여원은 자기 기능 폴더 안에서 자유롭게)
-    feature.json       기능 이름·설명·아이콘·만든 사람·상태 → 홈/메뉴에 자동 반영
-    page.js            기능 첫 화면 (주소: /<기능>)
-  layout.js · page.js · globals.css   공용 (대표)
-components/ lib/ scripts/              공용 (대표)
-.devcontainer/ .vscode/ .github/       Codespaces·자동 검사·양식 (대표)
+src/
+  app/                 화면 주소(라우트). 파일 하나 = 화면 하나
+    (tabs)/            하단 탭 화면들 (오늘·시간표·급식·…·전체)
+    feature/[id].tsx   하단 탭에 없는 기능을 '전체'에서 열 때 (뒤로가기 있음)
+    settings/          설정 (내 반, 하단 탭)
+  features/            기능별 화면과 로직
+    registry.ts        기능 목록 ← 새 기능은 여기에 한 줄 추가
+    screens.tsx        기능 id → 화면 연결
+  components/ui/       공용 디자인 부품 (AppText, Card, Button, Icon, …)
+  theme/tokens.ts      색·간격·글자 크기 (디자인 시안 A)
+  lib/                 날짜(한국 시간), 서버 호출, NEIS 응답 해석
+  state/prefs.tsx      개인 설정 (하단 탭 구성, 내 반) — 기기에 저장
+api/                   Vercel 서버 함수 (NEIS 호출 + 캐싱, 인증키 보관)
 ```
 
-- 홈·메뉴는 `npm run dev`/`build` 때 `scripts/gen-features.mjs`가 `feature.json`을 모아
-  `lib/features.generated.js`(자동 생성, Git에 올리지 않음)로 만듭니다.
-  → 기능을 추가해도 공용 파일을 고칠 필요가 없고, 그래서 충돌이 나지 않습니다.
-- 하단 탭바 고정 메뉴 4개는 `lib/menu.js`의 `PRIMARY_TAB_KEYS`(대표)에서 정합니다.
-- `feature.json`의 `status`: `idea`(아이디어) → `building`(만드는 중) → `ready`(사용 가능)
+## 하단 탭
 
-## 아이디어·도움
+`오늘`(고정) + 학생이 고른 기능 최대 3개 + `전체`(고정). 설정 → 하단 탭에서 바꾼다.
+모든 기능은 숨은 탭으로 등록돼 있어서, 설정을 바꿔도 앱이 다시 시작되지 않는다.
 
-- 새 기능 아이디어: Issues → **💡 기능 아이디어** (허락 없이 바로 시작해도 됩니다)
-- 10분 넘게 막히면: Issues → **🆘 도움 요청**
+## 데이터
 
-## PR이 올라오면
+| 주소 | 내용 | NEIS 서비스 |
+|---|---|---|
+| `/api/meal?from&to` | 급식(조·중·석식, 알레르기, 열량) | mealServiceDietInfo |
+| `/api/timetable?grade&class&from&to` | 반 시간표 | hisTimetable |
+| `/api/schedule?from&to` | 학사일정 | SchoolSchedule |
 
-자동 검사(GitHub Actions)가 feature.json 형식 · 비밀 키 · 공용 파일 변경 · 빌드를 확인합니다.
-학생 브랜치(`feat/**`)는 Vercel에 배포하지 않습니다(`vercel.json`, 무료 요금제 하루 100회 배포 한도 보호). 확인은 Codespaces 미리보기로 합니다.
-**검토하는 대표에게:** PR의 주인은 만든 학생입니다. "고쳐"보다 "이건 어떻게 생각해?"로, 좋은 점 한 가지와 함께 남겨 주세요.
-병합은 **Create a merge commit**으로 합니다. 수업 기간에는 PR 화면의 Update branch·Commit suggestion을 써도 되지만(학생 스크립트가 자동으로 합침), `.github/workflows/`는 바꾸지 마세요.
+- 서버 응답은 CDN에 1시간 저장(이후 하루 동안 옛 응답을 주며 뒤에서 갱신).
+- 앱은 받은 데이터를 기기에 저장해 두고, 오프라인이면 저장본을 보여 준다.
+- 서버도 저장본도 없으면 **예시 데이터**를 쓰고 화면 위에 노란 안내를 띄운다.
 
-AI가 지켜야 할 규칙은 `AGENTS.md`에 있습니다.
+### Vercel 환경변수
 
-## 디자인 규칙
+| 이름 | 필수 | 설명 |
+|---|---|---|
+| `NEIS_API_KEY` | 권장 | 없으면 NEIS가 한 번에 5건만 준다 |
+| `NEIS_SCHOOL_CODE` | 선택 | 비우면 학교 이름으로 자동 조회 |
 
-- 색상: 남색 계열(`navy-50` ~ `navy-950`, `app/globals.css`의 `@theme`)
-- 앱 폭: 최대 480px, 데스크톱에서는 가운데 정렬
-- Tailwind v4에는 `tailwind.config.js`가 없습니다. 색·글꼴은 `app/globals.css`의 `@theme`에서 정합니다.
+## 명령
+
+```bash
+npm start            # 개발 서버 (휴대폰 Expo Go로 QR 스캔)
+npm run web          # 브라우저에서 실행
+npm run check        # 타입 검사 + 웹 빌드 (PR 전에)
+```
+
+## 브랜치 규칙
+
+- `lead/*` : 리드 에이전트 작업. PR → 대표 승인 → 병합
+- `main`  : 배포 버전 (unjung-app.vercel.app)

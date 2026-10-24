@@ -1,4 +1,10 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci --no-audit --no-fund",
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/((?!api/|_expo/|assets/).*)", "destination": "/index.html" }],
   "git": {
     "deploymentEnabled": {
       "feat/**": false
