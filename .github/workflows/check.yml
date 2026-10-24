@@ -36,6 +36,9 @@ jobs:
       - name: 타입 검사 (서버 함수)
         run: npx tsc --noEmit -p api
 
+      - name: DB 규칙 검사 (권한·학번·토큰)
+        run: npm run test:db
+
       - name: 웹 빌드
         run: npm run build:web
 
