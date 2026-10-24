@@ -11,6 +11,7 @@ import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/s
 import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
 import { NoticeStrip } from '@/features/notice/NoticeStrip';
+import { SurveyStrip } from '@/features/voice/SurveyStrip';
 import { MEAL_CODE, useTopReview } from '@/features/meal/reviews';
 import { Logo } from '@/components/Logo';
 import { givenName, useAuth } from '@/state/auth';
@@ -98,6 +99,7 @@ export function TodayScreen() {
       />
       <DeadlineCard today={now.ymd} />
       <NoticeStrip />
+      <SurveyStrip />
       <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
       <View style={{ flexDirection: 'row', gap: space.md }}>
         <StudyCard />

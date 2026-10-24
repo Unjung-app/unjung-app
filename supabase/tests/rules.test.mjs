@@ -426,5 +426,80 @@ const L3 = (await as(F2, CF2, `select public.post_lost_item('lost', '우산', '�
 { const r = await as(A, CA, `select public.admin_set_role('${E}', 'admin')`); expect('앱에서 관리자 지정 불가', !r.ok); }
 { const r = await as(A, CA, `select public.admin_set_role('${A}', 'student')`); expect('내 역할 변경 불가', !r.ok); }
 
+
+// ───────── M4: 운중 보이스(설문 · 건의) ─────────
+const QS = JSON.stringify([
+  { kind: 'single', prompt: '축제 날짜로 좋은 날은?', options: ['금요일', '토요일'], required: true },
+  { kind: 'multi', prompt: '원하는 부스(여러 개)', options: ['먹거리', '게임', '공연', '전시'], required: true },
+  { kind: 'text', prompt: '하고 싶은 말', required: false },
+]);
+const mk = (u, c, extra = `null, 3, 'after_vote'`) => as(u, c, `select public.create_survey('축제 의견 조사', '올해 축제 준비를 위한 설문이에요', ${extra}, '${QS}'::jsonb) id`);
+{ const r = await mk(D, CD); expect('일반 학생은 설문을 만들 수 없음', !r.ok && /기획행정부/.test(r.err ?? '')); }
+{ const r = await mk(E, CE); expect('검토위원이어도 기획행정부가 아니면 불가', !r.ok); }
+{ const r = await as(D, CD, `select public.admin_set_planner('${D}', true)`); expect('기획행정부 지정은 관리자만', !r.ok); }
+{ const r = await as(A, CA, `select public.admin_set_planner('${D}', true)`); const f = await as(A, CA, `select is_planner from public.admin_find_user('20801')`); const l = await as(A, CA, `select name from public.admin_list_staff() where is_planner`);
+  expect('관리자가 D를 기획행정부로 지정 → 검색·목록에 표시', r.ok && f.rows[0]?.is_planner === true && l.rows.some((x) => x.name === '김디디')); }
+{ const r = await as(D, CD, `select public.create_survey('짧', '', null, 3, 'after_vote', '${QS}'::jsonb)`); expect('제목 2자 미만 거부', !r.ok); }
+{ const r = await as(D, CD, `select public.create_survey('보기 부족', '', null, 3, 'after_vote', '[{"kind":"single","prompt":"하나만?","options":["예"]}]'::jsonb)`); expect('보기 1개 거부', !r.ok && /보기/.test(r.err ?? '')); }
+{ const r = await as(D, CD, `select public.create_survey('기간 초과', '', null, 15, 'after_vote', '${QS}'::jsonb)`); expect('기간 14일 초과 거부', !r.ok); }
+const S1 = (await mk(D, CD)).rows[0]?.id;
+const S2 = (await mk(D, CD, `1, 3, 'after_close'`)).rows[0]?.id;
+expect('기획행정부 설문 2개 생성', !!S1 && !!S2);
+const qids = (await q(`select id from public.survey_questions where survey_id=${S1} order by ord`)).rows.map((r) => Number(r.id));
+const ans = (single, multi, text = '') => `'${JSON.stringify([{ q: qids[0], choices: single }, { q: qids[1], choices: multi }, { q: qids[2], text }])}'::jsonb`;
+{ const a = await as(A, CA, `select id from public.survey_feed order by id`); const b = await as(B, CB, `select id from public.survey_feed order by id`);
+  expect('1학년 대상 설문은 2학년에게 안 보임(기획행정부·관리자는 보임)', a.rows.length === 2 && b.rows.some((x) => Number(x.id) === S2) && b.rows.length === 2); }
+{ const r = await as(E, CE, `select count(*)::int n from public.survey_feed where id=${S2}`); expect('2학년 학생에게 1학년 설문 안 보임', r.rows[0]?.n === 0); }
+{ const r = await as(E, CE, `select public.submit_survey(${S2}, '[]'::jsonb)`); expect('대상 학년이 아니면 참여 불가', !r.ok); }
+{ const r = await as(E, CE, `select public.get_survey(${S1}) s`); const s = r.rows[0]?.s; expect('참여 전에는 결과 안 보임', r.ok && s?.can_see_results === false && s?.questions?.[0]?.counts == null && s?.questions?.length === 3); }
+{ const r = await as(E, CE, `select public.submit_survey(${S1}, ${ans([0, 1], [0])})`); expect('단일 선택에 2개 고르면 거부', !r.ok && /하나만/.test(r.err ?? '')); }
+{ const r = await as(E, CE, `select public.submit_survey(${S1}, ${ans([0], [])})`); expect('필수 질문 빠지면 거부', !r.ok && /답해 주세요/.test(r.err ?? '')); }
+{ const r = await as(E, CE, `select public.submit_survey(${S1}, ${ans([5], [0])})`); expect('없는 보기 거부', !r.ok); }
+const balS = await bal(E);
+{ const r = await as(E, CE, `select public.submit_survey(${S1}, ${ans([0], [0, 2], '공연 많이 해 주세요')})`); expect('설문 참여 +3', r.ok && (await bal(E)) === balS + 3); }
+{ const r = await as(E, CE, `select public.submit_survey(${S1}, ${ans([1], [1])})`); expect('설문은 한 번만', !r.ok && /이미/.test(r.err ?? '')); }
+{ const r = await q(`select count(*)::int n from public.survey_responses where survey_id=${S1}`); expect('실패한 참여는 기록이 남지 않음(1명만)', r.rows[0]?.n === 1); }
+await as(F1, CF1, `select public.submit_survey(${S1}, ${ans([1], [2, 3])})`);
+await as(B, CB, `select public.submit_survey(${S1}, ${ans([0], [2])})`);
+{ const r = await as(E, CE, `select public.get_survey(${S1}) s`); const s = r.rows[0]?.s;
+  expect('참여 후 결과: 보기별 수', s?.can_see_results === true && JSON.stringify(s?.questions?.[0]?.counts) === '[2,1]' && JSON.stringify(s?.questions?.[1]?.counts) === '[1,0,3,1]' && Number(s?.response_count) === 3);
+  expect('학생에게 주관식 답·학년 분포 안 보임', s?.questions?.[2]?.texts == null && s?.by_grade == null && !JSON.stringify(s).includes('공연 많이')); }
+{ const r = await as(D, CD, `select public.get_survey(${S1}) s`); const s = r.rows[0]?.s;
+  expect('기획행정부는 참여 안 해도 결과·주관식·학년 분포를 봄', s?.can_see_results === true && s?.questions?.[2]?.texts?.[0] === '공연 많이 해 주세요' && Number(s?.by_grade?.['2']) === 2 && Number(s?.by_grade?.['1']) === 1); }
+{ const r = await as(D, CD, `select public.get_survey(${S1}) s`); expect('설문 결과에 이름·계정 없음', !JSON.stringify(r.rows[0]?.s).includes('박이이') && !JSON.stringify(r.rows[0]?.s).includes(E)); }
+{ const r = await as(B, CB, `select public.get_survey(${S2}) s`); expect('마감 후 공개 설문은 열려 있는 동안 결과 안 보임', r.rows[0]?.s?.can_see_results === false); }
+{ const r = await as(E, CE, `select public.close_survey(${S1}, false)`); expect('검토위원도 기획행정부가 아니면 마감 불가', !r.ok); }
+{ const r = await as(D, CD, `select public.close_survey(${S1}, false)`); const f = await as(F2, CF2, `select is_open, can_see_results from public.survey_feed where id=${S1}`); const p = await as(F2, CF2, `select public.submit_survey(${S1}, ${ans([0], [0])})`);
+  expect('기획행정부가 마감 → 참여 불가, 결과는 모두 공개', r.ok && f.rows[0]?.is_open === false && f.rows[0]?.can_see_results === true && !p.ok && /마감/.test(p.err ?? '')); }
+{ const r = await as(D, CD, `select public.close_survey(${S2}, true)`); const f = await as(B, CB, `select count(*)::int n from public.survey_feed where id=${S2}`); expect('삭제한 설문은 목록에서 사라짐', r.ok && f.rows[0]?.n === 0); }
+{ const r = await as(E, CE, `select count(*)::int n from public.survey_answers`); expect('설문 원본 답은 내 것만(3개)', r.rows[0]?.n === 3); }
+{ await db.exec('reset role'); const r = await db.query(`set role anon; select count(*) from public.survey_feed`).then(() => ({ ok: true }), () => ({ ok: false })); await db.exec('reset role'); expect('비로그인 설문 목록 불가', !r.ok); }
+
+// 건의
+{ const r = await as(C, CC, `select public.post_suggestion('facility', '정수기 추가', '3층 정수기가 하나뿐이라 줄이 길어요')`); expect('학번 없으면 건의 불가', !r.ok); }
+const G1 = (await as(E, CE, `select public.post_suggestion('facility', '정수기 추가', '3층 정수기가 하나뿐이라 쉬는 시간마다 줄이 길어요') id`)).rows[0]?.id;
+expect('건의 올리기', !!G1);
+{ const r = await as(B, CB, `select title, author_grade, mine, checked from public.suggestion_feed where id=${G1}`); expect('건의는 학년만 표시, 다른 학년도 보임', r.rows[0]?.author_grade === 2 && r.rows[0]?.mine === false && r.rows[0]?.checked === false && !JSON.stringify(r.rows).includes('박이이')); }
+{ const r = await as(E, CE, `select public.like_suggestion(${G1}, true)`); expect('내 건의에 공감 불가', !r.ok); }
+for (const [u, c] of [[B, CB], [A, CA], [A, CA], [F1, CF1]]) await as(u, c, `select public.like_suggestion(${G1}, true)`);
+{ const r = await q(`select like_count from public.suggestions where id=${G1}`); expect('공감 1인 1회(중복 무시) → 3', r.rows[0]?.like_count === 3); }
+await as(F1, CF1, `select public.like_suggestion(${G1}, false)`);
+{ const r = await as(B, CB, `select like_count, liked from public.suggestion_feed where id=${G1}`); expect('공감 취소 → 2, 내 공감 표시', r.rows[0]?.like_count === 2 && r.rows[0]?.liked === true); }
+{ const b0 = await bal(E); await as(B, CB, `select public.like_suggestion(${G1}, true)`); expect('건의·공감에는 토큰 없음', (await bal(E)) === b0); }
+{ const r = await as(E, CE, `select public.check_suggestion(${G1}, true)`); expect('확인 표시는 기획행정부만', !r.ok); }
+{ const r = await as(D, CD, `select public.check_suggestion(${G1}, true)`); const f = await as(E, CE, `select checked, checked_at is not null c from public.suggestion_feed where id=${G1}`);
+  expect('기획행정부 확인 → 작성자에게 확인 표시', r.ok && f.rows[0]?.checked === true && f.rows[0]?.c === true); }
+for (let k = 0; k < 2; k++) await as(E, CE, `select public.post_suggestion('etc', '건의 ${k}', '내용을 다섯 글자 이상 적어요')`);
+{ const r = await as(E, CE, `select public.post_suggestion('etc', '네 번째', '하루 제한을 넘는 건의예요')`); expect('건의 하루 3개 제한', !r.ok && /3개/.test(r.err ?? '')); }
+{ const r = await as(E, CE, `select public.post_suggestion('meal', '씨발 급식', '내용을 다섯 글자 이상 적어요')`); expect('건의 욕설 차단', !r.ok); }
+const G2 = (await as(F2, CF2, `select public.post_suggestion('event', '체육대회 종목', '피구 말고 다른 종목도 넣어 주세요') id`)).rows[0]?.id;
+for (const [u, c] of [[A, CA], [B, CB], [E, CE]]) await as(u, c, `select public.report_suggestion(${G2}, '장난')`);
+{ const f = await as(A, CA, `select count(*)::int n from public.suggestion_feed where id=${G2}`); const mq = await as(D, CD, `select status, reasons from public.suggestion_mod_queue where id=${G2}`); const nq = await as(E, CE, `select count(*)::int n from public.suggestion_mod_queue`);
+  expect('신고 3명 → 숨김, 기획행정부 목록에만', f.rows[0]?.n === 0 && mq.rows[0]?.status === 'hidden' && /장난/.test(mq.rows[0]?.reasons ?? '') && nq.rows[0]?.n === 0); }
+{ const r = await as(D, CD, `select public.mod_suggestion(${G2}, true)`); const f = await as(A, CA, `select count(*)::int n from public.suggestion_feed where id=${G2}`); expect('기획행정부가 다시 보이기', r.ok && f.rows[0]?.n === 1); }
+{ const r = await as(F2, CF2, `select public.withdraw_suggestion(${G1})`); const r2 = await as(F2, CF2, `select public.withdraw_suggestion(${G2})`); expect('건의 내리기는 작성자만', !r.ok && r2.ok); }
+{ const r = await as(B, CB, `select count(*)::int n from public.suggestions`); expect('건의 원본은 내 것만(0)', r.rows[0]?.n === 0); }
+{ const r = await as(A, CA, `select public.admin_set_planner('${D}', false)`); const r2 = await as(D, CD, `select public.check_suggestion(${G1}, false)`); expect('기획행정부 해제되면 권한도 사라짐', r.ok && !r2.ok); }
+
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

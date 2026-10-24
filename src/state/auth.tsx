@@ -19,6 +19,8 @@ type AuthState = {
   session: Session | null;
   email: string | null;
   role: Role;
+  /** 학생자치회 기획행정부(운중 보이스 설문 만들기·건의 확인). 관리자도 true */
+  planner: boolean;
   enrollment: Enrollment | null;
   /** 학교 계정이 아니라서 로그인을 되돌렸을 때 보여 줄 문구 */
   notice: string | null;
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<Role>('student');
+  const [planner, setPlanner] = useState(false);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -42,12 +45,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (s: Session | null) => {
       if (!s) {
         setRole('student');
+        setPlanner(false);
         setEnrollment(null);
         return;
       }
       const year = schoolTerm(seoulNow().ymd).year;
       const [{ data: profile }, { data: enr }] = await Promise.all([
-        supabase.from('profiles').select('role').eq('id', s.user.id).maybeSingle(),
+        // '*': DB에 새 칸(is_planner)이 아직 없어도 역할은 읽히게
+        supabase.from('profiles').select('*').eq('id', s.user.id).maybeSingle(),
         supabase
           .from('enrollments')
           .select('student_no,name,grade,class_no,number,school_year')
@@ -55,7 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('school_year', year)
           .maybeSingle(),
       ]);
-      setRole(((profile?.role as Role) ?? 'student'));
+      const r = (profile?.role as Role) ?? 'student';
+      setRole(r);
+      setPlanner(r === 'admin' || profile?.is_planner === true);
       setEnrollment((enr as Enrollment | null) ?? null);
       if (enr) setMyClass({ grade: enr.grade as 1 | 2 | 3, classNo: enr.class_no });
     },
@@ -140,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       email: session?.user.email ?? null,
       role,
+      planner,
       enrollment,
       notice,
       signIn,
@@ -147,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       clearNotice: () => setNotice(null),
     }),
-    [loading, session, role, enrollment, notice, signIn, signOut, register],
+    [loading, session, role, planner, enrollment, notice, signIn, signOut, register],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

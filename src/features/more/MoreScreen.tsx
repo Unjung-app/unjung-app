@@ -77,7 +77,7 @@ export function MoreScreen() {
           {role === 'admin' ? (
             <>
               <Divider />
-              <ListRow icon="user" title="검토위원 관리" subtitle="학번으로 검토위원 임명·해제 (관리자)" onPress={() => router.push('/admin/staff')} />
+              <ListRow icon="user" title="직책 관리" subtitle="검토위원·기획행정부 임명·해제 (관리자)" onPress={() => router.push('/admin/staff')} />
               <Divider />
               <ListRow icon="settings" title="의견 관리" subtitle="관리자 전용" onPress={() => router.push('/admin/feedback')} />
             </>

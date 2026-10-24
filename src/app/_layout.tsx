@@ -74,7 +74,10 @@ function Root() {
         <Stack.Screen name="notice/new" options={{ title: '공지 올리기' }} />
         <Stack.Screen name="lost/new" options={{ title: '분실물 올리기' }} />
         <Stack.Screen name="review" options={{ title: '검토하기 (검토위원)' }} />
-        <Stack.Screen name="admin/staff" options={{ title: '검토위원 관리 (관리자)' }} />
+        <Stack.Screen name="admin/staff" options={{ title: '직책 관리 (관리자)' }} />
+        <Stack.Screen name="voice/survey/[id]" options={{ title: '설문' }} />
+        <Stack.Screen name="voice/survey/new" options={{ title: '설문 만들기' }} />
+        <Stack.Screen name="voice/suggest" options={{ title: '건의 올리기' }} />
         <Stack.Screen name="login" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>

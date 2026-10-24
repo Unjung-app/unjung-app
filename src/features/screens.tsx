@@ -10,6 +10,7 @@ import { RankingScreen } from './ranking/RankingScreen';
 import { StudyScreen } from './study/StudyScreen';
 import { TasksScreen } from './tasks/TasksScreen';
 import { TimetableScreen } from './timetable/TimetableScreen';
+import { VoiceScreen } from './voice/VoiceScreen';
 
 type ScreenProps = { inStack?: boolean };
 
@@ -30,6 +31,6 @@ export const FEATURE_SCREENS: Record<string, ComponentType<ScreenProps>> = {
   ranking: RankingScreen,
   notice: NoticeScreen,
   lost: LostScreen,
-  voice: soon('voice'),
+  voice: VoiceScreen,
   sports: soon('sports'),
 };
