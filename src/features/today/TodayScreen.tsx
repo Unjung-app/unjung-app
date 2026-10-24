@@ -6,7 +6,7 @@ import { Badge, Button, Card, Chip, SampleNotice, SectionTitle } from '@/compone
 import { Screen } from '@/components/ui/Screen';
 import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/data';
 import { classLabel, useNow, useOpenFeature } from '@/features/hooks';
-import { BELL, phaseAt, type DayPhase } from '@/features/timetable/bell';
+import { bellFor, lunchOver, phaseAt, type DayPhase } from '@/features/timetable/bell';
 import { addDays, dDayLabel, isWeekend, longLabel, mondayOf, shortLabel, weekdayLabel } from '@/lib/date';
 import { groupEvents, isForGrade, isMajorEvent, type Meal, type SchoolEvent } from '@/lib/school';
 import type { ClassLesson as Lesson } from '@/features/data';
@@ -78,7 +78,7 @@ export function TodayScreen() {
         loading={timetable.source === 'loading'}
         holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
       />
-      <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} />
+      <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
       <View style={{ flexDirection: 'row', gap: space.md }}>
         <StudyCard />
         <EventCard today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} />
@@ -145,7 +145,8 @@ function NowCard({
   }
 
   const lastPeriod = todays.length ? Math.max(...todays.map((l) => l.period)) : 7;
-  const phase: DayPhase = phaseAt(minutes, lastPeriod);
+  const BELL = bellFor(myClass.grade).periods;
+  const phase: DayPhase = phaseAt(minutes, lastPeriod, myClass.grade);
   const focusPeriod =
     phase.kind === 'class' ? phase.current : phase.kind === 'after' ? null : phase.next;
   const focus = focusPeriod ? subjectAt(focusPeriod.period) : undefined;
@@ -235,20 +236,21 @@ const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${Str
 
 /* ---------- 급식 ---------- */
 
-function pickMeal(today: string, minutes: number, meals: Meal[]) {
+function pickMeal(today: string, minutes: number, meals: Meal[], grade: number | null) {
   const todays = meals.filter((m) => m.date === today);
   const dinner = todays.find((m) => m.type === '석식');
-  if (minutes >= 13 * 60 + 30 && dinner) return { meal: dinner, label: '오늘 저녁' };
+  if (lunchOver(minutes, grade) && dinner) return { meal: dinner, label: '오늘 저녁' };
   const lunch = todays.find((m) => m.type === '중식');
-  if (lunch && minutes < 14 * 60) return { meal: lunch, label: '오늘 점심' };
+  // 점심이 끝나고 30분까지는 오늘 점심을 그대로 보여 준다(한줄평 남기기 좋은 시간)
+  if (lunch && !lunchOver(minutes - 30, grade)) return { meal: lunch, label: '오늘 점심' };
   const next = meals.find((m) => m.date > today && m.type === '중식');
   if (next) return { meal: next, label: `${weekdayLabel(next.date)}요일 점심` };
   return lunch ? { meal: lunch, label: '오늘 점심' } : null;
 }
 
-function MealCard({ today, minutes, meals }: { today: string; minutes: number; meals: Meal[] }) {
+function MealCard({ today, minutes, meals, grade }: { today: string; minutes: number; meals: Meal[]; grade: number | null }) {
   const openFeature = useOpenFeature();
-  const picked = pickMeal(today, minutes, meals);
+  const picked = pickMeal(today, minutes, meals, grade);
   return (
     <Card>
       <SectionTitle

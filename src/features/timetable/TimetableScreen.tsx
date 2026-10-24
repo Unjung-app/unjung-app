@@ -7,7 +7,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Segmented, Stepper } from '@/components/ui/Segmented';
 import { useWeekTimetable } from '@/features/data';
 import { classLabel, useNow } from '@/features/hooks';
-import { BELL, BELL_IS_PROVISIONAL, phaseAt } from './bell';
+import { bellFor, phaseAt } from './bell';
 import { shortSubject } from './subjects';
 import { addDays, diffDays, isWeekend, mondayOf, parseYmd, weekdayLabel } from '@/lib/date';
 import type { ClassLesson as Lesson } from '@/features/data';
@@ -72,13 +72,13 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
                 onNext={() => setAnchor(addDays(monday, 7))}
                 onReset={() => setAnchor(home)}
               />
-              <WeekGrid monday={monday} lessons={tt.items} today={now.ymd} minutes={now.minutes} />
+              <WeekGrid monday={monday} lessons={tt.items} today={now.ymd} minutes={now.minutes} grade={myClass.grade} />
             </>
           ) : (
-            <DayList anchor={anchor} setAnchor={setAnchor} lessons={tt.items} today={now.ymd} minutes={now.minutes} />
+            <DayList anchor={anchor} setAnchor={setAnchor} lessons={tt.items} today={now.ymd} minutes={now.minutes} grade={myClass.grade} />
           )}
           <AppText variant="caption" color={color.inkFaint}>
-            선택 과목 자동 반영은 준비 중이에요.{BELL_IS_PROVISIONAL ? ' 교시 시각은 임시 값이에요.' : ''}
+            선택 과목 자동 반영은 준비 중이에요.
           </AppText>
         </>
       )}
@@ -91,11 +91,11 @@ function weekLabel(monday: string) {
   return `${m}월 ${d}일 주`;
 }
 
-function WeekGrid({ monday, lessons, today, minutes }: { monday: string; lessons: Lesson[]; today: string; minutes: number }) {
+function WeekGrid({ monday, lessons, today, minutes, grade }: { monday: string; lessons: Lesson[]; today: string; minutes: number; grade: number }) {
   const days = [0, 1, 2, 3, 4].map((i) => addDays(monday, i));
   const maxPeriod = Math.max(6, ...lessons.filter((l) => days.includes(l.date)).map((l) => l.period));
-  const periods = BELL.filter((b) => b.period <= maxPeriod);
-  const phase = phaseAt(minutes, maxPeriod);
+  const periods = bellFor(grade).periods.filter((b) => b.period <= maxPeriod);
+  const phase = phaseAt(minutes, maxPeriod, grade);
   const currentPeriod = phase.kind === 'class' ? phase.current.period : null;
 
   return (
@@ -172,12 +172,14 @@ function DayList({
   lessons,
   today,
   minutes,
+  grade,
 }: {
   anchor: string;
   setAnchor: (d: string) => void;
   lessons: Lesson[];
   today: string;
   minutes: number;
+  grade: number;
 }) {
   const todays = lessons.filter((l) => l.date === anchor);
   const isToday = anchor === today;
@@ -203,7 +205,7 @@ function DayList({
           </View>
         ) : (
           todays.map((l, i) => {
-            const bell = BELL.find((b) => b.period === l.period);
+            const bell = bellFor(grade).periods.find((b) => b.period === l.period);
             const now = isToday && bell && minutes >= bell.start && minutes < bell.end;
             const done = isToday && bell && minutes >= bell.end;
             return (
