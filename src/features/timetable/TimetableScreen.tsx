@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
-import { Button, Card, SampleNotice } from '@/components/ui/primitives';
+import { Badge, Button, Card, SampleNotice } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented, Stepper } from '@/components/ui/Segmented';
 import { useWeekTimetable } from '@/features/data';
@@ -10,7 +10,7 @@ import { classLabel, useNow } from '@/features/hooks';
 import { BELL, BELL_IS_PROVISIONAL, phaseAt } from './bell';
 import { shortSubject } from './subjects';
 import { addDays, diffDays, isWeekend, mondayOf, parseYmd, weekdayLabel } from '@/lib/date';
-import type { Lesson } from '@/lib/school';
+import type { ClassLesson as Lesson } from '@/features/data';
 import { usePrefs } from '@/state/prefs';
 import { color, radius, space } from '@/theme/tokens';
 
@@ -134,7 +134,7 @@ function WeekGrid({ monday, lessons, today, minutes }: { monday: string; lessons
               <View key={d} style={{ flex: 1, padding: 2 }}>
                 <View
                   accessible
-                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson?.subject ?? '수업 없음'}`}
+                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lesson.subject + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}`}
                   style={{
                     flex: 1,
                     borderRadius: 10,
@@ -150,7 +150,7 @@ function WeekGrid({ monday, lessons, today, minutes }: { monday: string; lessons
                     weight={isToday ? 'semibold' : 'regular'}
                     align="center"
                     numberOfLines={2}
-                    color={lesson ? color.ink : color.inkFaint}
+                    color={lesson ? (lesson.tags.length ? color.accentInk : color.ink) : color.inkFaint}
                     style={{ fontSize: 12.5 }}>
                     {lesson ? shortSubject(lesson.subject) : '–'}
                   </AppText>
@@ -230,6 +230,9 @@ function DayList({
                 <AppText variant="bodyStrong" style={{ flex: 1 }} color={done ? color.inkFaint : color.ink}>
                   {l.subject}
                 </AppText>
+                {l.tags.map((t) => (
+                  <Badge key={t} label={t} />
+                ))}
                 {l.room ? (
                   <AppText variant="caption" color={color.inkMuted}>
                     {l.room}

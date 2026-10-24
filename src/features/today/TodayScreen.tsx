@@ -8,7 +8,8 @@ import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/
 import { classLabel, useNow, useOpenFeature } from '@/features/hooks';
 import { BELL, phaseAt, type DayPhase } from '@/features/timetable/bell';
 import { addDays, dDayLabel, isWeekend, longLabel, mondayOf, shortLabel, weekdayLabel } from '@/lib/date';
-import { isMajorEvent, type Lesson, type Meal, type SchoolEvent } from '@/lib/school';
+import { groupEvents, isForGrade, isMajorEvent, type Meal, type SchoolEvent } from '@/lib/school';
+import type { ClassLesson as Lesson } from '@/features/data';
 import { usePrefs, type MyClass } from '@/state/prefs';
 import { color, radius, space } from '@/theme/tokens';
 
@@ -80,7 +81,7 @@ export function TodayScreen() {
       <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} />
       <View style={{ flexDirection: 'row', gap: space.md }}>
         <StudyCard />
-        <EventCard today={now.ymd} events={schedule.items} />
+        <EventCard today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} />
       </View>
     </Screen>
   );
@@ -297,10 +298,10 @@ function StudyCard() {
   );
 }
 
-function EventCard({ today, events }: { today: string; events: SchoolEvent[] }) {
+function EventCard({ today, events, grade }: { today: string; events: SchoolEvent[]; grade: number | null }) {
   const openFeature = useOpenFeature();
-  const upcoming = events.filter((e) => e.date >= today);
-  const major = upcoming.find(isMajorEvent) ?? upcoming[0];
+  const upcoming = groupEvents(events).filter((e) => e.end >= today && isForGrade(e, grade));
+  const major = upcoming.find((e) => isMajorEvent(e, grade)) ?? upcoming[0];
   const next = upcoming.find((e) => e !== major);
   return (
     <Pressable
@@ -319,14 +320,14 @@ function EventCard({ today, events }: { today: string; events: SchoolEvent[] }) 
       {major ? (
         <>
           <AppText variant="title" style={{ fontSize: 22, lineHeight: 28 }}>
-            {dDayLabel(today, major.date)}
+            {major.start <= today ? '진행 중' : dDayLabel(today, major.start)}
           </AppText>
           <AppText variant="caption" color={color.inkMuted} numberOfLines={2}>
             {major.name}
           </AppText>
           {next ? (
             <AppText variant="caption" style={{ marginTop: 'auto' }} numberOfLines={1}>
-              {shortLabel(next.date)} · {next.name}
+              {shortLabel(next.start)} · {next.name}
             </AppText>
           ) : null}
         </>

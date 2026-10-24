@@ -107,7 +107,59 @@ export function parseSchedule(rows: Row[]): SchoolEvent[] {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** 시험처럼 D-day를 크게 보여 줄 만한 일정인지 */
-export function isMajorEvent(e: SchoolEvent) {
-  return /고사|평가|시험|수능|모의|방학|축제|체육대회|수학여행/.test(e.name);
+/** 화면용 일정: 같은 이름이 이어지는 날짜(겨울방학 60일 등)를 기간 하나로 묶은 것 */
+export type EventRange = {
+  start: string;
+  end: string;
+  name: string;
+  holiday: boolean;
+  /** '3학년 2차 지필평가'처럼 특정 학년만 해당하면 그 학년, 전교면 null */
+  grade: 1 | 2 | 3 | null;
+};
+
+function nextDay(ymd: string) {
+  const t = new Date(Date.UTC(+ymd.slice(0, 4), +ymd.slice(4, 6) - 1, +ymd.slice(6, 8) + 1));
+  return `${t.getUTCFullYear()}${String(t.getUTCMonth() + 1).padStart(2, '0')}${String(t.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** 이어지는 날짜를 묶는다. 주말을 사이에 둔 시험(금→월)도 한 기간으로 본다. */
+export function groupEvents(events: SchoolEvent[]): EventRange[] {
+  const byName = new Map<string, SchoolEvent[]>();
+  for (const e of [...events].sort((a, b) => a.date.localeCompare(b.date))) {
+    byName.set(e.name, [...(byName.get(e.name) ?? []), e]);
+  }
+  const out: EventRange[] = [];
+  for (const [name, list] of byName) {
+    const gm = name.match(/^([1-3])학년/);
+    const grade = gm ? (Number(gm[1]) as 1 | 2 | 3) : null;
+    let cur: EventRange | null = null;
+    for (const e of list) {
+      let gapOk = false;
+      if (cur) {
+        let d = nextDay(cur.end);
+        for (let i = 0; i < 3 && d < e.date; i++) d = nextDay(d); // 최대 3일(주말+공휴일) 건너뛰기 허용
+        gapOk = e.date <= d;
+      }
+      if (cur && gapOk) {
+        cur.end = e.date;
+        cur.holiday = cur.holiday && e.holiday;
+      } else {
+        cur = { start: e.date, end: e.date, name, holiday: e.holiday, grade };
+        out.push(cur);
+      }
+    }
+  }
+  return out.sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
+}
+
+/** 이 학년 학생에게 해당하는 일정인가 (학년 미설정이면 전부 해당) */
+export function isForGrade(e: EventRange, grade: number | null | undefined) {
+  return e.grade === null || !grade || e.grade === grade;
+}
+
+/** D-day를 크게 보여 줄 만한 일정인가. 수능은 3학년에게만 '큰 일정'. */
+export function isMajorEvent(e: EventRange, grade: number | null | undefined) {
+  if (!isForGrade(e, grade)) return false;
+  if (/수학능력시험|수능/.test(e.name)) return grade === 3;
+  return /정기시험|지필평가|고사|모의|방학|축제|체육대회|수학여행/.test(e.name);
 }
