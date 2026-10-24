@@ -7,7 +7,8 @@ const BASE = 'https://open.neis.go.kr/hub';
 const OFFICE = process.env.NEIS_OFFICE_CODE || 'J10'; // 경기도교육청
 const SCHOOL_NAME = '운중고등학교';
 
-let schoolCodeCache: string | null = process.env.NEIS_SCHOOL_CODE || null;
+// 운중고 표준학교코드(2026-10-24 NEIS schoolInfo로 확인). 환경변수로 바꿀 수 있다.
+let schoolCodeCache: string | null = process.env.NEIS_SCHOOL_CODE || '7530941';
 
 async function neisGet(service: string, params: Record<string, string | number>) {
   const url = new URL(`${BASE}/${service}`);
