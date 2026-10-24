@@ -1,4 +1,4 @@
-# 운중고 앱 v3
+# 운중고 스마트 캠퍼스 (v1.0.0)
 
 운중고 학생 전용 학교 앱. **iOS · Android 앱 + 웹을 한 코드로** 만든다.
 Expo SDK 58 (React Native 0.88) · Expo Router · TypeScript · Vercel(웹 + 서버 함수)
@@ -44,6 +44,16 @@ api/                   Vercel 서버 함수 (NEIS 호출 + 캐싱, 인증키 보
 |---|---|---|
 | `NEIS_API_KEY` | 권장 | 없으면 NEIS가 한 번에 5건만 준다 |
 | `NEIS_SCHOOL_CODE` | 선택 | 비우면 학교 이름으로 자동 조회 |
+| `SUPABASE_SECRET_KEY` | 필수 | 학교 데이터 동기화·알림 발송(서버 전용, 앱에 넣지 않음) |
+| `VAPID_PRIVATE_KEY` | 필수 | 웹 푸시 비밀 키(공개 키는 `src/lib/pushKey.ts`) |
+| `CRON_SECRET` | 선택 | Vercel Cron 호출 확인용 |
+
+## 서버(DB)
+
+- Supabase: `supabase/migrations/*.sql`을 이름 순서대로 SQL 편집기에서 적용한다.
+- DB 규칙 검사: `npm run test:db` (PGlite로 권한·토큰·악용 방지 규칙을 확인, CI에서도 실행)
+- 토큰 보상 표: DB `20261113000000_m5_balance_admin.sql` ↔ 앱 `src/lib/rewards.ts` (함께 바꾼다)
+- 알림 발송 주소: DB `app_config.app_url` (지금 `https://unjung-app.vercel.app`)
 
 ## 명령
 
@@ -51,6 +61,7 @@ api/                   Vercel 서버 함수 (NEIS 호출 + 캐싱, 인증키 보
 npm start            # 개발 서버 (휴대폰 Expo Go로 QR 스캔)
 npm run web          # 브라우저에서 실행
 npm run check        # 타입 검사 + 웹 빌드 (PR 전에)
+npm run test:db      # DB 규칙 검사
 ```
 
 ## 브랜치 규칙

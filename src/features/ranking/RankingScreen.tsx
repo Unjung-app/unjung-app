@@ -8,7 +8,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { NameTag } from '@/components/NameTag';
 import { useNow, useOpenFeature } from '@/features/hooks';
 import { durationLabel, useStudyLive } from '@/features/study/session';
-import { addDays, mondayOf, parseYmd, ymdToIso } from '@/lib/date';
+import { addDays, appHidden, mondayOf, parseYmd, ymdToIso } from '@/lib/date';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
@@ -46,7 +46,7 @@ function useRanking(kind: Kind, grade: number, weekStart: string, enabled: boole
   useEffect(() => {
     setData(null);
     load();
-    const t = setInterval(load, 60_000); // 1분마다 새로고침
+    const t = setInterval(() => !appHidden() && load(), 60_000); // 1분마다 새로고침(앱이 뒤에 있으면 건너뜀)
     return () => clearInterval(t);
   }, [load]);
   return { data, loading, reload: load };

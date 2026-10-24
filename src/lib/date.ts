@@ -120,3 +120,8 @@ export function ymdToIso(ymd: Ymd) {
 export function isoToYmd(iso: string): Ymd {
   return iso.slice(0, 10).replace(/-/g, '');
 }
+
+/** 앱이 화면 뒤로 가 있으면 true(웹). 주기적인 새로고침을 이때는 건너뛴다(서버 부하·배터리 절약) */
+export function appHidden() {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden';
+}

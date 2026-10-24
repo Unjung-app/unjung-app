@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, View } from 'react-native';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { useFonts } from 'expo-font';
@@ -9,6 +10,7 @@ import { PrefsProvider, usePrefs } from '@/state/prefs';
 import { AuthProvider, useAuth } from '@/state/auth';
 import { WalletProvider } from '@/state/wallet';
 import { TokenToast } from '@/components/TokenToast';
+import { seoulNow } from '@/lib/date';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { injectWebFont, NATIVE_FONTS, fontStyle } from '@/theme/fonts';
 import { color } from '@/theme/tokens';
@@ -27,11 +29,22 @@ function AuthGate() {
   return null;
 }
 
-/** 학교 데이터(시간표·급식·학사일정) 동기화를 한 번 깨운다. 서버가 6시간에 한 번만 실제로 돈다. */
+/**
+ * 학교 데이터(시간표·급식·학사일정) 동기화를 깨운다(정식 배포에서는 매일 새벽 Vercel Cron이 돌고, 이건 예비).
+ * 기기마다 하루 한 번만 부르고, 서버도 6시간에 한 번만 실제로 돈다.
+ */
 function useWakeSchoolSync() {
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    fetch('/api/cron/sync-school').catch(() => {});
+    const key = 'unjung.sync.pinged';
+    const today = seoulNow().ymd;
+    AsyncStorage.getItem(key)
+      .then((v) => {
+        if (v === today) return;
+        AsyncStorage.setItem(key, today).catch(() => {});
+        return fetch('/api/cron/sync-school');
+      })
+      .catch(() => {});
   }, []);
 }
 

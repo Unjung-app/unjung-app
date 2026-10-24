@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/ui/AppText';
@@ -7,7 +7,8 @@ import { color, MAX_APP_WIDTH, radius, space } from '@/theme/tokens';
 import { BUILD_ID } from '@/lib/build';
 
 // BUILD_ID: 이 화면이 만들어진 빌드 번호(배포할 때 git 커밋. 로컬 개발에서는 비어 있어 배너가 뜨지 않는다)
-const CHECK_EVERY_MS = 30 * 60 * 1000;
+const CHECK_EVERY_MS = 60 * 60 * 1000;
+const MIN_GAP_MS = 10 * 60 * 1000; // 앱을 자주 켰다 껐다 해도 10분에 한 번만 확인
 
 /** 새 버전이 배포되면 화면 아래(탭 바 위)에 '새로고침' 배너를 띄운다(웹 앱 전용). 게임 중 등에는 ×로 미룰 수 있다. */
 export function UpdateBanner() {
@@ -15,10 +16,13 @@ export function UpdateBanner() {
   const [fresh, setFresh] = useState(false);
   const [later, setLater] = useState(false);
 
+  const lastCheck = useRef(0);
   const check = useCallback(async () => {
     if (Platform.OS !== 'web' || !BUILD_ID) return;
+    if (Date.now() - lastCheck.current < MIN_GAP_MS) return;
+    lastCheck.current = Date.now();
     try {
-      const res = await fetch('/api/version', { cache: 'no-store' });
+      const res = await fetch('/api/version');
       if (!res.ok) return;
       const { id } = (await res.json()) as { id: string | null };
       if (id && id !== BUILD_ID) setFresh(true);

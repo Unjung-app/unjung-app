@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { appHidden } from '@/lib/date';
 import { supabase } from '@/lib/supabase';
 
 // 집중 모드 공부 세션.
@@ -203,7 +204,7 @@ export function useStudyLive(enabled: boolean) {
         if (alive && data) setLive(data);
       });
     load();
-    const t = setInterval(load, 30_000);
+    const t = setInterval(() => !appHidden() && load(), 30_000);
     return () => {
       alive = false;
       clearInterval(t);

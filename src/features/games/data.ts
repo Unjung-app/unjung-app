@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { addDays, mondayOf, seoulNow, ymdToIso } from '@/lib/date';
+import { addDays, appHidden, mondayOf, seoulNow, ymdToIso } from '@/lib/date';
 import type { Equip } from '@/state/wallet';
 
 export type GameId = 'word' | 'math' | 'life';
@@ -74,7 +74,7 @@ export function useGameStatus(enabled: boolean) {
   }, [enabled]);
   useEffect(() => {
     load();
-    const t = setInterval(load, 60_000); // 수업 시작·끝을 따라가도록
+    const t = setInterval(() => !appHidden() && load(), 60_000); // 수업 시작·끝을 따라가도록
     return () => clearInterval(t);
   }, [load]);
   return { status, reload: load };
