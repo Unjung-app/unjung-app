@@ -40,6 +40,7 @@ function Root() {
         <Stack.Screen name="settings/index" options={{ title: '설정' }} />
         <Stack.Screen name="settings/tabs" options={{ title: '하단 탭 설정' }} />
         <Stack.Screen name="settings/class" options={{ title: '내 반 설정' }} />
+        <Stack.Screen name="settings/install" options={{ title: '홈 화면에 추가' }} />
       </Stack>
     </>
   );

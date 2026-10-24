@@ -85,6 +85,13 @@ const PATHS: Record<string, ReactNode> = {
   arrowUp: <Path d="M12 19V5M6 11l6-6 6 6" />,
   arrowDown: <Path d="M12 5v14M6 13l6 6 6-6" />,
   plus: <Path d="M12 5v14M5 12h14" />,
+  close: <Path d="M6 6l12 12M18 6 6 18" />,
+  share: (
+    <>
+      <Path d="M12 15V3M8 7l4-4 4 4" />
+      <Path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
+    </>
+  ),
   minus: <Path d="M5 12h14" />,
   check: <Path d="m5 12 5 5 9-10" />,
   search: (

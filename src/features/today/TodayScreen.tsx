@@ -4,6 +4,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
 import { Badge, Button, Card, Chip, SampleNotice, SectionTitle } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
+import { InstallBanner } from '@/features/install/InstallBanner';
 import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/data';
 import { classLabel, useNow, useOpenFeature } from '@/features/hooks';
 import { bellFor, lunchOver, phaseAt, type DayPhase } from '@/features/timetable/bell';
@@ -68,6 +69,7 @@ export function TodayScreen() {
         </Pressable>
       </View>
 
+      <InstallBanner />
       {anySample ? <SampleNotice /> : null}
 
       <NowCard
