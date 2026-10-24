@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import { REWARD } from '@/lib/rewards';
 import { supabase } from '@/lib/supabase';
 import { isoToYmd, ymdToIso, type Ymd } from '@/lib/date';
 
@@ -62,7 +63,23 @@ export function useLostFeed(enabled: boolean) {
     items,
     reload: load,
     respond: (id: number, on: boolean) => rpc('respond_lost_item', { p_id: id, p_on: on }),
-    resolve: (id: number) => rpc('resolve_lost_item', { p_id: id }),
+    /** 받았어요: 보상 여부를 문구로 돌려준다(악용 방지 규칙에 걸리면 해결만 되고 보상은 없음) */
+    resolve: async (id: number): Promise<Result & { info?: string }> => {
+      const { data, error } = await supabase.rpc('resolve_lost_item', { p_id: id });
+      await load();
+      if (error) return res(error);
+      const d = (data ?? {}) as { rewarded?: boolean; reason?: string | null };
+      const info = d.rewarded
+        ? `고마워요! 찾아 준 학생에게 +${REWARD.lostFound} 토큰을 보냈어요.`
+        : d.reason === 'too_soon'
+          ? '해결됐어요. 글을 올리고 10분이 지나야 토큰 보상이 있어요.'
+          : d.reason === 'same_pair'
+            ? '해결됐어요. 같은 친구끼리는 30일에 한 번만 토큰 보상이 있어요.'
+            : d.reason === 'week_cap'
+              ? '해결됐어요. 찾아 준 학생은 이번 주 분실물 보상을 다 받았어요.'
+              : '해결됐어요.';
+      return { ok: true, info };
+    },
     close: (id: number) => rpc('close_lost_item', { p_id: id }),
   };
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { Platform, TextInput, View } from 'react-native';
-import Constants from 'expo-constants';
+import { VERSION_LABEL } from '@/lib/build';
 import { useLocalSearchParams } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
@@ -35,7 +36,7 @@ function deviceInfo() {
   return `${Platform.OS} ${String(Platform.Version)}`.slice(0, 200);
 }
 
-/** 버그 제보·개선 요청. 반영되면 +5 토큰. */
+/** 버그 제보·개선 요청. 반영되면 +10 토큰. */
 export function FeedbackScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const { status } = useAuth();
@@ -64,13 +65,13 @@ export function FeedbackScreen() {
       p_kind: kind,
       p_body: body.trim(),
       p_screen: typeof from === 'string' ? from.slice(0, 100) : '',
-      p_app_version: Constants.expoConfig?.version ?? '',
+      p_app_version: VERSION_LABEL.slice(0, 30),
       p_device: deviceInfo(),
     });
     setBusy(false);
     if (error) return setMsg({ ok: false, text: /[가-힣]/.test(error.message) ? error.message : '잠시 뒤 다시 시도해 주세요.' });
     setBody('');
-    setMsg({ ok: true, text: '보냈어요! 개발팀이 확인하고 답할게요. 반영되면 +5 토큰을 드려요.' });
+    setMsg({ ok: true, text: `보냈어요! 개발팀이 확인하고 답할게요. 반영되면 +${REWARD.feedbackDone} 토큰을 드려요.` });
     load();
   };
 

@@ -189,7 +189,7 @@ export function useStudySession(enabled: boolean) {
     [],
   );
 
-  return { phase, today, inClass, elapsed, notice, error, start, stop, leave, back, reloadToday: loadToday, dismissNotice: () => setNotice(null) };
+  return { phase, today, inClass, elapsed, notice, error, start, stop, end: finish, leave, back, reloadToday: loadToday, dismissNotice: () => setNotice(null) };
 }
 
 /** 지금 집중 중인 인원 (30초마다) */

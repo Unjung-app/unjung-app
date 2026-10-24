@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { Pressable, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -98,7 +99,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
     const r = composing?.id ? await board.update(composing.id, d) : await board.create(d);
     if (r.ok) {
       setComposing(null);
-      setNotice(composing?.id ? '고쳤어요' : '올렸어요! 친구 2명이 확인하면 +5 토큰');
+      setNotice(composing?.id ? '고쳤어요' : `올렸어요! 친구 2명이 확인하면 +${REWARD.taskConfirmed} 토큰`);
     }
     return r;
   };

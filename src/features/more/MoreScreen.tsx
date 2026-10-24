@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { REWARD } from '@/lib/rewards';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Divider, ListRow } from '@/components/ui/primitives';
@@ -69,7 +70,7 @@ export function MoreScreen() {
 
       {group(
         <>
-          <ListRow icon="voice" title="의견 보내기" subtitle="버그 제보·개선 요청 · 반영되면 +5 토큰" onPress={() => router.push('/feedback?from=전체')} />
+          <ListRow icon="voice" title="의견 보내기" subtitle={`버그 제보·개선 요청 · 반영되면 +${REWARD.feedbackDone} 토큰`} onPress={() => router.push('/feedback?from=전체')} />
           {role !== 'student' && signedIn ? (
             <>
               <Divider />
@@ -79,7 +80,7 @@ export function MoreScreen() {
           {role === 'admin' ? (
             <>
               <Divider />
-              <ListRow icon="user" title="직책 관리" subtitle="검토위원·기획행정부 임명·해제 (관리자)" onPress={() => router.push('/admin/staff')} />
+              <ListRow icon="user" title="학생 관리" subtitle="직책 지정·학적 정정·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />
               <Divider />
               <ListRow icon="settings" title="의견 관리" subtitle="관리자 전용" onPress={() => router.push('/admin/feedback')} />
             </>

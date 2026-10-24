@@ -4,8 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/ui/AppText';
 import { color, MAX_APP_WIDTH, radius, space } from '@/theme/tokens';
 
-// 이 화면이 만들어진 빌드 번호(배포할 때 git 커밋이 들어간다. 로컬 개발에서는 비어 있어 배너가 뜨지 않는다)
-const BUILD_ID = process.env.EXPO_PUBLIC_BUILD_ID ?? '';
+import { BUILD_ID } from '@/lib/build';
+
+// BUILD_ID: 이 화면이 만들어진 빌드 번호(배포할 때 git 커밋. 로컬 개발에서는 비어 있어 배너가 뜨지 않는다)
 const CHECK_EVERY_MS = 30 * 60 * 1000;
 
 /** 새 버전이 배포되면 화면 아래(탭 바 위)에 '새로고침' 배너를 띄운다(웹 앱 전용). 게임 중 등에는 ×로 미룰 수 있다. */

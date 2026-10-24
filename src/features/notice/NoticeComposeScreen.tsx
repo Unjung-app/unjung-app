@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -55,7 +56,7 @@ export function NoticeComposeScreen() {
             검토를 요청했어요
           </AppText>
           <AppText variant="body" color={color.onNavySub} align="center">
-            학생자치회 검토위원이 확인하면 게시되고 +30 토큰을 받아요. 결과는 학생 공지 화면의 '내가 올린 공지'에서 볼 수 있어요.
+            학생자치회 검토위원이 확인하면 게시되고 +{REWARD.noticeApproved} 토큰을 받아요(하루 1건). 결과는 학생 공지 화면의 '내가 올린 공지'에서 볼 수 있어요.
           </AppText>
         </Card>
         <Button label="학생 공지로 돌아가기" onPress={() => router.back()} />

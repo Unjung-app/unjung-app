@@ -71,7 +71,7 @@ export function SurveyScreen() {
         <AnswerForm
           survey={data}
           onDone={async () => {
-            refresh();
+            refresh('학생회 설문 참여');
             await reload();
           }}
         />

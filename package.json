@@ -1,6 +1,6 @@
 {
   "name": "unjung-app",
-  "version": "3.0.0-alpha.1",
+  "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

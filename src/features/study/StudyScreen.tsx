@@ -11,11 +11,14 @@ import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
+import { REWARD, secondsToNextStudyToken, studyTokensFor } from '@/lib/rewards';
 import { clockLabel, durationLabel, useStudyLive, useStudySession } from './session';
 
 const RING = 220;
 const STROKE = 14;
-const TOKEN_SECONDS = 600;
+/** 30분마다 '아직 공부 중인가요?'를 묻고(진동), 5분 안에 답이 없으면 세션을 끝낸다(화면만 켜 두고 자리를 비우는 것 방지) */
+const CHECK_EVERY_S = 30 * 60;
+const CHECK_WAIT_S = 300;
 
 export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
@@ -28,6 +31,8 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
   const s = useStudySession(ready);
   const live = useStudyLive(ready);
   const [subject, setSubject] = useState('');
+  const [asking, setAsking] = useState(false);
+  const confirmedAt = useRef(0);
 
   // 공부 토큰이 늘면(10분마다) 지갑을 새로 받아 '+1 토큰' 알림을 띄운다
   const seenTokens = useRef<number | null>(null);
@@ -37,6 +42,29 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
     if (seenTokens.current !== null && t > seenTokens.current) refreshWallet('집중 모드 10분 달성');
     seenTokens.current = t;
   }, [s.today?.tokens, refreshWallet]);
+
+  // 자리 비움 확인: 세션 시작 때 기준을 잡고, 30분마다 묻는다
+  useEffect(() => {
+    if (s.phase === 'idle') {
+      confirmedAt.current = 0;
+      setAsking(false);
+      return;
+    }
+    if (s.phase !== 'running') return;
+    if (!asking && s.elapsed - confirmedAt.current >= CHECK_EVERY_S) {
+      setAsking(true);
+      try {
+        (globalThis.navigator as Navigator | undefined)?.vibrate?.([200, 100, 200]);
+      } catch {
+        // 진동이 안 되는 기기
+      }
+    }
+    if (asking && s.elapsed - confirmedAt.current >= CHECK_EVERY_S + CHECK_WAIT_S) {
+      setAsking(false);
+      s.end('5분 동안 확인이 없어서 세션을 끝냈어요. 그 전까지는 기록됐어요.').then(() => refreshWallet());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.elapsed, s.phase, asking]);
 
   // 이 화면을 벗어나면 일시정지, 돌아오면 이어서 (다른 탭으로 옮겨도 마찬가지)
   useFocusEffect(
@@ -81,9 +109,10 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
   const todayRanked = s.today?.ranked_seconds ?? 0;
   // 다음 토큰까지: 오늘 랭킹 인정 시간 + 이번 신호 이후 흐른 시간(표시용 추정)
   const sinceBeat = running && !s.inClass ? s.elapsed % 60 : 0;
-  const progressSec = (todayRanked + sinceBeat) % TOKEN_SECONDS;
   const tokensToday = s.today?.tokens ?? 0;
-  const ringPct = tokensToday >= 30 ? 1 : progressSec / TOKEN_SECONDS;
+  const toNext = secondsToNextStudyToken(todayRanked + sinceBeat);
+  const step = studyTokensFor(todayRanked + sinceBeat) < 12 ? 600 : 900;
+  const ringPct = toNext === null ? 1 : 1 - toNext / step;
   const r = (RING - STROKE) / 2;
   const circ = 2 * Math.PI * r;
 
@@ -105,6 +134,21 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
         </View>
       </View>
 
+      {asking && s.phase === 'running' ? (
+        <Card tone="muted" style={{ gap: space.sm, borderWidth: 2, borderColor: color.accent }}>
+          <AppText variant="heading">아직 공부 중인가요? ✍️</AppText>
+          <AppText variant="caption" color={color.inkMuted}>
+            5분 안에 눌러 주세요. 누르지 않으면 자리를 비운 것으로 보고 세션을 끝내요.
+          </AppText>
+          <Button
+            label="네, 계속할게요"
+            onPress={() => {
+              confirmedAt.current = s.elapsed;
+              setAsking(false);
+            }}
+          />
+        </Card>
+      ) : null}
       {s.notice ? (
         <Pressable accessibilityRole="button" accessibilityLabel="안내 닫기" onPress={s.dismissNotice} style={{ backgroundColor: color.accentSoft, borderRadius: radius.control, padding: space.md, minHeight: 44 }}>
           <AppText variant="label" weight="regular" color={color.accentInk}>
@@ -146,7 +190,7 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
             {clockLabel(s.elapsed)}
           </AppText>
           <AppText variant="caption" color={color.onNavySub}>
-            {tokensToday >= 30 ? '오늘 공부 토큰을 다 받았어요' : `다음 토큰까지 ${Math.ceil((TOKEN_SECONDS - progressSec) / 60)}분`}
+            {toNext === null ? '오늘 공부 토큰을 다 받았어요' : `다음 토큰까지 ${Math.max(1, Math.ceil(toNext / 60))}분`}
           </AppText>
         </View>
 
@@ -210,7 +254,7 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
           </AppText>
           <AppText variant="title">{durationLabel(todayRanked)}</AppText>
           <AppText variant="caption" color={color.inkMuted}>
-            토큰 {tokensToday}/30
+            토큰 {tokensToday}/{REWARD.studyDailyCap}
             {(s.today?.class_seconds ?? 0) > 0 ? ` · 수업 중 ${durationLabel(s.today?.class_seconds ?? 0)}` : ''}
           </AppText>
         </Card>
@@ -233,7 +277,7 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
         <AppText variant="label">집중 모드 규칙</AppText>
         <AppText variant="caption" color={color.inkMuted}>
           • 이 화면을 켜 둔 동안만 시간이 올라가요. 공부하는 동안 화면이 꺼지지 않아요.{'\n'}• 다른 앱이나 다른 탭으로 가면 바로 멈추고, 60초 안에 돌아오면 이어져요.
-          {'\n'}• 10분마다 토큰 +1 (하루 최대 30). 하루 12시간까지 랭킹에 들어가요.{'\n'}• 수업 시간(1~7교시)은 기록만 되고 랭킹·토큰에서 빠져요.
+          {'\n'}• 처음 2시간은 10분마다, 그 뒤로는 15분마다 토큰 +1 (하루 최대 {REWARD.studyDailyCap}). 하루 12시간까지 랭킹에 들어가요.{'\n'}• 30분마다 '아직 공부 중인가요?'를 물어요(진동). 5분 안에 누르지 않으면 세션이 끝나요.{'\n'}• 수업 시간(우리 반 시간표)은 기록만 되고 랭킹·토큰에서 빠져요.
         </AppText>
       </Card>
     </Screen>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { TextInput, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
@@ -26,7 +27,7 @@ type Row = {
   class_no: number | null;
 };
 
-/** 관리자: 학생 의견 처리. '반영 완료'로 바꾸면 작성자에게 +5 토큰(서버가 한 번만 지급). */
+/** 관리자: 학생 의견 처리. '반영 완료'로 바꾸면 작성자에게 +10 토큰(서버가 한 번만 지급). */
 export function FeedbackAdminScreen() {
   const { role } = useAuth();
   const [filter, setFilter] = useState<'open' | 'all'>('open');
@@ -132,7 +133,7 @@ function AdminCard({ r, onChanged }: { r: Row; onChanged: () => void }) {
       ) : null}
       <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
         <Button label="확인 중" variant="soft" disabled={busy} onPress={() => set('seen')} />
-        <Button label="반영 완료 (+5)" disabled={busy} onPress={() => set('done')} />
+        <Button label={`반영 완료 (+${REWARD.feedbackDone})`} disabled={busy} onPress={() => set('done')} />
         <Button label="보류" variant="ghost" disabled={busy} onPress={() => set('wontfix')} />
       </View>
     </Card>

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { isSchoolEmail, SCHOOL_DOMAIN, supabase } from '@/lib/supabase';
 import { schoolTerm, seoulNow } from '@/lib/date';
@@ -12,6 +13,11 @@ import { usePrefs } from './prefs';
 //  ready            모두 완료
 
 export type Role = 'student' | 'reviewer' | 'admin';
+
+// 학적·역할을 기기에 저장해 둔다: 다음에 열 때 바로 보이고, 학교 와이파이가 끊겨도
+// '학번 등록' 화면으로 잘못 보내지 않는다(서버 확인에 실패하면 저장본을 그대로 쓴다).
+const PROFILE_KEY = 'unjung.profile.v1';
+type ProfileCache = { uid: string; year: number; role: Role; planner: boolean; enrollment: Enrollment | null };
 export type Enrollment = { student_no: string; name: string; grade: 1 | 2 | 3; class_no: number; number: number; school_year: number };
 
 type AuthState = {
@@ -40,34 +46,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [planner, setPlanner] = useState(false);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /** 로그인한 사람의 학적을 서버(또는 저장본)로 확인했는가. 확인 전에는 status를 'loading'으로 둔다 */
+  const [profileKnown, setProfileKnown] = useState(false);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const applyProfile = useCallback(
+    (c: Omit<ProfileCache, 'uid' | 'year'>) => {
+      setRole(c.role);
+      setPlanner(c.role === 'admin' || c.planner);
+      setEnrollment(c.enrollment);
+      if (c.enrollment) setMyClass({ grade: c.enrollment.grade, classNo: c.enrollment.class_no });
+      setProfileKnown(true);
+    },
+    [setMyClass],
+  );
 
   const loadProfile = useCallback(
-    async (s: Session | null) => {
+    async (s: Session | null): Promise<void> => {
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+      retryTimer.current = null;
       if (!s) {
         setRole('student');
         setPlanner(false);
         setEnrollment(null);
+        setProfileKnown(false);
         return;
       }
+      const uid = s.user.id;
       const year = schoolTerm(seoulNow().ymd).year;
-      const [{ data: profile }, { data: enr }] = await Promise.all([
-        // '*': DB에 새 칸(is_planner)이 아직 없어도 역할은 읽히게
-        supabase.from('profiles').select('*').eq('id', s.user.id).maybeSingle(),
-        supabase
-          .from('enrollments')
-          .select('student_no,name,grade,class_no,number,school_year')
-          .eq('user_id', s.user.id)
-          .eq('school_year', year)
-          .maybeSingle(),
+      // 1) 저장본: 같은 사람·같은 학년도면 바로 보여 준다
+      let cached: ProfileCache | null = null;
+      try {
+        const raw = await AsyncStorage.getItem(PROFILE_KEY);
+        cached = raw ? (JSON.parse(raw) as ProfileCache) : null;
+      } catch {
+        cached = null;
+      }
+      if (cached && cached.uid === uid && cached.year === year) applyProfile(cached);
+
+      // 2) 서버 확인
+      const [p, e] = await Promise.all([
+        // '*': DB에 새 칸(is_planner)이 생기기 전이어도 역할은 읽히게
+        supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+        supabase.from('enrollments').select('student_no,name,grade,class_no,number,school_year').eq('user_id', uid).eq('school_year', year).maybeSingle(),
       ]);
-      const r = (profile?.role as Role) ?? 'student';
-      setRole(r);
-      setPlanner(r === 'admin' || profile?.is_planner === true);
-      setEnrollment((enr as Enrollment | null) ?? null);
-      if (enr) setMyClass({ grade: enr.grade as 1 | 2 | 3, classNo: enr.class_no });
+      if (p.error || e.error) {
+        // 네트워크 문제: 저장본이 있으면 그대로, 없으면 잠시 뒤 다시(학번 등록 화면으로 보내지 않는다)
+        retryTimer.current = setTimeout(() => {
+          supabase.auth.getSession().then(({ data }) => {
+            if (data.session?.user.id === uid) loadProfile(data.session);
+          });
+        }, 5000);
+        return;
+      }
+      const fresh: ProfileCache = {
+        uid,
+        year,
+        role: (p.data?.role as Role) ?? 'student',
+        planner: p.data?.is_planner === true,
+        enrollment: (e.data as Enrollment | null) ?? null,
+      };
+      applyProfile(fresh);
+      AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(fresh)).catch(() => {});
     },
-    [setMyClass],
+    [applyProfile],
   );
+
+  // 앱으로 돌아올 때 역할·학적을 다시 확인(검토위원 임명 등이 바로 반영되게)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st !== 'active') return;
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) loadProfile(data.session);
+      });
+    });
+    return () => sub.remove();
+  }, [loadProfile]);
 
   const accept = useCallback(
     async (s: Session | null) => {
@@ -92,7 +146,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let alive = true;
     supabase.auth
       .getSession()
-      .then(({ data }) => (alive ? acceptRef.current(data.session) : undefined))
+      .then(({ data }) => {
+        // 학적 확인을 기다리지 않는다: 저장본이 있으면 바로 화면이 뜨고, 서버 확인은 뒤에서 이어진다
+        if (alive) acceptRef.current(data.session);
+      })
       .finally(() => alive && setLoading(false));
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
@@ -126,7 +183,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut().catch(() => {});
+    AsyncStorage.removeItem(PROFILE_KEY).catch(() => {});
     setSession(null);
     await loadProfile(null);
   }, [loadProfile]);
@@ -134,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback<AuthState['register']>(
     async (studentNo, name) => {
       const { error } = await supabase.rpc('register_enrollment', { p_student_no: studentNo, p_name: name });
-      if (error) return { ok: false, message: error.message || '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.' };
+      if (error) return { ok: false, message: /[가-힣]/.test(error.message ?? '') ? error.message : '저장하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.' };
       await loadProfile(session);
       return { ok: true };
     },
@@ -143,7 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthState>(
     () => ({
-      status: loading ? 'loading' : !session ? 'signedOut' : enrollment ? 'ready' : 'needsEnrollment',
+      status: loading ? 'loading' : !session ? 'signedOut' : !profileKnown ? 'loading' : enrollment ? 'ready' : 'needsEnrollment',
       session,
       email: session?.user.email ?? null,
       role,
@@ -155,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       clearNotice: () => setNotice(null),
     }),
-    [loading, session, role, planner, enrollment, notice, signIn, signOut, register],
+    [loading, session, profileKnown, role, planner, enrollment, notice, signIn, signOut, register],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

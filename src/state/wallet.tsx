@@ -119,8 +119,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         c.tokens,
         c.shield_used > 0
           ? `보호권으로 연속 출석을 지켰어요 · ${c.streak}일 연속`
-          : c.tokens >= 10
-            ? `출석 + 7일 연속 보너스 🎉`
+          : c.tokens >= 30
+            ? `출석 + 30일 연속 보너스 🎉`
+            : c.tokens >= 10
+              ? `출석 + 7일 연속 보너스 🎉`
             : c.school_day
               ? `출석 · ${c.streak}일 연속`
               : '출석 (주말엔 연속 출석이 쉬어요)',
@@ -237,6 +239,10 @@ export function ledgerLabel(row: Pick<LedgerRow, 'reason' | 'note'>) {
       return '출석';
     case 'streak_7':
       return '연속 출석 7일 보너스';
+    case 'streak_30':
+      return '연속 출석 30일 보너스 🎉';
+    case 'survey':
+      return '학생회 설문 참여';
     case 'shop':
       return `상점 · ${row.note ?? '구매'}`;
     case 'meal_review':

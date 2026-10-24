@@ -119,6 +119,9 @@ export function InstallScreen() {
             <Step n={2} title="'홈 화면에 추가'" desc="목록에 안 보이면 아래로 내리거나 '더 보기'를 눌러요" />
             <Step n={3} title="오른쪽 위 '추가'" desc="홈 화면의 '운중고' 아이콘으로 열면 알림도 받을 수 있어요" />
           </View>
+          <AppText variant="caption" color={color.accentInk}>
+            아이폰은 홈 화면 앱과 사파리가 로그인을 따로 기억해요. 홈 화면 아이콘으로 처음 열 때 한 번 더 로그인해 주세요.
+          </AppText>
         </Card>
       ) : null}
 

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { Image, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -60,7 +61,7 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
         <Button label="🔍 잃어버렸어요" variant="soft" style={{ flex: 1 }} onPress={() => router.push('/lost/new?type=lost')} />
       </View>
       <AppText variant="caption" color={color.inkMuted} align="center">
-        주인을 찾아 주면 +20 토큰 · 연락처 대신 학생회실 같은 전달 장소로 주고받아요
+        주인을 찾아 주면 +{REWARD.lostFound} 토큰 · 연락처 대신 학생회실 같은 전달 장소로 주고받아요
       </AppText>
       <Segmented
         label="보기"
@@ -109,14 +110,17 @@ function LostCard({
 }: {
   x: LostItem;
   onRespond: (on: boolean) => Promise<{ ok: boolean; message?: string }>;
-  onResolve: () => Promise<{ ok: boolean; message?: string }>;
+  onResolve: () => Promise<{ ok: boolean; message?: string; info?: string }>;
   onClose: () => Promise<{ ok: boolean; message?: string }>;
 }) {
   const [err, setErr] = useState<string | null>(null);
-  const run = async (fn: () => Promise<{ ok: boolean; message?: string }>) => {
+  const [info, setInfo] = useState<string | null>(null);
+  const run = async (fn: () => Promise<{ ok: boolean; message?: string; info?: string }>) => {
     setErr(null);
+    setInfo(null);
     const r = await fn();
     if (!r.ok) setErr(r.message ?? '실패했어요');
+    else if (r.info) setInfo(r.info);
   };
   const found = x.type === 'found';
   const resolved = x.status === 'resolved';
@@ -167,11 +171,11 @@ function LostCard({
                 <AppText variant="caption" color={color.success}>
                   누군가 찾았다고 했어요! 학생회실을 확인하거나 전해 받은 뒤 눌러 주세요.
                 </AppText>
-                <Button label="받았어요 (찾아 준 학생 +20)" onPress={() => run(onResolve)} />
+                <Button label={`받았어요 (찾아 준 학생 +${REWARD.lostFound})`} onPress={() => run(onResolve)} />
               </>
             ) : found && x.has_response ? (
               <AppText variant="caption" color={color.success}>
-                주인이 나타났어요! 주인이 '받았어요'를 누르면 +20 토큰을 받아요.
+                주인이 나타났어요! 전달 장소에서 돌려주고, 주인이 '받았어요'를 누르면 +{REWARD.lostFound} 토큰을 받아요.
               </AppText>
             ) : null}
             <Button label="글 닫기" variant="ghost" onPress={() => run(onClose)} />
@@ -181,7 +185,7 @@ function LostCard({
             <AppText variant="caption" color={color.navy}>
               {found
                 ? `${x.keep_at && x.keep_at !== '내가 보관 중' ? `${x.keep_at}에서` : '주운 학생에게서'} 물건을 받은 뒤 '받았어요'를 눌러 주세요.`
-                : '물건을 학생회실에 맡기거나 직접 전해 주세요. 주인이 받으면 +20 토큰을 받아요.'}
+                : `물건을 학생회실에 맡기거나 직접 전해 주세요. 주인이 받으면 +${REWARD.lostFound} 토큰을 받아요.`}
             </AppText>
             {found ? <Button label="받았어요" onPress={() => run(onResolve)} /> : null}
             <Button label="응답 취소" variant="ghost" onPress={() => run(() => onRespond(false))} />
@@ -193,6 +197,11 @@ function LostCard({
       {err ? (
         <AppText variant="label" weight="regular" color={color.danger}>
           {err}
+        </AppText>
+      ) : null}
+      {info ? (
+        <AppText variant="label" weight="regular" color={color.success}>
+          {info}
         </AppText>
       ) : null}
     </Card>

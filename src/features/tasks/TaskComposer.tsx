@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Button, Card } from '@/components/ui/primitives';
@@ -134,7 +135,7 @@ export function TaskComposer({
         style={{ ...input, minHeight: 72, paddingVertical: space.sm, textAlignVertical: 'top' }}
       />
       <AppText variant="caption" color={color.inkMuted}>
-        {body.length}/200 · 같은 반 친구 2명이 '확인했어요'를 누르면 +5 토큰
+        {body.length}/200 · 같은 반 친구 2명이 '확인했어요'를 누르면 +{REWARD.taskConfirmed} 토큰
         {initial ? ' · 내용을 바꾸면 확인을 다시 받아요' : ''}
       </AppText>
       {error ? (

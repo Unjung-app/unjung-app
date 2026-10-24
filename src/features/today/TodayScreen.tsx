@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -7,6 +8,7 @@ import { Button, Card, Chip, SampleNotice, SectionTitle } from '@/components/ui/
 import { Screen } from '@/components/ui/Screen';
 import { InstallBanner } from '@/features/install/InstallBanner';
 import { WalletStrip } from '@/features/today/WalletStrip';
+import { DailyMissions } from '@/features/today/DailyMissions';
 import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
 import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
@@ -99,6 +101,7 @@ export function TodayScreen() {
         holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
       />
       <DeadlineCard today={now.ymd} />
+      <DailyMissions today={now.ymd} />
       <NoticeStrip />
       <SurveyStrip />
       <PushPrompt />
@@ -340,7 +343,7 @@ function StudyCard() {
         {ready ? durationLabel(today?.ranked_seconds ?? 0) : '집중 모드'}
       </AppText>
       <AppText variant="caption" color={color.onNavySub}>
-        {ready ? `토큰 ${today?.tokens ?? 0}/30 · 10분마다 +1` : '로그인하면 공부 시간이 반 랭킹이 돼요'}
+        {ready ? `토큰 ${today?.tokens ?? 0}/${REWARD.studyDailyCap} · 10분마다 +1` : '로그인하면 공부 시간이 반 랭킹이 돼요'}
       </AppText>
       <View style={{ marginTop: 'auto', paddingTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: live?.all ? color.liveOnNavy : color.navyDone }} />

@@ -2,7 +2,7 @@
   "expo": {
     "name": "운중고",
     "slug": "unjung-app",
-    "version": "3.0.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "unjung",

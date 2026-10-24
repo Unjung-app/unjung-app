@@ -1,4 +1,4 @@
-import Constants from 'expo-constants';
+import { VERSION_LABEL } from '@/lib/build';
 import { Linking, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -40,7 +40,7 @@ export function SettingsScreen() {
         <ListRow icon="plus" title="홈 화면에 추가" subtitle="설치 방법 보기" onPress={() => router.push('/settings/install')} />
       </View>
       <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
-        <ListRow icon="info" title="앱 버전" right={<AppText variant="label" color={color.inkMuted}>{Constants.expoConfig?.version ?? '-'}</AppText>} />
+        <ListRow icon="info" title="앱 버전" right={<AppText variant="label" color={color.inkMuted}>{VERSION_LABEL}</AppText>} />
         <Divider />
         <ListRow icon="external" title="개인정보 처리방침" onPress={() => Linking.openURL('/privacy.html').catch(() => {})} />
       </View>

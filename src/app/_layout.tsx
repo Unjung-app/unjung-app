@@ -62,6 +62,7 @@ function Root() {
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="feature/[id]" options={{ title: '' }} />
+        <Stack.Screen name="+not-found" options={{ title: '페이지 없음' }} />
         <Stack.Screen name="settings/index" options={{ title: '설정' }} />
         <Stack.Screen name="settings/tabs" options={{ title: '하단 탭 설정' }} />
         <Stack.Screen name="settings/class" options={{ title: '내 반 설정' }} />
@@ -76,7 +77,7 @@ function Root() {
         <Stack.Screen name="notice/new" options={{ title: '공지 올리기' }} />
         <Stack.Screen name="lost/new" options={{ title: '분실물 올리기' }} />
         <Stack.Screen name="review" options={{ title: '검토하기 (검토위원)' }} />
-        <Stack.Screen name="admin/staff" options={{ title: '직책 관리 (관리자)' }} />
+        <Stack.Screen name="admin/staff" options={{ title: '학생 관리 (관리자)' }} />
         <Stack.Screen name="voice/survey/[id]" options={{ title: '설문' }} />
         <Stack.Screen name="voice/survey/new" options={{ title: '설문 만들기' }} />
         <Stack.Screen name="voice/suggest" options={{ title: '건의 올리기' }} />

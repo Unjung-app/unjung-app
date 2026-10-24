@@ -138,6 +138,9 @@ export function OnboardingScreen() {
       )}
 
       <Button label="다른 계정으로 로그인" variant="ghost" onPress={signOut} />
+      <AppText variant="caption" color={color.inkFaint} align="center">
+        선생님이시거나 운중고 학생이 아니라면 학번을 넣지 말고 로그아웃한 뒤 '로그인 없이 둘러보기'를 써 주세요.
+      </AppText>
     </Screen>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { Image, TextInput, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
@@ -14,7 +15,7 @@ import { useReviewQueues, type QueueNotice } from './data';
 
 const REJECT_REASONS = ['부적절한 내용이에요', '정보가 부족해요(날짜·장소)', '이미 올라온 공지와 같아요', '개인정보가 들어 있어요', '학생 공지 성격이 아니에요'];
 
-/** 검토위원 화면: 공지 승인 · 신고 처리 · 분실물 사진 승인. 처리할 때마다 +2 토큰(하루 최대 20) */
+/** 검토위원 화면: 공지 승인 · 신고 처리 · 분실물 사진 승인. 처리할 때마다 +2 토큰(하루 최대 10) */
 export function ReviewScreen() {
   const { role } = useAuth();
   const { refresh } = useWallet();
@@ -49,7 +50,7 @@ export function ReviewScreen() {
         ]}
       />
       <AppText variant="caption" color={color.inkMuted}>
-        처리할 때마다 +2 토큰(하루 최대 20). 작성자는 닉네임·학년만 보여요. 공정하게 판단해 주세요.
+        처리할 때마다 +{REWARD.review} 토큰(하루 최대 {REWARD.reviewDailyCap}). 작성자는 닉네임·학년만 보여요. 공정하게 판단해 주세요.
       </AppText>
 
       {tab === 'notice' ? (

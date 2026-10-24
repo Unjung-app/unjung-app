@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -93,7 +94,7 @@ export function NoticeScreen({ inStack = false }: { inStack?: boolean }) {
 
       <Button label="＋ 공지 올리기" onPress={() => router.push('/notice/new')} />
       <AppText variant="caption" color={color.inkMuted} align="center">
-        검토위원이 승인하면 게시되고 +30 토큰을 받아요
+        검토위원이 승인하면 게시되고 +{REWARD.noticeApproved} 토큰을 받아요(하루 1건)
       </AppText>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm }}>

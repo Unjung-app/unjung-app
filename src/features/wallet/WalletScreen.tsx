@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { REWARD } from '@/lib/rewards';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
-import { Badge, Button, Card, Divider } from '@/components/ui/primitives';
+import { Button, Card, Divider } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { ProfileCard } from '@/components/NameTag';
 import { LoginPrompt } from '@/features/wallet/LoginPrompt';
@@ -11,16 +12,19 @@ import { useAuth } from '@/state/auth';
 import { ledgerLabel, useWallet, type LedgerRow } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
 
-/** 토큰 받는 법 (M3 명세 1장). live=false 는 아직 기능이 열리지 않은 것 */
-const EARN: { what: string; amount: string; limit: string; live: boolean }[] = [
-  { what: '출석 (하루 첫 실행)', amount: '+2', limit: '하루 1번', live: true },
-  { what: '연속 출석 7일마다', amount: '+10', limit: '학교 가는 날 기준', live: true },
-  { what: '급식 한줄평', amount: '+3', limit: '하루 1번', live: false },
-  { what: '내 한줄평이 공감 받음', amount: '+1', limit: '하루 최대 5', live: false },
-  { what: '집중 모드 공부 10분', amount: '+1', limit: '하루 최대 30', live: false },
-  { what: '수행평가·숙제 등록 (2명 확인)', amount: '+5', limit: '하루 최대 15', live: false },
-  { what: '학생 공지 승인', amount: '+30', limit: '', live: false },
-  { what: '분실물 주인 찾아 줌', amount: '+20', limit: '', live: false },
+/** 토큰 받는 법 (값은 lib/rewards.ts = 서버와 같은 표) */
+const EARN: { what: string; amount: string; limit: string }[] = [
+  { what: '출석 (하루 첫 실행)', amount: `+${REWARD.checkIn}`, limit: '하루 1번 · 주말도 받아요' },
+  { what: '연속 출석 7일 · 30일마다', amount: `+${REWARD.streak7}·${REWARD.streak30}`, limit: '학교 가는 날 기준' },
+  { what: '급식 한줄평 (10자 이상)', amount: `+${REWARD.mealReview}`, limit: '하루 1번' },
+  { what: '내 한줄평이 공감 받음', amount: `+${REWARD.mealLike}`, limit: `하루 최대 ${REWARD.mealLikeDailyCap}` },
+  { what: '집중 모드 공부', amount: '+1', limit: `처음 2시간 10분마다, 그 뒤 15분마다 · 하루 최대 ${REWARD.studyDailyCap}` },
+  { what: '게임 주간 최고 기록 경신', amount: `+${REWARD.gameBest}`, limit: '게임별 하루 1번 · 주간 1~3위는 30/20/10' },
+  { what: '학생회 설문 참여', amount: `+${REWARD.survey}`, limit: '설문마다 1번' },
+  { what: '수행평가·숙제 등록 (친구 2명 확인)', amount: `+${REWARD.taskConfirmed}`, limit: `하루 최대 ${REWARD.taskDailyCap}` },
+  { what: '학생 공지 승인', amount: `+${REWARD.noticeApproved}`, limit: '하루 1건' },
+  { what: '분실물 주인 찾아 줌', amount: `+${REWARD.lostFound}`, limit: '한 주 2번까지 · 같은 친구끼리는 30일에 1번' },
+  { what: '보낸 의견이 반영됨', amount: `+${REWARD.feedbackDone}`, limit: '버그 제보·개선 제안' },
 ];
 
 
@@ -95,7 +99,7 @@ export function WalletScreen() {
             {i > 0 ? <Divider /> : null}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md, minHeight: 52 }}>
               <View style={{ flex: 1, gap: 2 }}>
-                <AppText variant="body" color={e.live ? color.ink : color.inkMuted}>
+                <AppText variant="body">
                   {e.what}
                 </AppText>
                 {e.limit ? (
@@ -104,8 +108,7 @@ export function WalletScreen() {
                   </AppText>
                 ) : null}
               </View>
-              {e.live ? null : <Badge label="곧 열려요" tone="muted" />}
-              <AppText variant="bodyStrong" color={e.live ? color.success : color.inkFaint} style={{ minWidth: 34, textAlign: 'right' }}>
+              <AppText variant="bodyStrong" color={color.success} style={{ minWidth: 34, textAlign: 'right' }}>
                 {e.amount}
               </AppText>
             </View>

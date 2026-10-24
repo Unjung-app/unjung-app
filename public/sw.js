@@ -2,9 +2,9 @@
 // - 앱 화면(HTML)은 네트워크 우선, 실패하면 저장본 → 지하철·와이파이 끊김에도 열림
 // - /_expo/·/assets/·/icons/ 정적 파일은 이름에 해시가 있으므로 저장본 우선
 // - /api/ 는 건드리지 않는다(앱이 직접 기기에 저장함)
-// - push: 나중에 알림 기능에서 사용
+// - push: 웹 푸시 알림 표시, 누르면 해당 화면으로
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 
@@ -82,13 +82,13 @@ self.addEventListener('notificationclick', (event) => {
   const target = (event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if ('focus' in c) {
-          c.navigate(target);
-          return c.focus();
-        }
-      }
-      return self.clients.openWindow(target);
+      const c = list.find((x) => 'focus' in x);
+      if (!c) return self.clients.openWindow(target);
+      // 열려 있는 앱 창을 앞으로 가져와 해당 화면으로 옮긴다(옮기기가 안 되는 창이면 새로 연다)
+      return c
+        .focus()
+        .then((w) => (w && 'navigate' in w ? w.navigate(target) : self.clients.openWindow(target)))
+        .catch(() => self.clients.openWindow(target));
     }),
   );
 });
