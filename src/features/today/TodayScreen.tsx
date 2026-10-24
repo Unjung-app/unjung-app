@@ -5,6 +5,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Badge, Button, Card, Chip, SampleNotice, SectionTitle } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { InstallBanner } from '@/features/install/InstallBanner';
+import { WalletStrip } from '@/features/today/WalletStrip';
 import { Logo } from '@/components/Logo';
 import { givenName, useAuth } from '@/state/auth';
 import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/data';
@@ -77,6 +78,7 @@ export function TodayScreen() {
         </Pressable>
       </View>
 
+      <WalletStrip />
       <InstallBanner />
       {anySample ? <SampleNotice /> : null}
 

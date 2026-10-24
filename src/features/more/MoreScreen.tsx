@@ -6,7 +6,9 @@ import { Screen } from '@/components/ui/Screen';
 import { AccountCard } from '@/features/auth/AccountCard';
 import { classLabel, useOpenFeature } from '@/features/hooks';
 import { FEATURES } from '@/features/registry';
+import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
+import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
 
 const LEADS = ['howon', 'jongbum', 'yeonjun'];
@@ -15,6 +17,9 @@ export function MoreScreen() {
   const router = useRouter();
   const openFeature = useOpenFeature();
   const { myClass } = usePrefs();
+  const { status } = useAuth();
+  const { wallet } = useWallet();
+  const signedIn = status === 'ready' || status === 'needsEnrollment';
   const live = FEATURES.filter((f) => f.status === 'live');
   const soon = FEATURES.filter((f) => f.status === 'soon');
   const contributors = [...new Set(FEATURES.flatMap((f) => f.credits ?? []))];
@@ -30,6 +35,28 @@ export function MoreScreen() {
       </AppText>
 
       <AccountCard />
+
+      {signedIn
+        ? group(
+            <>
+              <ListRow
+                icon="coin"
+                title="토큰·출석"
+                subtitle={wallet ? `🪙 ${wallet.balance} · 🔥 ${wallet.streak}일 연속` : '불러오는 중'}
+                onPress={() => router.push('/wallet')}
+              />
+              <Divider />
+              <ListRow icon="bag" title="꾸미기 상점" subtitle="이모지·닉네임 색·프로필 테마" onPress={() => router.push('/shop')} />
+              <Divider />
+              <ListRow
+                icon="user"
+                title="닉네임"
+                subtitle={wallet?.nickname ?? '아직 없어요 · 랭킹에 쓰일 이름'}
+                onPress={() => router.push('/settings/nickname')}
+              />
+            </>,
+          )
+        : null}
 
       {group(
         <>

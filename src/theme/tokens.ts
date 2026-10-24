@@ -29,7 +29,30 @@ export const color = {
   dangerSoft: '#FDECEA',
 } as const;
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
+/** 꾸미기 상점: 닉네임 색 (흰 배경 대비 4.5:1 이상) — 키는 DB shop_items.value */
+export const nameColor: Record<string, string> = {
+  sky: '#0B6FB8',
+  mint: '#0E7C66',
+  coral: '#C2410C',
+  violet: '#6D28D9',
+  gold: '#8A5A00',
+  rose: '#BE185D',
+  ocean: '#1D4ED8',
+  forest: '#166534',
+};
+
+/** 꾸미기 상점: 프로필 카드 배경 테마 (bg 위 ink/sub 대비 4.5:1 이상) */
+export const profileTheme: Record<string, { bg: string; ink: string; sub: string; edge: string }> = {
+  plain: { bg: '#FFFFFF', ink: '#0B1B33', sub: '#4A5872', edge: '#DDE3EE' },
+  dawn: { bg: '#E6ECFA', ink: '#14244A', sub: '#46557A', edge: '#9DB0DE' },
+  sunset: { bg: '#FFE4D3', ink: '#5A230B', sub: '#7E3F20', edge: '#F2A27A' },
+  forest: { bg: '#DDF1E3', ink: '#123D22', sub: '#355F43', edge: '#8BC79C' },
+  sakura: { bg: '#FCE4EE', ink: '#5B1634', sub: '#7F3D5A', edge: '#EFA1C1' },
+  ocean: { bg: '#D9F0F7', ink: '#0B3A4A', sub: '#335F6E', edge: '#86C6D9' },
+  night: { bg: '#0E2748', ink: '#FFFFFF', sub: '#B9CBEA', edge: '#F5A524' },
+};
+
+export const space ={ xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
 
 export const radius = { card: 22, control: 12, chip: 10, pill: 18, round: 999 } as const;
 

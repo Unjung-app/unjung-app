@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PrefsProvider, usePrefs } from '@/state/prefs';
 import { AuthProvider, useAuth } from '@/state/auth';
+import { WalletProvider } from '@/state/wallet';
 import { injectWebFont, NATIVE_FONTS, fontStyle } from '@/theme/fonts';
 import { color } from '@/theme/tokens';
 
@@ -54,6 +55,9 @@ function Root() {
         <Stack.Screen name="settings/tabs" options={{ title: '하단 탭 설정' }} />
         <Stack.Screen name="settings/class" options={{ title: '내 반 설정' }} />
         <Stack.Screen name="settings/install" options={{ title: '홈 화면에 추가' }} />
+        <Stack.Screen name="settings/nickname" options={{ title: '닉네임' }} />
+        <Stack.Screen name="wallet" options={{ title: '토큰·출석' }} />
+        <Stack.Screen name="shop" options={{ title: '꾸미기 상점' }} />
         <Stack.Screen name="login" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>
@@ -66,7 +70,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <PrefsProvider>
         <AuthProvider>
-          <Root />
+          <WalletProvider>
+            <Root />
+          </WalletProvider>
         </AuthProvider>
       </PrefsProvider>
     </SafeAreaProvider>

@@ -98,3 +98,17 @@ export function schoolTerm(ymd: Ymd) {
 export function hhmm(minutes: number) {
   return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
 }
+
+/** 서버 시각(ISO 문자열) → '10월 26일 08:41' (한국 시간) */
+export function stampLabel(iso: string) {
+  const t = seoulNow(new Date(iso));
+  return `${t.m}월 ${t.d}일 ${hhmm(t.minutes)}`;
+}
+
+/** 서버 시각 + n일이 아직 안 지났으면 그날의 'M월 D일'(한국 시간), 지났으면 null */
+export function untilLabel(iso: string, days: number, now: Date = new Date()) {
+  const until = new Date(new Date(iso).getTime() + days * 86400000);
+  if (until.getTime() <= now.getTime()) return null;
+  const t = seoulNow(until);
+  return `${t.m}월 ${t.d}일`;
+}

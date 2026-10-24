@@ -74,6 +74,18 @@ const PATHS: Record<string, ReactNode> = {
       <Path d="M12 7v10M9 9.5h4.5a2 2 0 0 1 0 4H9" />
     </>
   ),
+  bag: (
+    <>
+      <Path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8Z" />
+      <Path d="M9 10V7a3 3 0 0 1 6 0v3" />
+    </>
+  ),
+  user: (
+    <>
+      <Circle cx={12} cy={8} r={4} />
+      <Path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+    </>
+  ),
   settings: (
     <>
       <Circle cx={12} cy={12} r={3} />
