@@ -68,8 +68,16 @@ export function MoreScreen() {
       {group(
         <>
           <ListRow icon="voice" title="의견 보내기" subtitle="버그 제보·개선 요청 · 반영되면 +5 토큰" onPress={() => router.push('/feedback?from=전체')} />
+          {role !== 'student' && signedIn ? (
+            <>
+              <Divider />
+              <ListRow icon="check" title="검토하기" subtitle="공지 승인·신고 처리·분실물 사진 (검토위원)" onPress={() => router.push('/review')} />
+            </>
+          ) : null}
           {role === 'admin' ? (
             <>
+              <Divider />
+              <ListRow icon="user" title="검토위원 관리" subtitle="학번으로 검토위원 임명·해제 (관리자)" onPress={() => router.push('/admin/staff')} />
               <Divider />
               <ListRow icon="settings" title="의견 관리" subtitle="관리자 전용" onPress={() => router.push('/admin/feedback')} />
             </>

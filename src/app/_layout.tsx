@@ -71,6 +71,10 @@ function Root() {
         <Stack.Screen name="feedback" options={{ title: '의견 보내기' }} />
         <Stack.Screen name="admin/feedback" options={{ title: '의견 관리 (관리자)' }} />
         <Stack.Screen name="game/[id]" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="notice/new" options={{ title: '공지 올리기' }} />
+        <Stack.Screen name="lost/new" options={{ title: '분실물 올리기' }} />
+        <Stack.Screen name="review" options={{ title: '검토하기 (검토위원)' }} />
+        <Stack.Screen name="admin/staff" options={{ title: '검토위원 관리 (관리자)' }} />
         <Stack.Screen name="login" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>

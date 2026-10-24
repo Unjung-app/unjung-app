@@ -10,6 +10,7 @@ import { WalletStrip } from '@/features/today/WalletStrip';
 import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
 import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
+import { NoticeStrip } from '@/features/notice/NoticeStrip';
 import { MEAL_CODE, useTopReview } from '@/features/meal/reviews';
 import { Logo } from '@/components/Logo';
 import { givenName, useAuth } from '@/state/auth';
@@ -96,6 +97,7 @@ export function TodayScreen() {
         holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
       />
       <DeadlineCard today={now.ymd} />
+      <NoticeStrip />
       <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
       <View style={{ flexDirection: 'row', gap: space.md }}>
         <StudyCard />

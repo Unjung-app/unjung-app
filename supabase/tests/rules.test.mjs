@@ -350,5 +350,81 @@ const gp = (await sg(D, 'word', TP)).rows[0]?.r;
 { const r = await as(D, CD, `select public.buy_item('b_gameking')`); expect('게임왕 배지는 살 수 없음', !r.ok); }
 { const r = await as(D, CD, `select public.equip_item('badge', 'b_gameking') w`); expect('받은 게임왕 배지는 장착 가능', r.ok && r.rows[0]?.w?.equip?.badge === 'b_gameking'); }
 
+
+// ───────── M3 4주차: 학생 공지 · 검토 · 분실물 · 검토위원 임명 ─────────
+const F1 = '77777777-7777-7777-7777-777777777771', F2 = '77777777-7777-7777-7777-777777777772';
+const CF1 = 'f1@unjung.hs.kr', CF2 = 'f2@unjung.hs.kr';
+const notice = (u, c, scope, title = '동아리 박람회 안내', days = 7) => as(u, c, `select public.submit_notice('club', '${title}', '이번 주 금요일 점심에 강당에서 동아리 박람회가 열려요', null, '${scope}', public.seoul_today(), ${days}) id`);
+{ const r = await notice(C, CC, 'all'); expect('학번 없으면 공지 작성 불가', !r.ok && /학번/.test(r.err ?? '')); }
+{ const r = await notice(A, CA, 'all', '길이 초과', 15); expect('게시 기간 14일 초과 불가', !r.ok); }
+const n1 = (await notice(A, CA, 'class', '우리 반 체육복 안내')).rows[0]?.id;
+expect('A 우리 반 공지 제출', !!n1);
+{ const r = await q(`select status, scope_grade, scope_class from public.notices where id=${n1}`); expect('범위는 작성자 학번 기준(2-8), 검토 대기', r.rows[0]?.status === 'pending' && r.rows[0]?.scope_grade === 2 && r.rows[0]?.scope_class === 8); }
+{ const r = await as(D, CD, `select count(*)::int n from public.notice_feed where id=${n1}`); expect('검토 전엔 안 보임', r.rows[0]?.n === 0); }
+{ const r = await as(D, CD, `select public.review_notice(${n1}, true, '')`); expect('일반 학생은 승인 불가', !r.ok); }
+{ const r = await as(A, CA, `select public.review_notice(${n1}, true, '')`); expect('내 공지는 내가 승인 불가', !r.ok && /다른 검토위원/.test(r.err ?? '')); }
+{ const r = await as(B, CB, `select public.review_notice(${n1}, false, '')`); expect('반려엔 사유 필수', !r.ok && /사유/.test(r.err ?? '')); }
+const balN = await bal(A);
+{ const r = await as(B, CB, `select public.review_notice(${n1}, true, '')`, 'B(검토위원) 승인'); expect('검토위원 승인', r.ok); }
+expect('승인 → 작성자 +30', (await bal(A)) === balN + 30);
+{ const r = await q(`select count(*)::int n from public.token_ledger where user_id='${B}' and reason='review_done'`); expect('검토 활동 +2', r.rows[0]?.n === 1); }
+{ const r = await as(B, CB, `select public.review_notice(${n1}, true, '')`); expect('이미 처리된 공지 재검토 불가', !r.ok); }
+{ const d = await as(D, CD, `select count(*)::int n from public.notice_feed where id=${n1}`); const b = await as(B, CB, `select count(*)::int n from public.notice_feed where id=${n1}`);
+  expect('우리 반 공지: 같은 반만 보임', d.rows[0]?.n === 1 && b.rows[0]?.n === 0); }
+const n2 = (await notice(D, CD, 'all', '학생회 건의함 운영')).rows[0]?.id;
+await as(B, CB, `select public.review_notice(${n2}, true, '')`);
+{ const r = await as(B, CB, `select title, author_nickname, author_grade from public.notice_feed where id=${n2}`); expect('전체 공지는 다른 학년도 보임, 실명 없음', r.rows[0]?.author_grade === 2 && !JSON.stringify(r.rows).includes('김디디')); }
+for (const [u, c] of [[B, CB], [E, CE], [E, CE]]) await as(u, c, `select public.report_notice(${n2}, '도배')`);
+{ const r = await q(`select status, report_count from public.notices where id=${n2}`); expect('신고 2명(중복 무시) → 아직 게시', r.rows[0]?.status === 'approved' && r.rows[0]?.report_count === 2); }
+await as(F1, CF1, `select public.report_notice(${n2}, '')`);
+{ const r = await as(A, CA, `select count(*)::int n from public.notice_feed where id=${n2}`); const qq = await as(B, CB, `select status, reasons from public.notice_review_queue where id=${n2}`);
+  expect('신고 3명 → 숨김, 검토 목록에 사유와 함께', r.rows[0]?.n === 0 && qq.rows[0]?.status === 'hidden' && /도배/.test(qq.rows[0]?.reasons ?? '')); }
+{ const r = await as(D, CD, `select count(*)::int n from public.notice_review_queue`); expect('검토 목록은 검토위원만', r.rows[0]?.n === 0); }
+{ const r = await as(B, CB, `select public.mod_notice(${n2}, true)`); const f = await as(A, CA, `select count(*)::int n from public.notice_feed where id=${n2}`); expect('검토위원 다시 게시', r.ok && f.rows[0]?.n === 1); }
+const nbr = await notice(B, CB, 'all', '검토위원 선생님 공지'); const nb = nbr.rows[0]?.id;
+expect('예약어(선생님·검토위원)는 공지 글에 써도 됨', nbr.ok);
+{ const r2 = await as(A, CA, `select public.has_banned_word('씨 발') a, public.has_banned_word('선생님이 말씀하신 수행평가') b`); expect('욕설은 어디서나 차단, 예약어는 일반 글에서 통과', r2.rows[0]?.a === true && r2.rows[0]?.b === false); }
+{ const r3 = await as(F2, CF2, `select public.set_nickname('선생님')`); expect('예약어는 닉네임에선 계속 차단', !r3.ok && /사용할 수 없는/.test(r3.err ?? '')); }
+{ const r = await as(B, CB, `select public.review_notice(${nb}, true, '')`); const r2 = await as(A, CA, `select public.review_notice(${nb}, false, '날짜가 틀려요')`);
+  const st = await as(B, CB, `select status, reject_reason from public.notices where id=${nb}`);
+  expect('검토위원 글은 다른 검토위원이 처리, 반려 사유가 작성자에게 보임', !r.ok && r2.ok && st.rows[0]?.status === 'rejected' && st.rows[0]?.reject_reason === '날짜가 틀려요'); }
+for (let k = 0; k < 3; k++) await notice(E, CE, 'grade', `대기 공지 ${k}`);
+{ const r = await notice(E, CE, 'grade', '네 번째'); expect('검토 대기 3개 제한', !r.ok); }
+{ const id = (await as(E, CE, `select id from public.notices where author='${E}' limit 1`)).rows[0]?.id; const r = await as(E, CE, `select public.withdraw_notice(${id})`); const r2 = await as(D, CD, `select public.withdraw_notice(${n2 + 100})`);
+  expect('작성자 취소 가능, 남의 글 불가', r.ok && !r2.ok); }
+{ const r = await as(D, CD, `select count(*)::int n from public.notices`); expect('공지 원본은 내 글만', r.rows[0]?.n === 1); }
+
+// 분실물
+{ const r = await as(A, CA, `select public.post_lost_item('found', '검정 필통', '2학년 복도', public.seoul_today(), '지퍼에 고양이 키링', '학생회실', 'someone/x.jpg')`); expect('남의 폴더 사진 경로 거부', !r.ok); }
+const L1 = (await as(A, CA, `select public.post_lost_item('found', '검정 필통', '2학년 복도', public.seoul_today(), '지퍼에 고양이 키링', '학생회실', '${A}/p1.jpg') id`)).rows[0]?.id;
+{ const d = await as(D, CD, `select photo_path, keep_at, mine from public.lost_feed where id=${L1}`); const a = await as(A, CA, `select photo_path, my_photo_status from public.lost_feed where id=${L1}`);
+  expect('사진은 승인 전엔 남에게 안 보임, 본인은 보임', d.rows[0]?.photo_path === null && d.rows[0]?.keep_at === '학생회실' && a.rows[0]?.photo_path === `${A}/p1.jpg` && a.rows[0]?.my_photo_status === 'pending'); }
+{ const r = await as(D, CD, `select count(*)::int n from public.lost_photo_queue`); const b = await as(B, CB, `select count(*)::int n from public.lost_photo_queue`); expect('사진 검토 목록은 검토위원만', r.rows[0]?.n === 0 && b.rows[0]?.n === 1); }
+await as(B, CB, `select public.review_lost_photo(${L1}, true)`);
+{ const d = await as(D, CD, `select photo_path from public.lost_feed where id=${L1}`); expect('승인된 사진은 보임', d.rows[0]?.photo_path === `${A}/p1.jpg`); }
+{ const r = await as(A, CA, `select public.respond_lost_item(${L1}, true)`); expect('내 글엔 응답 불가', !r.ok); }
+await as(D, CD, `select public.respond_lost_item(${L1}, true)`);
+{ const r = await as(E, CE, `select public.respond_lost_item(${L1}, true)`); expect('이미 다른 학생이 응답하면 불가', !r.ok); }
+{ const r = await as(A, CA, `select public.resolve_lost_item(${L1})`); expect('주운 물건 글: 받았다는 건 주인만', !r.ok); }
+const balL = await bal(A);
+{ const r = await as(D, CD, `select public.resolve_lost_item(${L1})`); expect('주인이 받았어요 → 주운 사람 +20', r.ok && (await bal(A)) === balL + 20); }
+{ const r = await as(D, CD, `select public.resolve_lost_item(${L1})`); expect('이미 끝난 글 다시 처리 불가', !r.ok); }
+const L2 = (await as(E, CE, `select public.post_lost_item('lost', '에어팟', '급식실', public.seoul_today(), '흰색 케이스', '', '') id`)).rows[0]?.id;
+await as(F1, CF1, `select public.respond_lost_item(${L2}, true)`);
+const balF = await bal(F1);
+{ const r = await as(F1, CF1, `select public.resolve_lost_item(${L2})`); expect('잃어버린 물건 글: 받았다는 건 글쓴이만', !r.ok); }
+{ const r = await as(E, CE, `select public.resolve_lost_item(${L2})`); expect('글쓴이가 받았어요 → 찾아 준 사람 +20', r.ok && (await bal(F1)) === balF + 20); }
+const L3 = (await as(F2, CF2, `select public.post_lost_item('lost', '우산', '현관', public.seoul_today(), '', '', '') id`)).rows[0]?.id;
+{ const r = await as(F2, CF2, `select public.close_lost_item(${L3})`); const f = await as(A, CA, `select count(*)::int n from public.lost_feed where id=${L3}`); expect('글쓴이가 닫으면 목록에서 사라짐', r.ok && f.rows[0]?.n === 0); }
+{ await db.exec('reset role'); const r = await db.query(`set role anon; select count(*) from public.lost_feed`).then(() => ({ ok: true }), () => ({ ok: false })); await db.exec('reset role'); expect('비로그인 분실물 목록 불가', !r.ok); }
+
+// 검토위원 임명
+{ const r = await as(D, CD, `select * from public.admin_find_user('20802')`); expect('학번 검색은 관리자만', !r.ok); }
+{ const r = await as(A, CA, `select name, role from public.admin_find_user('20802')`); expect('관리자 학번 검색', r.ok && r.rows[0]?.name === '박이이'); }
+{ const r = await as(A, CA, `select public.admin_set_role('${E}', 'reviewer')`); const s2 = await as(A, CA, `select name, role from public.admin_list_staff()`);
+  expect('관리자가 검토위원 임명·목록', r.ok && s2.rows.some((x) => x.name === '박이이' && x.role === 'reviewer')); }
+{ const r = await as(A, CA, `select public.admin_set_role('${E}', 'admin')`); expect('앱에서 관리자 지정 불가', !r.ok); }
+{ const r = await as(A, CA, `select public.admin_set_role('${A}', 'student')`); expect('내 역할 변경 불가', !r.ok); }
+
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);
