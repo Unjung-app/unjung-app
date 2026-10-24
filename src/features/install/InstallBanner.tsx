@@ -44,7 +44,11 @@ export function InstallBanner() {
         <View style={{ flex: 1 }}>
           <AppText variant="bodyStrong">홈 화면에 추가하기</AppText>
           <AppText variant="caption" color={color.inkMuted}>
-            {env.kind === 'inapp' ? '카톡 등 앱 안에서는 설치가 안 돼요 · 방법 보기' : '앱처럼 바로 열고 알림도 받아요'}
+            {env.kind === 'inapp'
+              ? '카톡 등 앱 안에서는 설치가 안 돼요 · 방법 보기'
+              : env.kind === 'samsung'
+                ? '삼성 인터넷 대신 크롬으로 설치해 주세요 · 방법 보기'
+                : '앱처럼 바로 열고 알림도 받아요'}
           </AppText>
         </View>
       </Pressable>

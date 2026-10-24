@@ -39,7 +39,7 @@ function Step({ n, title, desc, icon }: { n: number; title: string; desc?: strin
 
 /** 홈 화면에 추가 안내. 기기·브라우저에 맞는 방법만 보여 준다. */
 export function InstallScreen() {
-  const { env, promptInstall, openExternal } = useInstall();
+  const { env, promptInstall, openExternal, openInChrome } = useInstall();
 
   return (
     <Screen topInset={false}>
@@ -67,11 +67,32 @@ export function InstallScreen() {
           <AppText variant="body" color={color.inkMuted}>
             앱 안 브라우저에서는 설치할 수 없어요. 휴대폰 기본 브라우저(크롬·사파리·삼성 인터넷)로 다시 열어 주세요.
           </AppText>
-          {env.isKakao ? (
+          {env.isAndroid ? (
+            <>
+              <Button label="크롬으로 열기" icon="external" onPress={openInChrome} />
+              <AppText variant="caption" color={color.inkMuted}>
+                갤럭시의 삼성 인터넷으로 설치하면 'Play 프로텍트' 경고가 뜰 수 있어서 크롬을 추천해요.
+              </AppText>
+            </>
+          ) : env.isKakao ? (
             <Button label="기본 브라우저로 열기" icon="external" onPress={openExternal} />
           ) : (
             <Step n={1} title="오른쪽 위(또는 아래) ⋯ 메뉴" desc="'다른 브라우저로 열기' 또는 '브라우저에서 열기'를 눌러요" />
           )}
+        </Card>
+      ) : null}
+
+      {env.kind === 'samsung' ? (
+        <Card>
+          <AppText variant="heading">삼성 인터넷에서는 크롬으로 설치해 주세요</AppText>
+          <AppText variant="body" color={color.inkMuted}>
+            삼성 인터넷으로 설치하면 'Play 프로텍트: 안전하지 않은 앱 차단' 경고가 뜰 수 있어요. 앱 문제는 아니고, 삼성 인터넷이 설치 파일을 만드는 방식 때문이에요. 크롬에서는 문제없이 설치돼요.
+          </AppText>
+          <Button label="크롬으로 열기" icon="external" onPress={openInChrome} />
+          <View style={{ gap: space.md, marginTop: space.sm }}>
+            <Step n={1} title="크롬에서 이 화면이 다시 열리면" />
+            <Step n={2} title="'앱 설치하기' 버튼 또는 ⋮ 메뉴 → '앱 설치'" />
+          </View>
         </Card>
       ) : null}
 

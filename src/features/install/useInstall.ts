@@ -6,7 +6,8 @@ import { Linking, Platform } from 'react-native';
 export type InstallEnv =
   | { kind: 'native' } // 스토어 앱으로 실행 중 → 안내 필요 없음
   | { kind: 'installed' } // 이미 홈 화면 앱으로 실행 중
-  | { kind: 'inapp'; app: string; isKakao: boolean } // 카톡·인스타 등 앱 안 브라우저 → 설치 불가
+  | { kind: 'inapp'; app: string; isKakao: boolean; isAndroid: boolean } // 카톡·인스타 등 앱 안 브라우저 → 설치 불가
+  | { kind: 'samsung' } // 삼성 인터넷: 설치 패키지가 Play Protect에 막히는 경우가 있어 크롬 권장
   | { kind: 'ios' } // 아이폰·아이패드 브라우저 → 공유 → 홈 화면에 추가
   | { kind: 'android'; canPrompt: boolean } // 안드로이드 → 설치 버튼(가능하면) 또는 메뉴 안내
   | { kind: 'desktop'; canPrompt: boolean };
@@ -22,7 +23,8 @@ function detect(): InstallEnv {
 
   const ua = nav.userAgent || '';
   const inapp = ua.match(/KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|everytimeApp|DaumApps|wv\)/i);
-  if (inapp) return { kind: 'inapp', app: inapp[0], isKakao: /KAKAOTALK/i.test(ua) };
+  if (inapp) return { kind: 'inapp', app: inapp[0], isKakao: /KAKAOTALK/i.test(ua), isAndroid: /Android/i.test(ua) };
+  if (/SamsungBrowser/i.test(ua)) return { kind: 'samsung' };
 
   const canPrompt = !!(window as unknown as { __installPrompt?: PromptEvent }).__installPrompt;
   // iPadOS는 데스크톱 사파리처럼 보이므로 터치 지원으로 구분
@@ -64,9 +66,17 @@ export function useInstall() {
     Linking.openURL(`kakaotalk://web/openExternal?url=${encodeURIComponent(url)}`).catch(() => {});
   }, []);
 
-  return { env, promptInstall, openExternal };
+  /** 안드로이드: 같은 주소를 크롬으로 연다 (크롬이 없으면 플레이스토어의 크롬 페이지로) */
+  const openInChrome = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const { host, pathname, search } = window.location;
+    const fallback = encodeURIComponent('https://play.google.com/store/apps/details?id=com.android.chrome');
+    window.location.href = `intent://${host}${pathname}${search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
+  }, []);
+
+  return { env, promptInstall, openExternal, openInChrome };
 }
 
 export function needsInstall(env: InstallEnv) {
-  return env.kind === 'ios' || env.kind === 'android' || env.kind === 'inapp';
+  return env.kind === 'ios' || env.kind === 'android' || env.kind === 'inapp' || env.kind === 'samsung';
 }
