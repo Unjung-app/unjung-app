@@ -9,7 +9,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!api/|_expo/|assets/).*)",
+      "source": "/((?!api/|_expo/|assets/|privacy).*)",
       "destination": "/index.html"
     }
   ],

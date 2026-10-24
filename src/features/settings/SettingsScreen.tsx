@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Divider, ListRow } from '@/components/ui/primitives';
@@ -24,6 +24,8 @@ export function SettingsScreen() {
       </View>
       <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
         <ListRow icon="info" title="앱 버전" right={<AppText variant="label" color={color.inkMuted}>{Constants.expoConfig?.version ?? '-'}</AppText>} />
+        <Divider />
+        <ListRow icon="external" title="개인정보 처리방침" onPress={() => Linking.openURL('/privacy.html').catch(() => {})} />
       </View>
     </Screen>
   );

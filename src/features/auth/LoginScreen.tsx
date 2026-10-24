@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/ui/AppText';
@@ -56,7 +56,16 @@ export function LoginScreen() {
           style={{ backgroundColor: color.surface, minHeight: 52 }}
         />
         <AppText variant="caption" color={color.onNavyMuted} align="center">
-          @unjung.hs.kr 계정만 사용할 수 있어요
+          @unjung.hs.kr 계정만 사용할 수 있어요 · 로그인하면{' '}
+          <AppText
+            variant="caption"
+            color={color.onNavy}
+            style={{ textDecorationLine: 'underline' }}
+            accessibilityRole="link"
+            onPress={() => Linking.openURL('/privacy.html').catch(() => {})}>
+            개인정보 처리방침
+          </AppText>
+          에 동의하게 돼요
         </AppText>
         <Button
           label="로그인 없이 둘러보기"
