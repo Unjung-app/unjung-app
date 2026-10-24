@@ -38,3 +38,10 @@ jobs:
 
       - name: 웹 빌드
         run: npm run build:web
+
+      - name: 서버 함수 실행 검사 (Vercel 빌드 재현)
+        run: |
+          mkdir -p .vercel
+          echo '{"projectId":"prj_ci","orgId":"team_ci","settings":{"framework":null,"buildCommand":"npm run build:web","outputDirectory":"dist","installCommand":"npm ci"}}' > .vercel/project.json
+          npx -y vercel@latest build --yes
+          node scripts/smoke-api.cjs .vercel/output/functions/api

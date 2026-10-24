@@ -8,8 +8,8 @@ import { Segmented } from '@/components/ui/Segmented';
 import { usePrefs, type MyClass } from '@/state/prefs';
 import { color, radius, space } from '@/theme/tokens';
 
-// TODO: 학년별 반 수를 NEIS classInfo로 받아오기. 지금은 1~12반을 보여 준다.
-const CLASS_COUNT = 12;
+// 운중고는 모든 학년이 8반까지 있다
+const CLASS_COUNT = 8;
 
 export function ClassSettingsScreen() {
   const router = useRouter();
