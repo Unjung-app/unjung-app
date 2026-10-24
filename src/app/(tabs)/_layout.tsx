@@ -7,7 +7,7 @@ import { FEATURES } from '@/features/registry';
 export default function TabsLayout() {
   return (
     <Tabs style={{ flex: 1 }}>
-      <TabSlot />
+      <TabSlot style={{ flex: 1, flexBasis: 0, minHeight: 0 }} />
       <TabBar />
       <TabList style={{ display: 'none' }}>
         <TabTrigger name="index" href="/" />
