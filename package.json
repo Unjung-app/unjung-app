@@ -1,31 +1,54 @@
 {
   "name": "unjung-app",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "prebuild": "node scripts/gen-features.mjs --strict",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "new": "node scripts/new.mjs",
-    "work": "node scripts/work.mjs",
-    "ai": "node scripts/ai.mjs",
-    "save": "node scripts/save.mjs",
-    "check": "node scripts/check.mjs"
-  },
+  "version": "1.0.0",
+  "main": "expo-router/entry",
   "dependencies": {
-    "next": "16.3.2",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "2.118.0",
+    "expo": "~58.0.19",
+    "expo-constants": "~58.0.13",
+    "expo-font": "~58.0.10",
+    "expo-haptics": "~58.0.7",
+    "expo-image": "~58.0.17",
+    "expo-linking": "~58.0.14",
+    "expo-router": "~58.0.26",
+    "expo-splash-screen": "~58.0.11",
+    "expo-status-bar": "~58.0.4",
+    "expo-system-ui": "~58.0.6",
+    "expo-web-browser": "~58.0.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-gesture-handler": "~3.3.0",
+    "react-native-reanimated": "4.7.1",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0",
+    "react-native-svg": "15.16.0",
+    "react-native-url-polyfill": "4.0.0",
+    "react-native-web": "~0.21.4",
+    "react-native-worklets": "0.13.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.2",
-    "tailwindcss": "^4"
+    "@electric-sql/pglite": "^0.5.11",
+    "@types/node": "^22.20.5",
+    "@types/react": "~19.3.0",
+    "@types/web-push": "^3.6.4",
+    "typescript": "~6.0.3"
   },
+  "scripts": {
+    "start": "expo start",
+    "web": "expo start --web",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build:web": "expo export -p web",
+    "typecheck": "tsc --noEmit",
+    "lint": "expo lint",
+    "check": "npm run typecheck && npm run lint && npm run build:web",
+    "test:db": "node supabase/tests/rules.test.mjs"
+  },
+  "private": true,
   "engines": {
-    "node": ">=20.9.0"
+    "node": "22.x"
   }
 }
