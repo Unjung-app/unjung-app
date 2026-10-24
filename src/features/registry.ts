@@ -13,19 +13,17 @@ export type Feature = {
   desc: string;
   icon: IconName;
   status: FeatureStatus;
-  /** 기능 아이디어나 첫 버전을 만든 사람 (크레딧) */
-  credits?: string[];
 };
 
 export const FEATURES: Feature[] = [
   { id: 'timetable', title: '시간표', short: '시간표', desc: '내 반 주간 시간표와 지금 수업', icon: 'timetable', status: 'live' },
-  { id: 'meal', title: '급식', short: '급식', desc: '이번 주 식단과 한줄평', icon: 'meal', status: 'live', credits: ['jiwon'] },
+  { id: 'meal', title: '급식', short: '급식', desc: '이번 주 식단과 한줄평', icon: 'meal', status: 'live' },
   { id: 'tasks', title: '수행평가·숙제', short: '과제', desc: '우리 반 마감을 친구들과 함께 챙겨요', icon: 'task', status: 'live' },
   { id: 'calendar', title: '학사일정', short: '일정', desc: '시험·행사·휴업일과 D-day', icon: 'calendar', status: 'live' },
-  { id: 'library', title: '도서관', short: '도서관', desc: '학교 도서관 장서 검색', icon: 'library', status: 'live', credits: ['yongwon'] },
-  { id: 'study', title: '공부 타이머', short: '공부', desc: '공부 시간 기록과 토큰', icon: 'study', status: 'soon', credits: ['wonjun', 'jongbum'] },
+  { id: 'library', title: '도서관', short: '도서관', desc: '학교 도서관 장서 검색', icon: 'library', status: 'live' },
+  { id: 'study', title: '공부 타이머', short: '공부', desc: '공부 시간 기록과 토큰', icon: 'study', status: 'soon' },
   { id: 'ranking', title: '랭킹', short: '랭킹', desc: '개인·반·학년 랭킹', icon: 'ranking', status: 'soon' },
-  { id: 'notice', title: '통합 공지', short: '공지', desc: '학교·학년 공지 모아보기', icon: 'notice', status: 'soon', credits: ['jihyun'] },
+  { id: 'notice', title: '통합 공지', short: '공지', desc: '학교·학년 공지 모아보기', icon: 'notice', status: 'soon' },
   { id: 'voice', title: '운중 보이스', short: '보이스', desc: '학생 설문과 건의', icon: 'voice', status: 'soon' },
   { id: 'sports', title: '스포츠 허브', short: '스포츠', desc: '반 대항전 일정과 결과', icon: 'sports', status: 'soon' },
 ];
@@ -49,3 +47,7 @@ export function sanitizeTabs(ids: unknown): string[] {
   }
   return out;
 }
+
+/** 앱 정보에 표시하는 개발팀 (순서 그대로 표시) */
+export const DEV_TEAM_NAME = '운중고 앱 학생 개발팀';
+export const DEV_TEAM = ['이호원', '배종범', '김현석', '백지원', '김용원', '차지현'];

@@ -5,13 +5,11 @@ import { Badge, Divider, ListRow } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { AccountCard } from '@/features/auth/AccountCard';
 import { classLabel, useOpenFeature } from '@/features/hooks';
-import { FEATURES } from '@/features/registry';
+import { DEV_TEAM, DEV_TEAM_NAME, FEATURES } from '@/features/registry';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
-
-const LEADS = ['howon', 'jongbum', 'yeonjun'];
 
 export function MoreScreen() {
   const router = useRouter();
@@ -22,7 +20,6 @@ export function MoreScreen() {
   const signedIn = status === 'ready' || status === 'needsEnrollment';
   const live = FEATURES.filter((f) => f.status === 'live');
   const soon = FEATURES.filter((f) => f.status === 'soon');
-  const contributors = [...new Set(FEATURES.flatMap((f) => f.credits ?? []))];
 
   const group = (children: React.ReactNode) => (
     <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>{children}</View>
@@ -100,10 +97,10 @@ export function MoreScreen() {
 
       <View style={{ marginTop: space.xl, gap: 4, alignItems: 'center' }}>
         <AppText variant="caption" color={color.inkMuted} align="center">
-          NERD LAB × 알고리즘 동아리 · 운중고 학생자치회
+          {DEV_TEAM_NAME}
         </AppText>
         <AppText variant="caption" color={color.inkFaint} align="center">
-          만든 사람들 · {[...LEADS, ...contributors.filter((c) => !LEADS.includes(c))].join(', ')}
+          만든 사람들: {DEV_TEAM.join(', ')}
         </AppText>
       </View>
     </Screen>

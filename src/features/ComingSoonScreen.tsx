@@ -36,11 +36,6 @@ export function ComingSoonScreen({ id, inStack = false }: { id: string; inStack?
       <AppText variant="body" color={color.inkMuted} align="center" style={{ maxWidth: 300 }}>
         {PLAN[id] ?? f.desc}
       </AppText>
-      {f.credits?.length ? (
-        <AppText variant="caption" color={color.inkFaint} align="center">
-          아이디어 · {f.credits.join(', ')}
-        </AppText>
-      ) : null}
     </Screen>
   );
 }

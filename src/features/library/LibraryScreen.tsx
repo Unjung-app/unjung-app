@@ -8,7 +8,7 @@ import { Screen } from '@/components/ui/Screen';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 
-// 첫 버전: yongwon. 독서로(read365)의 운중고 장서 검색 결과를 앱 안 브라우저로 연다.
+// 독서로(read365)의 운중고 장서 검색 결과를 앱 안 브라우저로 연다.
 const BASE_URL = 'https://read365.edunet.net/PureScreen/SchoolSearchResult';
 
 function searchUrl(keyword: string) {

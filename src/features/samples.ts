@@ -1,5 +1,5 @@
 // 서버에 연결되지 않았을 때 쓰는 예시 데이터. 날짜는 '이번 주'에 맞춰 만든다.
-// 급식 예시 메뉴는 jiwon의 급식 평가 초안에서 가져왔다.
+// 급식 예시 메뉴(실데이터를 못 받을 때 보여 주는 예시)
 import { addDays, isWeekend, mondayOf } from '@/lib/date';
 import type { Lesson, Meal, SchoolEvent } from '@/lib/school';
 
