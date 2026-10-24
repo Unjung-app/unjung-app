@@ -9,6 +9,7 @@ import { PrefsProvider, usePrefs } from '@/state/prefs';
 import { AuthProvider, useAuth } from '@/state/auth';
 import { WalletProvider } from '@/state/wallet';
 import { TokenToast } from '@/components/TokenToast';
+import { UpdateBanner } from '@/components/UpdateBanner';
 import { injectWebFont, NATIVE_FONTS, fontStyle } from '@/theme/fonts';
 import { color } from '@/theme/tokens';
 
@@ -66,6 +67,7 @@ function Root() {
         <Stack.Screen name="settings/class" options={{ title: '내 반 설정' }} />
         <Stack.Screen name="settings/install" options={{ title: '홈 화면에 추가' }} />
         <Stack.Screen name="settings/nickname" options={{ title: '닉네임' }} />
+        <Stack.Screen name="settings/notifications" options={{ title: '알림' }} />
         <Stack.Screen name="wallet" options={{ title: '토큰·출석' }} />
         <Stack.Screen name="shop" options={{ title: '꾸미기 상점' }} />
         <Stack.Screen name="feedback" options={{ title: '의견 보내기' }} />
@@ -82,6 +84,7 @@ function Root() {
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>
       <TokenToast />
+      <UpdateBanner />
     </>
   );
 }

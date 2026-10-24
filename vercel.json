@@ -5,7 +5,7 @@
     "icn1"
   ],
   "installCommand": "npm ci --no-audit --no-fund",
-  "buildCommand": "npm run build:web",
+  "buildCommand": "EXPO_PUBLIC_BUILD_ID=$VERCEL_GIT_COMMIT_SHA npm run build:web",
   "outputDirectory": "dist",
   "rewrites": [
     {
@@ -23,5 +23,10 @@
       "path": "/api/cron/sync-school",
       "schedule": "0 20 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/push/send.ts": {
+      "maxDuration": 60
+    }
+  }
 }

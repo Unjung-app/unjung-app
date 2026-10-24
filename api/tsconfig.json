@@ -18,6 +18,7 @@
   "include": [
     "./**/*.ts",
     "../src/lib/school.ts",
-    "../src/lib/date.ts"
+    "../src/lib/date.ts",
+    "../src/lib/pushKey.ts"
   ]
 }

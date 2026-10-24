@@ -501,5 +501,69 @@ for (const [u, c] of [[A, CA], [B, CB], [E, CE]]) await as(u, c, `select public.
 { const r = await as(B, CB, `select count(*)::int n from public.suggestions`); expect('건의 원본은 내 것만(0)', r.rows[0]?.n === 0); }
 { const r = await as(A, CA, `select public.admin_set_planner('${D}', false)`); const r2 = await as(D, CD, `select public.check_suggestion(${G1}, false)`); expect('기획행정부 해제되면 권한도 사라짐', r.ok && !r2.ok); }
 
+
+// ───────── M4: 웹 푸시 알림 ─────────
+const sub = (u, c, n) => as(u, c, `select public.save_push_subscription('https://push.example.com/${n}', 'key${n}', 'auth${n}', 'test')`);
+{ const r = await as(A, CA, `select public.save_push_subscription('http://evil/1', 'k', 'a', '')`); expect('https가 아닌 구독 주소 거부', !r.ok); }
+await sub(A, CA, 'a1'); await sub(D, CD, 'd1'); await sub(B, CB, 'b1');
+{ const r = await as(A, CA, `select public.my_push_prefs() p`); const p = r.rows[0]?.p; expect('기본 알림 설정: 내 글·마감·아침 켜짐, 설문 꺼짐, 기기 1', p?.mine && p?.deadline && p?.morning && p?.survey === false && Number(p?.devices) === 1); }
+{ const r = await as(A, CA, `select public.push_take_batch(10)`); const r2 = await as(A, CA, `select public.push_to('${A}', 'test', 'x', 't', 'b', '/')`); const r3 = await as(A, CA, `select count(*) from public.push_subscriptions`);
+  expect('앱에서 발송 함수·직접 쌓기·구독 표 접근 불가', !r.ok && !r2.ok && (!r3.ok || Number(r3.rows[0]?.count) === 0)); }
+{ await db.exec('reset role'); const r = await db.query(`set role anon; select public.save_push_subscription('https://x/1','k','a','')`).then(() => ({ ok: true }), () => ({ ok: false })); await db.exec('reset role'); expect('비로그인 구독 저장 불가', !r.ok); }
+const outbox = async (u, kind) => (await q(`select ref, title, body, url from public.push_outbox where user_id='${u}'${kind ? ` and kind='${kind}'` : ''} order by id`)).rows;
+// 공지 승인 → 작성자에게
+const pn = (await notice(D, CD, 'all', '알림 시험 공지')).rows[0]?.id;
+await as(B, CB, `select public.review_notice(${pn}, true, '')`);
+{ const o = await outbox(D, 'mine'); expect('공지 승인 → 작성자 알림(+30 안내)', o.some((x) => x.ref === `notice:${pn}` && /게시/.test(x.title) && x.url === '/notice')); }
+const pe = (await notice(F1, CF1, 'all', '구독 없는 학생 공지')).rows[0]?.id;
+await as(B, CB, `select public.review_notice(${pe}, true, '')`);
+{ const o = await outbox(F1); expect('알림을 켜지 않은 학생에게는 쌓지 않음', o.length === 0); }
+await as(D, CD, `select public.set_push_prefs(false, true, true, false)`);
+const pn2 = (await notice(D, CD, 'all', '두 번째 공지')).rows[0]?.id;
+await as(B, CB, `select public.review_notice(${pn2}, false, '날짜가 없어요')`);
+{ const o = await outbox(D, 'mine'); expect('내 글 알림 끄면 반려 알림 없음', !o.some((x) => x.ref === `notice:${pn2}`)); }
+await as(D, CD, `select public.set_push_prefs(true, true, true, false)`);
+// 분실물
+const PL = (await as(A, CA, `select public.post_lost_item('found', '파란 텀블러', '도서관', public.seoul_today(), '', '학생회실', '') id`)).rows[0]?.id;
+await as(D, CD, `select public.respond_lost_item(${PL}, true)`);
+await as(D, CD, `select public.resolve_lost_item(${PL})`);
+{ const o = await outbox(A, 'mine'); expect('분실물: 주인 나타남 + 해결(+20) 알림', o.some((x) => x.ref.startsWith(`lost-help:${PL}:`) && /주인이 나타났어요/.test(x.title)) && o.some((x) => x.ref === `lost-done:${PL}` && /\+20/.test(x.title))); }
+// 건의 확인 + 설문
+await q(`update public.profiles set is_planner = true where id='${D}'`);
+const PG = (await as(A, CA, `select public.post_suggestion('study', '자습실 개방', '시험 기간에 자습실을 늦게까지 열어 주세요') id`)).rows[0]?.id;
+await as(D, CD, `select public.check_suggestion(${PG}, true)`);
+{ const o = await outbox(A, 'mine'); expect('건의 확인 → 작성자 알림', o.some((x) => x.ref === `sugg:${PG}` && /확인/.test(x.title))); }
+await as(A, CA, `select public.set_push_prefs(true, true, true, true)`);
+const PS = (await mk(D, CD)).rows[0]?.id; const PS1 = (await mk(D, CD, `1, 3, 'after_vote'`)).rows[0]?.id;
+{ const a = await outbox(A, 'survey'); const d = await outbox(D, 'survey'); const b = await outbox(B, 'survey');
+  expect('새 설문 알림: 켠 학생만, 대상 학년만', a.some((x) => x.ref === `survey:${PS}`) && !a.some((x) => x.ref === `survey:${PS1}`) && d.length === 0 && b.length === 0); }
+// 아침 · 마감 전날
+await q(`insert into public.class_lessons values (2026, 2, 8, '2026-12-01', 1, '문학'), (2026, 2, 8, '2026-12-01', 2, '수학'), (2026, 1, 3, '2026-12-01', 1, '영어')`);
+await q(`insert into public.meals_cache values ('2026-12-01', 2, array['보리밥','부대찌개','고등어구이','배추김치'])`);
+await q(`insert into public.class_tasks (school_year, grade, class_no, author, subject, kind, due) values (2026, 2, 8, '${A}', '수학', 'assessment', '2026-12-02'), (2026, 2, 8, '${A}', '영어', 'homework', '2026-12-02'), (2026, 1, 3, '${B}', '과학', 'supplies', '2026-12-03')`);
+{ const r = await q(`select public.push_enqueue_morning('2026-12-01') n`); const a = (await outbox(A, 'morning'))[0]; const b = (await outbox(B, 'morning'))[0];
+  expect('아침 알림: 반별 1교시 + 점심 3가지', Number(r.rows[0]?.n) === 3 && a?.title === '오늘 12/1 (화)' && a?.body === '1교시 문학 · 점심 보리밥, 부대찌개, 고등어구이' && /1교시 영어/.test(b?.body ?? '')); }
+{ const r = await q(`select public.push_enqueue_morning('2026-12-01') n`); expect('아침 알림은 하루 한 번', Number(r.rows[0]?.n) === 0); }
+{ const r = await q(`select public.push_enqueue_morning('2026-12-05') n`); expect('토요일은 아침 알림 없음', Number(r.rows[0]?.n) === 0); }
+{ const r = await q(`select public.push_enqueue_deadlines('2026-12-01') n`); const a = (await outbox(A, 'deadline'))[0]; const b = await outbox(B, 'deadline');
+  expect('마감 전날 알림: 우리 반 내일 마감만', Number(r.rows[0]?.n) === 2 && a?.title === '내일 마감 2개' && /수학 수행평가/.test(a?.body ?? '') && /영어 숙제/.test(a?.body ?? '') && b.length === 0); }
+// 발송: 수업 중이면 미룸
+{ const r = await q(`select public.push_take_batch(500, '2026-12-01 09:45+09') b`); const items = r.rows[0]?.b ?? []; const users = new Set((await q(`select distinct user_id from public.push_outbox where claimed_at = '2026-12-01 09:45+09'`)).rows.map((x) => x.user_id));
+  expect('수업 시간(2-8 2교시)에는 그 반 학생 알림을 미룸', items.length > 0 && users.has(B) && !users.has(A) && !users.has(D));
+  expect('가져간 알림에 구독 정보 포함', items.every((x) => Array.isArray(x.subs) && x.subs.length >= 1 && x.subs[0].endpoint.startsWith('https://'))); }
+{ const r = await q(`select public.push_take_batch(500, '2026-12-01 09:46+09') b`); expect('가져간 알림은 2분 동안 다시 안 줌', (r.rows[0]?.b ?? []).length === 0); }
+{ const r = await q(`select public.push_take_batch(500, '2026-12-01 12:40+09') b`); const items = r.rows[0]?.b ?? [];
+  const ids = items.map((x) => Number(x.id));
+  await q(`select public.push_report(array[${ids.join(',')}]::bigint[], array['https://push.example.com/a1']::text[], array['https://push.example.com/d1']::text[])`);
+  const left = await q(`select count(*)::int n from public.push_outbox where sent_at is null and user_id in ('${A}','${D}')`); const subs = await q(`select endpoint from public.push_subscriptions order by endpoint`);
+  expect('점심시간에 보냄 → 완료 처리, 없어진 구독 삭제', items.length > 0 && left.rows[0]?.n === 0 && !subs.rows.some((x) => x.endpoint.endsWith('/d1')) && subs.rows.some((x) => x.endpoint.endsWith('/a1'))); }
+{ const r = await as(E, CE, `select public.send_test_push()`); const r2 = await as(A, CA, `select public.send_test_push() a`); const r3 = await as(A, CA, `select public.send_test_push() a`);
+  expect('시험 알림: 구독 없으면 안내, 1분에 한 번', !r.ok && r2.rows[0]?.a === true && r3.rows[0]?.a === false); }
+for (let k = 2; k <= 7; k++) await sub(A, CA, 'a' + k);
+{ const r = await q(`select count(*)::int n from public.push_subscriptions where user_id='${A}'`); expect('한 학생 기기 5개까지', r.rows[0]?.n === 5); }
+await sub(B, CB, 'a7');
+{ const r = await q(`select user_id from public.push_subscriptions where endpoint='https://push.example.com/a7'`); expect('같은 기기를 다른 계정으로 쓰면 그 계정으로 옮김', r.rows[0]?.user_id === B); }
+{ const r = await as(B, CB, `select public.delete_push_subscription('https://push.example.com/a6')`); const c = await q(`select count(*)::int n from public.push_subscriptions where endpoint='https://push.example.com/a6'`); expect('남의 구독은 못 지움', r.ok && c.rows[0]?.n === 1); }
+
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

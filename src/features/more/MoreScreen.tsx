@@ -59,6 +59,8 @@ export function MoreScreen() {
         <>
           <ListRow icon="pin" title={classLabel(myClass)} subtitle="내 반 설정" onPress={() => router.push('/settings/class')} />
           <Divider />
+          <ListRow icon="notice" title="알림 설정" subtitle="마감 전날·아침 급식·내 글 소식" onPress={() => router.push('/settings/notifications')} />
+          <Divider />
           <ListRow icon="settings" title="하단 탭 설정" subtitle="자주 쓰는 기능을 아래 탭에 고정해요" onPress={() => router.push('/settings/tabs')} />
           <Divider />
           <ListRow icon="plus" title="홈 화면에 추가" subtitle="앱처럼 바로 열고 알림 받기" onPress={() => router.push('/settings/install')} />

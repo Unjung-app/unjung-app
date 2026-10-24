@@ -27,6 +27,12 @@ export function SettingsScreen() {
             <Divider />
           </>
         ) : null}
+        {signedIn ? (
+          <>
+            <ListRow icon="notice" title="알림" subtitle="마감 전날·아침 급식·내 글 소식" onPress={() => router.push('/settings/notifications')} />
+            <Divider />
+          </>
+        ) : null}
         <ListRow icon="pin" title="내 반" subtitle={classLabel(myClass)} onPress={() => router.push('/settings/class')} />
         <Divider />
         <ListRow icon="more" title="하단 탭" subtitle="자주 쓰는 기능 고르기" onPress={() => router.push('/settings/tabs')} />
