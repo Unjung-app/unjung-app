@@ -1,5 +1,5 @@
 // GET /api/health → 서버 상태 점검 (키 값은 절대 내보내지 않고 '있는지'만 알려 준다)
-import { schoolCode } from './_neis';
+import { neis, schoolCode } from './_neis';
 
 export async function GET() {
   const report: Record<string, unknown> = {
@@ -11,6 +11,10 @@ export async function GET() {
   try {
     const started = Date.now();
     report.schoolCode = await schoolCode();
+    // 실제로 NEIS를 한 번 호출해 본다 (이번 달 학사일정, 1건이면 충분)
+    const now = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
+    const rows = await neis('SchoolSchedule', { AA_FROM_YMD: now.slice(0, 6) + '01', AA_TO_YMD: now.slice(0, 6) + '31' });
+    report.sampleRows = rows.length;
     report.neisMs = Date.now() - started;
     report.neis = 'ok';
   } catch (e) {
