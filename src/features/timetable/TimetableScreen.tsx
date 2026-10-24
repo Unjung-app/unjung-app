@@ -21,10 +21,12 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
   const { myClass } = usePrefs();
   const [mode, setMode] = useState<'week' | 'day'>('week');
-  const [anchor, setAnchor] = useState(now.ymd);
+  // 주말에는 다가오는 주(다음 월요일)를 먼저 보여 준다
+  const home = isWeekend(now.ymd) ? addDays(mondayOf(now.ymd), 7) : now.ymd;
+  const [anchor, setAnchor] = useState(home);
   const tt = useWeekTimetable(anchor, myClass);
   const monday = mondayOf(anchor);
-  const thisMonday = mondayOf(now.ymd);
+  const thisMonday = mondayOf(now.ymd); // 라벨(이번 주·다음 주)은 실제 달력 기준
   const weekOffset = Math.round(diffDays(thisMonday, monday) / 7);
 
   return (
@@ -68,7 +70,7 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
                 label={weekOffset === 0 ? '이번 주' : weekOffset === 1 ? '다음 주' : weekOffset === -1 ? '지난 주' : weekLabel(monday)}
                 onPrev={() => setAnchor(addDays(monday, -7))}
                 onNext={() => setAnchor(addDays(monday, 7))}
-                onReset={() => setAnchor(now.ymd)}
+                onReset={() => setAnchor(home)}
               />
               <WeekGrid monday={monday} lessons={tt.items} today={now.ymd} minutes={now.minutes} />
             </>
