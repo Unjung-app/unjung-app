@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -11,7 +11,9 @@ import { bellFor, phaseAt } from './bell';
 import { shortSubject } from './subjects';
 import { addDays, diffDays, isWeekend, mondayOf, parseYmd, weekdayLabel } from '@/lib/date';
 import type { ClassLesson as Lesson } from '@/features/data';
+import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
+import { KIND_LABEL, useClassTasks } from '@/features/tasks/data';
 import { color, radius, space } from '@/theme/tokens';
 
 const fmt = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
@@ -28,6 +30,17 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
   const monday = mondayOf(anchor);
   const thisMonday = mondayOf(now.ymd); // 라벨(이번 주·다음 주)은 실제 달력 기준
   const weekOffset = Math.round(diffDays(thisMonday, monday) / 7);
+  // 우리 반 게시판의 마감을 해당 날짜·과목 칸에 점으로 표시
+  const { status } = useAuth();
+  const board = useClassTasks(now.ymd, status === 'ready');
+  const marks = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of board.items ?? []) {
+      const k = `${t.due}|${t.subject}`;
+      m.set(k, m.has(k) ? `${m.get(k)}·${KIND_LABEL[t.kind]}` : KIND_LABEL[t.kind]);
+    }
+    return m;
+  }, [board.items]);
 
   return (
     <Screen topInset={!inStack} refreshing={tt.refreshing} onRefresh={tt.refresh}>
@@ -72,13 +85,13 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
                 onNext={() => setAnchor(addDays(monday, 7))}
                 onReset={() => setAnchor(home)}
               />
-              <WeekGrid monday={monday} lessons={tt.items} today={now.ymd} minutes={now.minutes} grade={myClass.grade} />
+              <WeekGrid monday={monday} lessons={tt.items} today={now.ymd} minutes={now.minutes} grade={myClass.grade} marks={marks} />
             </>
           ) : (
-            <DayList anchor={anchor} setAnchor={setAnchor} lessons={tt.items} today={now.ymd} minutes={now.minutes} grade={myClass.grade} />
+            <DayList anchor={anchor} setAnchor={setAnchor} lessons={tt.items} today={now.ymd} minutes={now.minutes} grade={myClass.grade} marks={marks} />
           )}
           <AppText variant="caption" color={color.inkFaint}>
-            선택 과목 자동 반영은 준비 중이에요.
+            {marks.size ? '주황 점은 우리 반 게시판에 올라온 마감이에요. ' : ''}선택 과목 자동 반영은 준비 중이에요.
           </AppText>
         </>
       )}
@@ -91,7 +104,7 @@ function weekLabel(monday: string) {
   return `${m}월 ${d}일 주`;
 }
 
-function WeekGrid({ monday, lessons, today, minutes, grade }: { monday: string; lessons: Lesson[]; today: string; minutes: number; grade: number }) {
+function WeekGrid({ monday, lessons, today, minutes, grade, marks }: { monday: string; lessons: Lesson[]; today: string; minutes: number; grade: number; marks: Map<string, string> }) {
   const days = [0, 1, 2, 3, 4].map((i) => addDays(monday, i));
   const maxPeriod = Math.max(6, ...lessons.filter((l) => days.includes(l.date)).map((l) => l.period));
   const periods = bellFor(grade).periods.filter((b) => b.period <= maxPeriod);
@@ -132,11 +145,12 @@ function WeekGrid({ monday, lessons, today, minutes, grade }: { monday: string; 
             const lesson = lessons.find((l) => l.date === d && l.period === p.period);
             const isToday = d === today;
             const isNow = isToday && currentPeriod === p.period;
+            const mark = lesson ? marks.get(`${d}|${lesson.subject}`) : undefined;
             return (
               <View key={d} style={{ flex: 1, padding: 2 }}>
                 <View
                   accessible
-                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lesson.subject + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}`}
+                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lesson.subject + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}${mark ? `, ${mark} 마감` : ''}`}
                   style={{
                     flex: 1,
                     borderRadius: 10,
@@ -156,6 +170,9 @@ function WeekGrid({ monday, lessons, today, minutes, grade }: { monday: string; 
                     style={{ fontSize: 12.5 }}>
                     {lesson ? shortSubject(lesson.subject) : '–'}
                   </AppText>
+                  {mark ? (
+                    <View style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: color.accent }} />
+                  ) : null}
                 </View>
               </View>
             );
@@ -173,6 +190,7 @@ function DayList({
   today,
   minutes,
   grade,
+  marks,
 }: {
   anchor: string;
   setAnchor: (d: string) => void;
@@ -180,6 +198,7 @@ function DayList({
   today: string;
   minutes: number;
   grade: number;
+  marks: Map<string, string>;
 }) {
   const todays = lessons.filter((l) => l.date === anchor);
   const isToday = anchor === today;
@@ -234,6 +253,7 @@ function DayList({
                 <AppText variant="bodyStrong" style={{ flex: 1 }} color={done ? color.inkFaint : color.ink}>
                   {l.subject}
                 </AppText>
+                {marks.get(`${l.date}|${l.subject}`) ? <Badge label={`${marks.get(`${l.date}|${l.subject}`)} 마감`} /> : null}
                 {l.tags.map((t) => (
                   <Badge key={t} label={t} />
                 ))}

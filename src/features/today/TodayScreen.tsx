@@ -6,6 +6,8 @@ import { Badge, Button, Card, Chip, SampleNotice, SectionTitle } from '@/compone
 import { Screen } from '@/components/ui/Screen';
 import { InstallBanner } from '@/features/install/InstallBanner';
 import { WalletStrip } from '@/features/today/WalletStrip';
+import { DeadlineCard } from '@/features/tasks/DeadlineCard';
+import { MEAL_CODE, useTopReview } from '@/features/meal/reviews';
 import { Logo } from '@/components/Logo';
 import { givenName, useAuth } from '@/state/auth';
 import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/data';
@@ -90,6 +92,7 @@ export function TodayScreen() {
         loading={timetable.source === 'loading'}
         holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
       />
+      <DeadlineCard today={now.ymd} />
       <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
       <View style={{ flexDirection: 'row', gap: space.md }}>
         <StudyCard />
@@ -263,6 +266,8 @@ function pickMeal(today: string, minutes: number, meals: Meal[], grade: number |
 function MealCard({ today, minutes, meals, grade }: { today: string; minutes: number; meals: Meal[]; grade: number | null }) {
   const openFeature = useOpenFeature();
   const picked = pickMeal(today, minutes, meals, grade);
+  const { status } = useAuth();
+  const top = useTopReview(picked?.meal.date ?? today, picked ? MEAL_CODE[picked.meal.type] : 2, status === 'ready' && !!picked);
   return (
     <Card>
       <SectionTitle
@@ -286,6 +291,16 @@ function MealCard({ today, minutes, meals, grade }: { today: string; minutes: nu
           이번 주 급식 정보가 아직 없어요
         </AppText>
       )}
+      {top ? (
+        <View style={{ backgroundColor: color.bg, borderRadius: radius.control, padding: space.md, gap: 2 }}>
+          <AppText variant="caption" color={color.inkMuted}>
+            인기 한줄평 · 익명의 {top.grade}학년 · 👍 {top.like_count}
+          </AppText>
+          <AppText variant="body" numberOfLines={2}>
+            “{top.body}”
+          </AppText>
+        </View>
+      ) : null}
       <Button label="급식 · 한줄평 보기" variant="soft" onPress={() => openFeature('meal')} />
     </Card>
   );

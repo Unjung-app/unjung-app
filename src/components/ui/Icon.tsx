@@ -74,6 +74,12 @@ const PATHS: Record<string, ReactNode> = {
       <Path d="M12 7v10M9 9.5h4.5a2 2 0 0 1 0 4H9" />
     </>
   ),
+  task: (
+    <>
+      <Rect x={5} y={4} width={14} height={17} rx={2.5} />
+      <Path d="M9 4V3h6v1M8.5 12.5l2.2 2.2 4.8-5" />
+    </>
+  ),
   bag: (
     <>
       <Path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8Z" />

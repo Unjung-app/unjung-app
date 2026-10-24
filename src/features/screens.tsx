@@ -3,6 +3,7 @@ import { CalendarScreen } from './calendar/CalendarScreen';
 import { ComingSoonScreen } from './ComingSoonScreen';
 import { LibraryScreen } from './library/LibraryScreen';
 import { MealScreen } from './meal/MealScreen';
+import { TasksScreen } from './tasks/TasksScreen';
 import { TimetableScreen } from './timetable/TimetableScreen';
 
 type ScreenProps = { inStack?: boolean };
@@ -16,6 +17,7 @@ const soon = (id: string): ComponentType<ScreenProps> =>
 export const FEATURE_SCREENS: Record<string, ComponentType<ScreenProps>> = {
   timetable: TimetableScreen,
   meal: MealScreen,
+  tasks: TasksScreen,
   calendar: CalendarScreen,
   library: LibraryScreen,
   study: soon('study'),

@@ -112,3 +112,11 @@ export function untilLabel(iso: string, days: number, now: Date = new Date()) {
   const t = seoulNow(until);
   return `${t.m}월 ${t.d}일`;
 }
+
+/** 'YYYYMMDD' ↔ 'YYYY-MM-DD' (DB date 형식) */
+export function ymdToIso(ymd: Ymd) {
+  return `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
+}
+export function isoToYmd(iso: string): Ymd {
+  return iso.slice(0, 10).replace(/-/g, '');
+}

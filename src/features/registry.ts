@@ -20,6 +20,7 @@ export type Feature = {
 export const FEATURES: Feature[] = [
   { id: 'timetable', title: '시간표', short: '시간표', desc: '내 반 주간 시간표와 지금 수업', icon: 'timetable', status: 'live' },
   { id: 'meal', title: '급식', short: '급식', desc: '이번 주 식단과 한줄평', icon: 'meal', status: 'live', credits: ['jiwon'] },
+  { id: 'tasks', title: '수행평가·숙제', short: '과제', desc: '우리 반 마감을 친구들과 함께 챙겨요', icon: 'task', status: 'live' },
   { id: 'calendar', title: '학사일정', short: '일정', desc: '시험·행사·휴업일과 D-day', icon: 'calendar', status: 'live' },
   { id: 'library', title: '도서관', short: '도서관', desc: '학교 도서관 장서 검색', icon: 'library', status: 'live', credits: ['yongwon'] },
   { id: 'study', title: '공부 타이머', short: '공부', desc: '공부 시간 기록과 토큰', icon: 'study', status: 'soon', credits: ['wonjun', 'jongbum'] },
@@ -33,7 +34,7 @@ export const FEATURE_BY_ID: Record<string, Feature> = Object.fromEntries(FEATURE
 
 /** 하단 탭: 맨 앞 '오늘'과 맨 뒤 '전체'는 고정, 가운데는 학생이 고르는 칸 */
 export const MAX_CUSTOM_TABS = 3;
-export const DEFAULT_TABS = ['timetable', 'meal', 'calendar'];
+export const DEFAULT_TABS = ['timetable', 'meal', 'tasks'];
 
 export function sanitizeTabs(ids: unknown): string[] {
   if (!Array.isArray(ids)) return DEFAULT_TABS;

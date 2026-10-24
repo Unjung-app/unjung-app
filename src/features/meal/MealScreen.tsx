@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Pressable, Switch, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
-import { Icon } from '@/components/ui/Icon';
-import { Badge, Card, SampleNotice, SectionTitle } from '@/components/ui/primitives';
+import { Card, SampleNotice, SectionTitle } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { Stepper } from '@/components/ui/Segmented';
 import { useWeekMeals } from '@/features/data';
 import { useNow } from '@/features/hooks';
 import { addDays, diffDays, isWeekend, mondayOf, parseYmd, weekdayLabel } from '@/lib/date';
 import { ALLERGENS, type Meal } from '@/lib/school';
+import { ReviewSection } from './ReviewSection';
+import { MEAL_CODE } from './reviews';
 import { color, radius, space } from '@/theme/tokens';
 
 export function MealScreen({ inStack = false }: { inStack?: boolean }) {
@@ -90,10 +91,13 @@ export function MealScreen({ inStack = false }: { inStack?: boolean }) {
           </AppText>
         </Card>
       ) : (
-        dayMeals.map((m) => <MealBlock key={m.type} meal={m} showAllergy={showAllergy} />)
+        dayMeals.map((m) => (
+          <View key={m.type} style={{ gap: space.md }}>
+            <MealBlock meal={m} showAllergy={showAllergy} />
+            <ReviewSection mealYmd={m.date} code={MEAL_CODE[m.type]} title={m.type === '중식' ? '점심' : m.type === '석식' ? '저녁' : '아침'} />
+          </View>
+        ))
       )}
-
-      <ReviewsPlaceholder />
     </Screen>
   );
 }
@@ -122,21 +126,6 @@ function MealBlock({ meal, showAllergy }: { meal: Meal; showAllergy: boolean }) 
             ) : null}
           </View>
         ))}
-      </View>
-    </Card>
-  );
-}
-
-/** 한줄평: 별점 없이 한 줄 의견만. 학교 계정 로그인(M2)과 함께 연다. */
-function ReviewsPlaceholder() {
-  return (
-    <Card>
-      <SectionTitle title="한줄평" right={<Badge label="로그인과 함께 열려요" tone="muted" />} />
-      <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'flex-start' }}>
-        <Icon name="voice" size={22} color={color.inkFaint} />
-        <AppText variant="body" color={color.inkMuted} style={{ flex: 1 }}>
-          학교 계정으로 로그인하면 오늘 급식에 한 줄 의견을 남기고, 친구들의 한줄평을 볼 수 있어요. 별점은 없어요.
-        </AppText>
       </View>
     </Card>
   );

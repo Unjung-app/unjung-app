@@ -125,5 +125,71 @@ const C = '44444444-4444-4444-4444-444444444444'; await q(`insert into auth.user
 { const r = await as(B, CB, `select nickname, equip_emoji from public.profile_cards order by nickname`, 'B가 본 카드(꾸미기 포함)'); expect('카드에 꾸미기 보임', r.ok && r.rows.some((x) => x.equip_emoji === 'e_cat')); }
 { const r = await as(B, CB, `select public.admin_adjust_tokens('${B}', 999, '셀프')`, 'B 관리자 보정(막혀야 함)'); expect('관리자 보정은 관리자만', !r.ok); }
 { const r = await as(A, CA, `select public.admin_clear_nickname('${B}')`, 'A(관리자) B 닉네임 지우기'); expect('관리자 닉네임 지우기', r.ok); }
+
+// ───────── M3 2주차: 급식 한줄평 · 반별 게시판 ─────────
+const D = '55555555-5555-5555-5555-555555555555', E = '66666666-6666-6666-6666-666666666666';
+const CD = 'd@unjung.hs.kr', CE = 'e@unjung.hs.kr', CC = 'third@unjung.hs.kr';
+await q(`insert into auth.users values ('${D}','${CD}'),('${E}','${CE}')`);
+await as(D, CD, `select public.register_enrollment('20801','김디디')`);
+await as(E, CE, `select public.register_enrollment('20802','박이이')`);
+const post = (u, day, code, body, at) => q(`select public._post_meal_review('${u}', '${day}', ${code}, '${body}', '${at}') r`);
+
+{ const r = await as(A, CA, `select public._post_meal_review('${A}', '2026-10-26', 2, '맛있다', now())`, '학생이 _post_meal_review 직접(막혀야 함)'); expect('한줄평 본체 직접 호출 차단', !r.ok); }
+{ const r = await post(A, '2026-10-26', 2, '돈까스가 바삭하고 소스가 진했다', '2026-10-26 12:00+09'); expect('2학년 12:00엔 아직 못 씀', !r.ok && /8시 40분/.test(r.err ?? '')); }
+{ const r = await post(A, '2026-10-26', 2, '돈까스가 바삭하고 소스가 진했다', '2026-10-26 12:40+09'); expect('2학년 12:40 작성 +3', r.ok && r.rows[0]?.r?.tokens === 3); }
+{ const r = await post(A, '2026-10-26', 2, '다시 생각해 보니 국이 짰다 그래도 좋음', '2026-10-26 13:00+09'); expect('같은 끼니 다시 쓰면 수정, 토큰 0', r.ok && r.rows[0]?.r?.tokens === 0); }
+{ const r = await post(B, '2026-10-26', 2, '굿굿', '2026-10-27 08:30+09'); expect('다음 날 08:30까지 가능(10자 미만은 토큰 0)', r.ok && r.rows[0]?.r?.tokens === 0); }
+{ const r = await post(D, '2026-10-26', 2, '오늘 급식 최고였다 진짜로', '2026-10-27 09:00+09'); expect('다음 날 08:40 지나면 불가', !r.ok); }
+{ const r = await post(D, '2026-10-27', 2, '반찬이 시발 별로', '2026-10-27 12:40+09'); expect('금칙어 한줄평 차단', !r.ok && /부적절/.test(r.err ?? '')); }
+{ const r = await post(C, '2026-10-27', 2, '학번 없는 사람 글입니다', '2026-10-27 12:40+09'); expect('학번 미등록은 못 씀', !r.ok && /학번/.test(r.err ?? '')); }
+const rid = (await q(`select id from public.meal_reviews where user_id='${A}' and meal_date='2026-10-26'`)).rows[0]?.id;
+{ const r = await as(A, CA, `select public.like_meal_review(${rid}, true)`, 'A 내 글 공감(막혀야 함)'); expect('내 글 공감 불가', !r.ok); }
+{ const r = await as(B, CB, `select public.like_meal_review(${rid}, true) n`, 'B 공감'); expect('공감 +1', r.ok && r.rows[0]?.n === 1); }
+{ const r = await as(B, CB, `select public.like_meal_review(${rid}, true) n`, 'B 공감 두 번'); expect('공감 중복 안 셈', r.ok && r.rows[0]?.n === 1); }
+{ const r = await q(`select count(*)::int n from public.token_ledger where user_id='${A}' and reason='meal_like'`); expect('공감받은 작성자 +1', r.rows[0]?.n === 1); }
+{ const r = await as(B, CB, `select public.like_meal_review(${rid}, false) n`, 'B 공감 취소'); expect('공감 취소', r.ok && r.rows[0]?.n === 0); }
+{ const r = await as(B, CB, `select public.like_meal_review(${rid}, true) n`); const t = await q(`select count(*)::int n from public.token_ledger where user_id='${A}' and reason='meal_like'`); expect('공감 껐다 켜도 토큰은 한 번만', r.ok && t.rows[0]?.n === 1); }
+{ const r = await as(B, CB, `select * from public.meal_review_feed`, 'B가 본 한줄평 피드'); expect('피드에 작성자 id 없음', r.ok && r.rows.length >= 2 && !('user_id' in r.rows[0]) && r.rows.some((x) => x.liked)); }
+{ const r = await as(B, CB, `select user_id from public.meal_reviews`, 'B 원본 테이블(본인 것만)'); expect('원본 테이블은 본인 것만', r.ok && r.rows.every((x) => x.user_id === B)); }
+{ const r = await as(A, CA, `select public.report_meal_review(${rid}, '')`, 'A 내 글 신고(막혀야 함)'); expect('내 글 신고 불가', !r.ok); }
+for (const [u, c] of [[B, CB], [D, CD], [D, CD]]) await as(u, c, `select public.report_meal_review(${rid}, '욕설')`);
+{ const r = await q(`select report_count, hidden from public.meal_reviews where id=${rid}`); expect('신고 2명(중복 무시) → 아직 보임', r.rows[0]?.report_count === 2 && r.rows[0]?.hidden === false); }
+await as(E, CE, `select public.report_meal_review(${rid}, '')`);
+{ const r = await as(B, CB, `select count(*)::int n from public.meal_review_feed where id=${rid}`); expect('신고 3명 → 다른 학생에게 숨김', r.rows[0]?.n === 0); }
+{ const r = await as(A, CA, `select hidden from public.meal_review_feed where id=${rid}`); expect('숨겨진 글도 작성자 본인에겐 보임', r.rows[0]?.hidden === true); }
+{ const r = await as(D, CD, `select count(*)::int n from public.meal_review_mod_queue`, 'D(일반) 신고 목록(0)'); expect('신고 목록은 검토위원만', r.rows[0]?.n === 0); }
+{ const r = await as(B, CB, `select reasons from public.meal_review_mod_queue where id=${rid}`, 'B(검토위원) 신고 목록'); expect('검토위원은 신고 목록 봄', r.ok && r.rows.length === 1); }
+{ const r = await as(D, CD, `select public.mod_set_meal_review_hidden(${rid}, false)`, 'D 숨김 해제(막혀야 함)'); expect('일반 학생 숨김 해제 불가', !r.ok); }
+{ const r = await as(B, CB, `select public.mod_set_meal_review_hidden(${rid}, false)`, 'B(검토위원) 숨김 해제'); const f = await as(D, CD, `select count(*)::int n from public.meal_review_feed where id=${rid}`); expect('검토위원 복구 → 다시 보임', r.ok && f.rows[0]?.n === 1); }
+{ await db.exec('reset role'); const r = await db.query(`set role anon; select count(*) from public.meal_review_feed`).then(() => ({ ok: true }), () => ({ ok: false })); await db.exec('reset role'); expect('비로그인(anon) 피드 접근 불가', !r.ok); }
+
+// 반별 게시판: A·D·E = 2학년 8반, B = 1학년 3반, C = 학번 없음
+const tomorrow = (await q(`select (public.seoul_today() + 1)::text d`)).rows[0].d;
+{ const r = await as(C, CC, `select public.create_class_task('수학', 'homework', '${tomorrow}', '익힘책')`, 'C 학번 없이 글쓰기(막혀야 함)'); expect('학번 없으면 게시판 글 불가', !r.ok); }
+{ const r = await as(A, CA, `select public.create_class_task('수학', 'homework', public.seoul_today() - 1, '어제 마감')`, '지난 날짜 마감(막혀야 함)'); expect('지난 마감일 불가', !r.ok); }
+const tid = (await as(A, CA, `select public.create_class_task('수학Ⅱ', 'assessment', '${tomorrow}', '미적분 수행평가 3단원까지') id`, 'A 수행평가 등록')).rows[0]?.id;
+expect('A 글 등록', !!tid);
+{ const r = await as(B, CB, `select count(*)::int n from public.class_task_feed`, 'B(다른 반) 피드'); expect('다른 반 글은 안 보임', r.rows[0]?.n === 0); }
+{ const r = await as(B, CB, `select public.confirm_class_task(${tid})`, 'B(다른 반) 확인(막혀야 함)'); expect('다른 반 확인 불가', !r.ok); }
+{ const r = await as(B, CB, `select public.suggest_task_fix(${tid}, '날짜 틀림')`, 'B(다른 반) 정정 제안(막혀야 함)'); expect('다른 반 정정 제안 불가', !r.ok); }
+{ const r = await as(D, CD, `select subject, author_nickname, mine from public.class_task_feed`, 'D(같은 반) 피드'); expect('같은 반은 보임, 작성자는 닉네임만', r.ok && r.rows.length === 1 && r.rows[0].author_nickname === '구름위' && r.rows[0].mine === false); }
+{ const r = await as(A, CA, `select public.confirm_class_task(${tid})`, 'A 내 글 확인(막혀야 함)'); expect('내 글 확인 불가', !r.ok); }
+{ const r = await as(D, CD, `select public.confirm_class_task(${tid}) n`); const r2 = await as(D, CD, `select public.confirm_class_task(${tid}) n`); expect('확인 1, 중복 안 셈', r.rows[0]?.n === 1 && r2.rows[0]?.n === 1); }
+const t0 = await q(`select count(*)::int n from public.token_ledger where user_id='${A}' and reason='task_confirmed'`);
+{ const r = await as(E, CE, `select public.confirm_class_task(${tid}) n`); const f = await as(D, CD, `select confirmed from public.class_task_feed where id=${tid}`); expect('2명 확인 → 확인됨', r.rows[0]?.n === 2 && f.rows[0]?.confirmed === true); }
+{ const r = await q(`select count(*)::int n from public.token_ledger where user_id='${A}' and reason='task_confirmed'`); expect('확인됨 → 작성자 +5', t0.rows[0]?.n === 0 && r.rows[0]?.n === 1); }
+{ const r = await as(D, CD, `select public.update_class_task(${tid}, '해킹', 'homework', '${tomorrow}', '')`, 'D 남의 글 수정(막혀야 함)'); expect('남의 글 수정 불가', !r.ok); }
+{ const r = await as(A, CA, `select public.update_class_task(${tid}, '수학Ⅱ', 'assessment', '${tomorrow}', '미적분 수행평가 4단원까지')`, 'A 내용 수정'); const f = await as(D, CD, `select confirmed, confirm_count, i_confirmed from public.class_task_feed where id=${tid}`); expect('내용 바꾸면 확인 초기화', r.ok && f.rows[0]?.confirmed === false && f.rows[0]?.confirm_count === 0 && f.rows[0]?.i_confirmed === false); }
+await as(D, CD, `select public.confirm_class_task(${tid})`); await as(E, CE, `select public.confirm_class_task(${tid})`);
+{ const r = await q(`select count(*)::int n from public.token_ledger where user_id='${A}' and reason='task_confirmed'`); expect('다시 확인받아도 토큰은 한 번만', r.rows[0]?.n === 1); }
+const sid = (await as(D, CD, `select public.suggest_task_fix(${tid}, '마감이 금요일이에요') id`, 'D 정정 제안')).rows[0]?.id;
+{ const r = await as(A, CA, `select open_suggestions from public.class_task_feed where id=${tid}`); expect('작성자에게 정정 제안 1개', r.rows[0]?.open_suggestions === 1); }
+{ const r = await as(B, CB, `select count(*)::int n from public.task_suggestion_feed`); expect('다른 반은 정정 제안 못 봄', r.rows[0]?.n === 0); }
+{ const r = await as(D, CD, `select public.resolve_task_suggestion(${sid})`, 'D 제안 정리(막혀야 함)'); expect('제안 정리는 글 작성자만', !r.ok); }
+{ const r = await as(A, CA, `select public.resolve_task_suggestion(${sid})`, 'A 제안 정리'); expect('작성자 제안 정리', r.ok); }
+{ const r = await as(D, CD, `select public.delete_class_task(${tid})`, 'D 남의 글 삭제(막혀야 함)'); expect('남의 글 삭제 불가', !r.ok); }
+{ const r = await as(A, CA, `select public.delete_class_task(${tid})`); const f = await as(D, CD, `select count(*)::int n from public.class_task_feed`); expect('삭제하면 피드에서 사라짐', r.ok && f.rows[0]?.n === 0); }
+{ const r = await as(D, CD, `select count(*)::int n from public.class_tasks`, 'D 원본 테이블(본인 것만=0)'); expect('게시판 원본 테이블 직접 조회 불가', r.rows[0]?.n === 0); }
+
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);
