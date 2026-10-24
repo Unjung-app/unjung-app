@@ -23,7 +23,7 @@ export function Card({
 
 type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   label: string;
-  variant?: 'primary' | 'soft' | 'ghost';
+  variant?: 'primary' | 'soft' | 'ghost' | 'ghostOnNavy';
   icon?: IconName;
   style?: StyleProp<ViewStyle>;
 };
@@ -31,7 +31,7 @@ type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
 /** 누를 수 있는 모든 버튼. 높이는 손가락 기준 최소 44px. */
 export function Button({ label, variant = 'primary', icon, style, disabled, ...rest }: ButtonProps) {
   const bg = variant === 'primary' ? color.navy : variant === 'soft' ? color.surfaceMuted : 'transparent';
-  const fg = variant === 'primary' ? color.onNavy : color.navy;
+  const fg = variant === 'primary' || variant === 'ghostOnNavy' ? color.onNavy : color.navy;
   return (
     <Pressable
       accessibilityRole="button"

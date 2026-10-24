@@ -5,6 +5,8 @@ import { Icon } from '@/components/ui/Icon';
 import { Badge, Button, Card, Chip, SampleNotice, SectionTitle } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { InstallBanner } from '@/features/install/InstallBanner';
+import { Logo } from '@/components/Logo';
+import { givenName, useAuth } from '@/state/auth';
 import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/data';
 import { classLabel, useNow, useOpenFeature } from '@/features/hooks';
 import { bellFor, lunchOver, phaseAt, type DayPhase } from '@/features/timetable/bell';
@@ -24,6 +26,8 @@ export function TodayScreen() {
   const now = useNow();
   const router = useRouter();
   const { myClass } = usePrefs();
+  const { enrollment } = useAuth();
+  const nick = givenName(enrollment?.name);
   // 주말에는 다음 주 데이터를 불러와 '다음 수업일'을 보여 준다
   const schoolWeekDay = isWeekend(now.ymd) ? addDays(mondayOf(now.ymd), 7) : now.ymd;
   const timetable = useWeekTimetable(schoolWeekDay, myClass);
@@ -44,11 +48,15 @@ export function TodayScreen() {
       }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <View style={{ gap: 2, flex: 1 }}>
-          <AppText variant="label" weight="regular" color={color.inkMuted}>
-            {longLabel(now.ymd)} · {classLabel(myClass)}
-          </AppText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Logo variant="mark-light" size={18} />
+            <AppText variant="label" weight="regular" color={color.inkMuted}>
+              {longLabel(now.ymd)} · {classLabel(myClass)}
+            </AppText>
+          </View>
           <AppText variant="title" accessibilityRole="header">
             {greeting(now.minutes)}
+            {nick ? `, ${nick}` : ''}
           </AppText>
         </View>
         <Pressable

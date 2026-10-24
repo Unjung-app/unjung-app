@@ -52,19 +52,28 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const save = useCallback((next: Prefs) => {
-    setPrefs(next);
-    AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+  // 함수형 업데이트로 저장 → setTabs/setMyClass가 항상 같은 함수라서, 이를 쓰는 쪽이 불필요하게 다시 실행되지 않는다
+  const update = useCallback((fn: (p: Prefs) => Prefs) => {
+    setPrefs((prev) => {
+      const next = fn(prev);
+      if (next === prev) return prev;
+      AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
   }, []);
 
+  const setTabs = useCallback((tabs: string[]) => update((p) => ({ ...p, tabs: sanitizeTabs(tabs) })), [update]);
+  const setMyClass = useCallback(
+    (myClass: MyClass | null) =>
+      update((p) =>
+        p.myClass?.grade === myClass?.grade && p.myClass?.classNo === myClass?.classNo ? p : { ...p, myClass },
+      ),
+    [update],
+  );
+
   const value = useMemo<PrefsContext>(
-    () => ({
-      ...prefs,
-      loaded,
-      setTabs: (tabs) => save({ ...prefs, tabs: sanitizeTabs(tabs) }),
-      setMyClass: (myClass) => save({ ...prefs, myClass }),
-    }),
-    [prefs, loaded, save],
+    () => ({ ...prefs, loaded, setTabs, setMyClass }),
+    [prefs, loaded, setTabs, setMyClass],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

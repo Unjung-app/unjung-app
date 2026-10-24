@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Divider, ListRow } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
+import { AccountCard } from '@/features/auth/AccountCard';
 import { classLabel, useOpenFeature } from '@/features/hooks';
 import { FEATURES } from '@/features/registry';
 import { usePrefs } from '@/state/prefs';
@@ -27,6 +28,8 @@ export function MoreScreen() {
       <AppText variant="title" accessibilityRole="header">
         전체
       </AppText>
+
+      <AccountCard />
 
       {group(
         <>

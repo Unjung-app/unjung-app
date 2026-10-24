@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Divider, ListRow } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
+import { AccountCard } from '@/features/auth/AccountCard';
 import { classLabel } from '@/features/hooks';
 import { usePrefs } from '@/state/prefs';
 import { color, radius, space } from '@/theme/tokens';
@@ -13,6 +14,7 @@ export function SettingsScreen() {
   const { myClass } = usePrefs();
   return (
     <Screen topInset={false}>
+      <AccountCard />
       <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
         <ListRow icon="pin" title="내 반" subtitle={classLabel(myClass)} onPress={() => router.push('/settings/class')} />
         <Divider />
@@ -23,9 +25,6 @@ export function SettingsScreen() {
       <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
         <ListRow icon="info" title="앱 버전" right={<AppText variant="label" color={color.inkMuted}>{Constants.expoConfig?.version ?? '-'}</AppText>} />
       </View>
-      <AppText variant="caption" color={color.inkFaint} style={{ paddingHorizontal: space.sm }}>
-        학교 계정 로그인은 다음 업데이트에서 열려요.
-      </AppText>
     </Screen>
   );
 }
