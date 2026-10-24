@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PrefsProvider, usePrefs } from '@/state/prefs';
 import { AuthProvider, useAuth } from '@/state/auth';
 import { WalletProvider } from '@/state/wallet';
+import { TokenToast } from '@/components/TokenToast';
 import { injectWebFont, NATIVE_FONTS, fontStyle } from '@/theme/fonts';
 import { color } from '@/theme/tokens';
 
@@ -25,7 +26,16 @@ function AuthGate() {
   return null;
 }
 
+/** 학교 데이터(시간표·급식·학사일정) 동기화를 한 번 깨운다. 서버가 6시간에 한 번만 실제로 돈다. */
+function useWakeSchoolSync() {
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    fetch('/api/cron/sync-school').catch(() => {});
+  }, []);
+}
+
 function Root() {
+  useWakeSchoolSync();
   const [fontsLoaded, fontError] = useFonts(Platform.OS === 'web' ? {} : NATIVE_FONTS);
   const { loaded: prefsLoaded } = usePrefs();
   const ready = (fontsLoaded || !!fontError) && prefsLoaded;
@@ -58,9 +68,13 @@ function Root() {
         <Stack.Screen name="settings/nickname" options={{ title: '닉네임' }} />
         <Stack.Screen name="wallet" options={{ title: '토큰·출석' }} />
         <Stack.Screen name="shop" options={{ title: '꾸미기 상점' }} />
+        <Stack.Screen name="feedback" options={{ title: '의견 보내기' }} />
+        <Stack.Screen name="admin/feedback" options={{ title: '의견 관리 (관리자)' }} />
+        <Stack.Screen name="game/[id]" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="login" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>
+      <TokenToast />
     </>
   );
 }

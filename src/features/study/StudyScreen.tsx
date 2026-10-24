@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';
@@ -28,6 +28,15 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
   const s = useStudySession(ready);
   const live = useStudyLive(ready);
   const [subject, setSubject] = useState('');
+
+  // 공부 토큰이 늘면(10분마다) 지갑을 새로 받아 '+1 토큰' 알림을 띄운다
+  const seenTokens = useRef<number | null>(null);
+  useEffect(() => {
+    const t = s.today?.tokens;
+    if (t === undefined) return;
+    if (seenTokens.current !== null && t > seenTokens.current) refreshWallet('집중 모드 10분 달성');
+    seenTokens.current = t;
+  }, [s.today?.tokens, refreshWallet]);
 
   // 이 화면을 벗어나면 일시정지, 돌아오면 이어서 (다른 탭으로 옮겨도 마찬가지)
   useFocusEffect(

@@ -58,8 +58,8 @@ export function ReviewSection({ mealYmd, code, title }: { mealYmd: Ymd; code: nu
     setBusy(false);
     if (r.ok) {
       setDraft(null);
-      setMsg({ ok: true, text: r.tokens ? `등록했어요 · +${r.tokens} 토큰` : '등록했어요' });
-      if (r.tokens) refreshWallet();
+      setMsg({ ok: true, text: '등록했어요' });
+      if (r.tokens) refreshWallet('급식 한줄평');
     } else setMsg({ ok: false, text: r.message });
   };
 

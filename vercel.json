@@ -17,5 +17,11 @@
     "deploymentEnabled": {
       "feat/**": false
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/sync-school",
+      "schedule": "0 20 * * *"
+    }
+  ]
 }

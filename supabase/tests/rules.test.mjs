@@ -9,7 +9,7 @@ const db = new PGlite();
 const q = async (sql, label) => { try { const r = await db.query(sql); if (label) console.log('ok  ', label, JSON.stringify(r.rows)); return { ok: true, rows: r.rows }; } catch (e) { if (label) console.log('deny', label + ':', e.message); return { ok: false, rows: [], err: e.message }; } };
 // --- Supabase 흉내: auth 스키마, 역할, auth.uid()/auth.jwt()
 await db.exec(`
-  create role anon nologin; create role authenticated nologin;
+  create role anon nologin; create role authenticated nologin; create role service_role nologin;
   create schema auth;
   create table auth.users (id uuid primary key, email text);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
@@ -251,6 +251,104 @@ for (const [u, e, no] of [['77777777-7777-7777-7777-777777777771', 'f1@unjung.hs
 { const r = await as(X, 'someone@gmail.com', `select public.ranking('study', 2, public.seoul_today())`); expect('외부 계정 랭킹 불가', !r.ok); }
 { await db.exec('reset role'); const r = await db.query(`set role anon; select public.study_live()`).then(() => ({ ok: true }), () => ({ ok: false })); await db.exec('reset role'); expect('비로그인 study_live 불가', !r.ok); }
 { const s = await as(E, CE, `select public.start_study('국어') r`, 'E 실제 시작(now)'); const l = await as(A, CA, `select public.study_live() r`); expect('지금 집중 중 1명', s.ok && l.rows[0]?.r?.all === 1 && l.rows[0]?.r?.g2 === 1); }
+
+
+// ───────── 학교 데이터 동기화 · 시간표 기반 수업 시간 · 의견 보내기 ─────────
+const SYNC = `select public.sync_school_data(2026, '2026-11-09', '2026-11-22',
+  '[{"grade":2,"class_no":8,"day":"2026-11-09","period":1,"subject":"문학"},{"grade":2,"class_no":8,"day":"2026-11-09","period":6,"subject":"수학Ⅱ"},{"grade":2,"class_no":8,"day":"2026-11-10","period":7,"subject":"체육"}]'::jsonb,
+  '[{"day":"2026-11-09","code":2,"dishes":["현미밥","돈까스","미역국"]}]'::jsonb,
+  '2026-11-09', '2027-03-01', '[{"day":"2026-11-20","name":"재량휴업일","holiday":true},{"day":"2026-12-03","name":"2차 지필평가","holiday":false}]'::jsonb) r`;
+{ const r = await as(A, CA, SYNC, '학생이 sync_school_data(막혀야 함)'); expect('동기화 함수는 서버 비밀키만', !r.ok); }
+{ const r = await q(SYNC); expect('동기화 실행', r.ok && r.rows[0]?.r?.lessons === 3 && r.rows[0]?.r?.days_off_added === 1); }
+{ const r = await q(SYNC); expect('다시 돌려도 중복 없음', r.ok && r.rows[0]?.r?.lessons === 3 && r.rows[0]?.r?.days_off_added === 0); }
+{ const r = await q(`select public.is_class_time(2, 8, '2026-11-09 15:40+09') a, public.is_class_time(2, 8, '2026-11-09 14:40+09') b, public.is_class_time(2, 8, '2026-11-10 15:40+09') c, public.is_class_time(2, 3, '2026-11-09 15:40+09') d, public.is_class_time(2, 8, '2026-11-20 10:00+09') e`);
+  const x = r.rows[0] ?? {};
+  expect('시간표 기준 수업 시간: 7교시 없는 날 15:40은 수업 아님', x.a === false);
+  expect('시간표 기준 수업 시간: 6교시 있는 날 14:40은 수업', x.b === true);
+  expect('시간표 기준 수업 시간: 7교시 있는 날 15:40은 수업', x.c === true);
+  expect('시간표 자료 없는 반은 1~7교시 전부 수업', x.d === true);
+  expect('동기화된 재량휴업일은 수업 아님', x.e === false); }
+{ const r = await as(B, CB, `select count(*)::int n from public.meals_cache`, 'B 급식 캐시 읽기'); expect('학교 데이터는 학생도 읽기 가능', r.rows[0]?.n === 1); }
+{ const r = await as(B, CB, `insert into public.days_off values ('2026-12-24', '장난') returning *`, 'B 쉬는 날 직접 추가(막혀야 함)'); expect('쉬는 날 직접 추가 불가', !r.ok); }
+{ const sA5 = await start(A, '2026-11-09 15:40:00+09'); expect('7교시 없는 날 방과후는 수업 아님(공부 세션)', sA5?.in_class === false); }
+// 의견 보내기
+{ const r = await as(B, CB, `select public.submit_feedback('bug', '급식 화면에서 금요일이 안 보여요', '/meal', '3.0.0', 'test') id`, 'B 버그 제보'); expect('의견 보내기', r.ok && !!r.rows[0]?.id); }
+{ const r = await as(B, CB, `select public.submit_feedback('bug', '짧음', '', '', '')`); expect('5자 미만 거부', !r.ok); }
+{ const r = await as(D, CD, `select count(*)::int n from public.feedback`); expect('남의 의견은 못 봄', r.rows[0]?.n === 0); }
+{ const r = await as(D, CD, `select count(*)::int n from public.feedback_admin`); expect('관리자 목록은 관리자만(0)', r.rows[0]?.n === 0); }
+const fid = (await as(A, CA, `select id, nickname, grade from public.feedback_admin`, 'A(관리자) 의견 목록')).rows[0]?.id;
+{ const r = await as(D, CD, `select public.admin_update_feedback(${fid}, 'done', '고쳤어요')`); expect('일반 학생 상태 변경 불가', !r.ok); }
+{ const r = await as(A, CA, `select public.admin_update_feedback(${fid}, 'done', '고쳤어요')`); await as(A, CA, `select public.admin_update_feedback(${fid}, 'done', '다시')`);
+  const t = await q(`select count(*)::int n from public.token_ledger where user_id='${B}' and reason='feedback_done'`);
+  const mine = await as(B, CB, `select status, reply from public.feedback`);
+  expect('반영 완료 → 작성자 +5 (한 번만), 답변 보임', r.ok && t.rows[0]?.n === 1 && mine.rows[0]?.status === 'done' && mine.rows[0]?.reply === '다시'); }
+
+
+// ───────── 게임 ─────────
+const sg = async (u, game, at) => q(`select public._start_game('${u}', '${game}', '${at}') r`);
+const ans1 = async (u, id, idx, choice, at) => (await q(`select public._answer_game('${u}', '${id}', ${idx}, ${choice}, '${at}') r`)).rows[0]?.r;
+const fin = async (u, id, at) => q(`select public._finish_game('${u}', '${id}', '${at}') r`);
+const keyOf = async (id) => (await q(`select questions from public.game_runs where id='${id}'`)).rows[0]?.questions ?? [];
+const plusSec = (base, s) => new Date(new Date(base).getTime() + s * 1000).toISOString();
+// 정답 목록(choices 번호)을 base 시각부터 step초 간격으로 차례로 답한다
+const play = async (u, id, base, choices, step = 1) => { let last; for (let k = 0; k < choices.length; k++) last = await ans1(u, id, k, choices[k], plusSec(base, (k + 1) * step)); return last; };
+{ const r = await as(A, CA, `select public._start_game('${A}', 'word', now())`, '학생이 _start_game 직접(막혀야 함)'); expect('게임 본체 직접 호출 차단', !r.ok); }
+{ const r = await sg(A, 'word', '2026-11-09 09:00+09'); expect('수업 시간(1교시)엔 게임 시작 불가', !r.ok && /수업 시간/.test(r.err ?? '')); }
+{ const r = await sg(A, 'word', '2026-11-09 15:40+09'); expect('7교시 없는 날 15:40은 게임 가능(첫 판 무료)', r.ok && r.rows[0]?.r?.cost === 0); }
+const balA0 = await bal(A);
+const T1 = '2026-11-09T09:00:00Z'; // 18:00 KST
+const g1 = (await sg(A, 'math', T1)).rows[0]?.r;
+expect('두 번째 판은 5토큰', g1?.cost === 5 && (await bal(A)) === balA0 - 5);
+expect('앱에 보내는 문제엔 정답이 없음', Array.isArray(g1?.questions) && g1.questions.length === 40 && g1.questions.every((x) => !('a' in x) && x.choices.length === 4));
+{ const key = await keyOf(g1.id); const okMath = key.every((x) => { const v = Function(`return ${x.q.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-')}`)(); return Number(x.choices[x.a]) === v && new Set(x.choices).size === 4; });
+  expect('암산 문제 40개 정답이 모두 맞음·보기 중복 없음', okMath); }
+{ const key = await keyOf(g1.id);
+  const first = await ans1(A, g1.id, 0, key[0].a, plusSec(T1, 1));
+  expect('한 문제 답하면 바로 채점(정답 번호 공개)', first?.accepted === true && first?.correct === true && first?.answer === key[0].a && first?.score === 10);
+  const skip = await ans1(A, g1.id, 5, 0, plusSec(T1, 2)); expect('순서 건너뛰기 거부', skip?.accepted === false && skip?.reason === 'order');
+  const fast = await ans1(A, g1.id, 1, key[1].a, plusSec(T1, 1.1)); expect('0.35초 안에 연달아 답하면 거부', fast?.accepted === false && fast?.reason === 'too_fast');
+  const choices = key.slice(1, 10).map((x) => x.a).concat([(key[10].a + 1) % 4, (key[11].a + 1) % 4]);
+  let last; for (let k = 0; k < choices.length; k++) last = await ans1(A, g1.id, k + 1, choices[k], plusSec(T1, 2 + k));
+  expect('채점: 10개 연속 정답 콤보 170점, 오답에 콤보 끊김', last?.score === 170 && last?.combo === 0);
+  const late = await ans1(A, g1.id, 12, key[12].a, plusSec(T1, 63)); expect('제한 시간 지나면 안 받음', late?.accepted === false && late?.reason === 'over');
+  const r = (await fin(A, g1.id, plusSec(T1, 64))).rows[0]?.r;
+  expect('끝내기 결과: 170점 10개 맞음 2개 틀림, 첫 기록이라 보상 없음', r?.score === 170 && r?.correct === 10 && r?.wrong === 2 && r?.reward === 0 && r?.new_best === true && r?.review?.length === 12);
+  const again = (await fin(A, g1.id, plusSec(T1, 70))).rows[0]?.r; expect('끝내기 다시 불러도 같은 결과', again?.score === 170 && again?.reward === 0); }
+const T3 = '2026-11-09T09:10:00Z';
+const g3 = (await sg(A, 'math', T3)).rows[0]?.r;
+{ const key = await keyOf(g3.id); await play(A, g3.id, T3, key.slice(0, 20).map((x) => x.a)); const r = (await fin(A, g3.id, plusSec(T3, 30))).rows[0]?.r;
+  expect('주간 최고 기록 경신 → +2', r?.new_best === true && r?.reward === 2 && r?.score === 370); }
+const T4 = '2026-11-09T09:15:00Z';
+const g4 = (await sg(A, 'math', T4)).rows[0]?.r;
+{ const key = await keyOf(g4.id); await play(A, g4.id, T4, key.slice(0, 25).map((x) => x.a)); const r = (await fin(A, g4.id, plusSec(T4, 30))).rows[0]?.r;
+  expect('같은 날 같은 게임 기록 경신 보상은 한 번만', r?.new_best === true && r?.reward === 0 && r?.score === 470); }
+const T5 = '2026-11-09T09:20:00Z';
+const g5 = (await sg(A, 'word', T5)).rows[0]?.r;
+{ const key = await keyOf(g5.id); const words = (await q(`select word, meaning from public.game_words`)).rows; const dict = Object.fromEntries(words.map((w) => [w.word, w.meaning]));
+  expect('영단어 문제 정답이 단어장 뜻과 일치', key.length === 40 && key.every((x) => x.choices[x.a] === dict[x.q] && new Set(x.choices).size === 4)); }
+{ const r = await ans1(B, g5.id, 0, 0, plusSec(T5, 1)); expect('남의 게임에 답할 수 없음', r === undefined); }
+await q(`insert into public.meals_cache values ('2026-11-10', 2, array['잡곡밥','제육볶음','된장국','깍두기']), ('2026-11-11', 2, array['카레라이스','치킨너겟','계란국'])`);
+await q(`insert into public.class_lessons values (2026,2,8,'2026-11-11',1,'영어Ⅱ'),(2026,2,8,'2026-11-11',2,'화학Ⅰ'),(2026,2,8,'2026-11-11',3,'생명과학Ⅰ')`);
+const g6 = (await sg(A, 'life', '2026-11-09 18:25+09')).rows[0]?.r;
+{ const key = await keyOf(g6.id); expect('라이프 퀴즈: 동기화된 급식·시간표·학사일정 문제 포함', g6?.duration_s === 90 && key.length >= 8 && key.some((x) => /점심/.test(x.q) && /\//.test(x.q)) && key.some((x) => /우리 반/.test(x.q)) && key.some((x) => /지필평가/.test(x.q)) && key.every((x) => x.choices.length === 4)); }
+for (let k = 0; k < 4; k++) await sg(A, 'word', `2026-11-09 19:0${k}+09`);
+{ const r = await sg(A, 'word', '2026-11-09 19:30+09'); expect('하루 10판 제한', !r.ok && /10판/.test(r.err ?? '')); }
+{ const r = await sg(A, 'word', '2026-11-10 18:00+09'); expect('다음 날 첫 판은 무료', r.ok && r.rows[0]?.r?.cost === 0); }
+{ const r = await as(B, CB, `select count(*)::int n from public.game_runs`); const w = await as(B, CB, `select count(*)::int n from public.game_words`); expect('게임 기록·단어장(정답) 직접 조회 불가', r.rows[0]?.n === 0 && w.rows[0]?.n === 0); }
+{ const r = await as(B, CB, `select public.game_ranking('math', '2026-11-09') r`, 'B 게임 랭킹'); const k = r.rows[0]?.r;
+  expect('게임 랭킹: A 1위(470), 학년 표시, 계정 정보 없음', k?.top?.[0]?.score === 470 && k?.top?.[0]?.nickname === '구름위' && k?.top?.[0]?.grade === 2 && !JSON.stringify(k).includes(A) && k?.me === null); }
+{ const r = await as(A, CA, `select public.game_status() r`); expect('게임 상태', r.ok && typeof r.rows[0]?.r?.plays_today === 'number'); }
+// 주간 정산 (지난 주)
+const TP = '2026-10-14T09:00:00Z';
+const gp = (await sg(D, 'word', TP)).rows[0]?.r;
+{ const key = await keyOf(gp.id); await play(D, gp.id, TP, key.slice(0, 5).map((x) => x.a)); await fin(D, gp.id, plusSec(TP, 20)); }
+{ const r = await as(A, CA, `select public.settle_game_week('2026-10-12') r`); const r2 = await as(B, CB, `select public.settle_game_week('2026-10-12') r`);
+  const t = await q(`select count(*)::int n from public.token_ledger where user_id='${D}' and reason='game_weekly'`);
+  const badge = await q(`select count(*)::int n from public.inventory where user_id='${D}' and item_id='b_gameking'`);
+  expect('주간 정산: 1위 +30·배지, 두 번 불러도 한 번만', r.rows[0]?.r?.paid === 1 && r2.rows[0]?.r?.paid === 0 && t.rows[0]?.n === 1 && badge.rows[0]?.n === 1); }
+{ const r = await as(A, CA, `select public.settle_game_week(public.seoul_today()) r`); expect('이번 주는 아직 정산 안 함', r.rows[0]?.r?.settled === false); }
+{ const r = await as(D, CD, `select public.buy_item('b_gameking')`); expect('게임왕 배지는 살 수 없음', !r.ok); }
+{ const r = await as(D, CD, `select public.equip_item('badge', 'b_gameking') w`); expect('받은 게임왕 배지는 장착 가능', r.ok && r.rows[0]?.w?.equip?.badge === 'b_gameking'); }
 
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

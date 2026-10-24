@@ -22,6 +22,7 @@ export const FEATURES: Feature[] = [
   { id: 'calendar', title: '학사일정', short: '일정', desc: '시험·행사·휴업일과 D-day', icon: 'calendar', status: 'live' },
   { id: 'library', title: '도서관', short: '도서관', desc: '학교 도서관 장서 검색', icon: 'library', status: 'live' },
   { id: 'study', title: '공부 타이머', short: '공부', desc: '집중 모드로 공부하고 토큰 받기', icon: 'study', status: 'live' },
+  { id: 'games', title: '게임', short: '게임', desc: '영단어·암산·운중 라이프 퀴즈 · 게임 랭킹', icon: 'game', status: 'live' },
   { id: 'ranking', title: '랭킹', short: '랭킹', desc: '반 대항 공부·토큰 랭킹', icon: 'ranking', status: 'live' },
   { id: 'notice', title: '통합 공지', short: '공지', desc: '학교·학년 공지 모아보기', icon: 'notice', status: 'soon' },
   { id: 'voice', title: '운중 보이스', short: '보이스', desc: '학생 설문과 건의', icon: 'voice', status: 'soon' },

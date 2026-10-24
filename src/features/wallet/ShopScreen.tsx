@@ -42,6 +42,7 @@ export function ShopScreen() {
 
   const today = seoulNow().ymd; // YYYYMMDD
   const onSale = (i: ShopItem) =>
+    i.active !== false &&
     (!i.sold_from || i.sold_from.replace(/-/g, '') <= today) && (!i.sold_until || i.sold_until.replace(/-/g, '') >= today);
 
   const sel = selected ? itemById[selected] : null;

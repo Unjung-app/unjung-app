@@ -74,6 +74,14 @@ const PATHS: Record<string, ReactNode> = {
       <Path d="M12 7v10M9 9.5h4.5a2 2 0 0 1 0 4H9" />
     </>
   ),
+  game: (
+    <>
+      <Rect x={2.5} y={7} width={19} height={11} rx={5.5} />
+      <Path d="M7.5 10.5v4M5.5 12.5h4" />
+      <Circle cx={15.5} cy={11.5} r={1} />
+      <Circle cx={17.5} cy={13.8} r={1} />
+    </>
+  ),
   task: (
     <>
       <Rect x={5} y={4} width={14} height={17} rx={2.5} />

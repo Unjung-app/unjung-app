@@ -15,7 +15,7 @@ export function MoreScreen() {
   const router = useRouter();
   const openFeature = useOpenFeature();
   const { myClass } = usePrefs();
-  const { status } = useAuth();
+  const { status, role } = useAuth();
   const { wallet } = useWallet();
   const signedIn = status === 'ready' || status === 'needsEnrollment';
   const live = FEATURES.filter((f) => f.status === 'live');
@@ -62,6 +62,18 @@ export function MoreScreen() {
           <ListRow icon="settings" title="하단 탭 설정" subtitle="자주 쓰는 기능을 아래 탭에 고정해요" onPress={() => router.push('/settings/tabs')} />
           <Divider />
           <ListRow icon="plus" title="홈 화면에 추가" subtitle="앱처럼 바로 열고 알림 받기" onPress={() => router.push('/settings/install')} />
+        </>,
+      )}
+
+      {group(
+        <>
+          <ListRow icon="voice" title="의견 보내기" subtitle="버그 제보·개선 요청 · 반영되면 +5 토큰" onPress={() => router.push('/feedback?from=전체')} />
+          {role === 'admin' ? (
+            <>
+              <Divider />
+              <ListRow icon="settings" title="의견 관리" subtitle="관리자 전용" onPress={() => router.push('/admin/feedback')} />
+            </>
+          ) : null}
         </>,
       )}
 
