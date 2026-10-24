@@ -355,16 +355,24 @@ grant execute on function public.send_test_push() to authenticated;
 -- pg_net: 서버 깨우기 / pg_cron: 아침·저녁 알림과 10분마다 미뤄 둔 알림 보내기. (시각은 UTC 기준)
 do $$
 begin
-  if exists (select 1 from pg_available_extensions where name = 'pg_net') then
-    create extension if not exists pg_net;
-  end if;
-  if exists (select 1 from pg_available_extensions where name = 'pg_cron') then
-    create extension if not exists pg_cron;
-    -- 월~금 07:30 (한국) = 일~목 22:30 (UTC)
-    perform cron.schedule('unjung-push-morning', '30 22 * * 0-4', 'select public.push_enqueue_morning(public.seoul_today())');
-    -- 매일 19:00 (한국) = 10:00 (UTC)
-    perform cron.schedule('unjung-push-deadline', '0 10 * * *', 'select public.push_enqueue_deadlines(public.seoul_today())');
-    -- 08:00~17:59 (한국) 10분마다: 수업 시간이라 미뤄 둔 알림 보내기
-    perform cron.schedule('unjung-push-flush', '*/10 23,0-8 * * *', 'select public.push_kick()');
-  end if;
+  begin
+    if exists (select 1 from pg_available_extensions where name = 'pg_net') then
+      create extension if not exists pg_net;
+    end if;
+  exception when others then
+    raise notice 'pg_net을 켜지 못했어요(Database → Extensions에서 켜 주세요): %', sqlerrm;
+  end;
+  begin
+    if exists (select 1 from pg_available_extensions where name = 'pg_cron') then
+      create extension if not exists pg_cron;
+      -- 월~금 07:30 (한국) = 일~목 22:30 (UTC)
+      perform cron.schedule('unjung-push-morning', '30 22 * * 0-4', 'select public.push_enqueue_morning(public.seoul_today())');
+      -- 매일 19:00 (한국) = 10:00 (UTC)
+      perform cron.schedule('unjung-push-deadline', '0 10 * * *', 'select public.push_enqueue_deadlines(public.seoul_today())');
+      -- 08:00~17:59 (한국) 10분마다: 수업 시간이라 미뤄 둔 알림 보내기
+      perform cron.schedule('unjung-push-flush', '*/10 23,0-8 * * *', 'select public.push_kick()');
+    end if;
+  exception when others then
+    raise notice 'pg_cron 예약을 만들지 못했어요(Database → Extensions에서 pg_cron을 켜 주세요): %', sqlerrm;
+  end;
 end $$;
