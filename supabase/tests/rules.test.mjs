@@ -191,5 +191,66 @@ const sid = (await as(D, CD, `select public.suggest_task_fix(${tid}, '마감이 
 { const r = await as(A, CA, `select public.delete_class_task(${tid})`); const f = await as(D, CD, `select count(*)::int n from public.class_task_feed`); expect('삭제하면 피드에서 사라짐', r.ok && f.rows[0]?.n === 0); }
 { const r = await as(D, CD, `select count(*)::int n from public.class_tasks`, 'D 원본 테이블(본인 것만=0)'); expect('게시판 원본 테이블 직접 조회 불가', r.rows[0]?.n === 0); }
 
+
+// ───────── M3 3주차: 집중 모드 공부 · 랭킹 ─────────
+const start = async (u, at, subj = '') => (await q(`select public._start_study('${u}', '${subj}', '${at}') r`)).rows[0]?.r;
+const beat = async (u, id, at, skip = false, end = false) => (await q(`select public._beat_study('${u}', '${id}', '${at}', ${skip}, ${end}) r`)).rows[0]?.r;
+{ const r = await as(A, CA, `select public._beat_study('${A}', gen_random_uuid(), now(), false, false)`, '학생이 _beat_study 직접(막혀야 함)'); expect('공부 본체 직접 호출 차단', !r.ok); }
+{ const r = await q(`select public._start_study('${C}', '', '2026-10-26 18:00+09')`); expect('학번 없으면 공부 시작 불가', !r.ok); }
+let sA = await start(A, '2026-10-26 18:00:00+09', '수학');
+expect('A 공부 시작', !!sA?.id && sA.in_class === false);
+await beat(A, sA.id, '2026-10-26 18:01:00+09');
+{ const r = await beat(A, sA.id, '2026-10-26 18:02:00+09'); expect('방과후 2분 → 랭킹 120초', r?.today?.ranked_seconds === 120 && r?.credited === 60); }
+{ const r = await beat(A, sA.id, '2026-10-26 18:05:00+09'); expect('신호 3분 끊기면 세션 종료, 빈 시간 안 셈', r?.ended === true && r?.today?.ranked_seconds === 120); }
+{ const r = await beat(A, sA.id, '2026-10-26 18:05:30+09'); expect('끝난 세션 신호는 무시', r?.ended === true && r?.reason === 'not_found'); }
+// 수업 시간: 2교시(09:40~10:30)
+const sD = await start(D, '2026-10-26 10:00:00+09');
+expect('수업 시간에 시작하면 in_class', sD?.in_class === true);
+{ const r = await beat(D, sD.id, '2026-10-26 10:01:00+09'); expect('수업 시간 공부는 랭킹 0, 수업 칸 60', r?.today?.ranked_seconds === 0 && r?.today?.class_seconds === 60); }
+{ const r = await beat(D, sD.id, '2026-10-26 10:32:00+09'); expect('수업 중 31분 공백 → 종료', r?.ended === true); }
+// 쉬는 시간(10:30~10:40)은 랭킹에 들어감
+const sD2 = await start(D, '2026-10-26 10:31:00+09');
+{ const r = await beat(D, sD2.id, '2026-10-26 10:32:00+09'); expect('쉬는 시간은 랭킹 반영', r?.today?.ranked_seconds === 60); }
+// 3학년 점심(11:30~12:30)은 수업 아님, 1·2학년은 4교시
+{ const r = await q(`select public.is_class_time(3, '2026-10-26 12:00+09') a, public.is_class_time(2, '2026-10-26 12:00+09') b, public.is_class_time(2, '2026-10-31 10:00+09') c, public.is_class_time(2, '2026-11-03 10:00+09') d`);
+  expect('3학년 12:00 점심 / 2학년 12:00 수업 / 토요일·쉬는 날은 수업 아님', r.rows[0]?.a === false && r.rows[0]?.b === true && r.rows[0]?.c === false && r.rows[0]?.d === false); }
+// 잠깐 떠났다 돌아오기(skip): 떠난 시간은 안 셈
+const sA2 = await start(A, '2026-10-26 19:00:00+09');
+{ const r = await beat(A, sA2.id, '2026-10-26 19:00:50+09', true); expect('돌아왔을 때 skip → 0초 인정', r?.credited === 0 && r?.today?.ranked_seconds === 120); }
+// 새 세션을 시작하면 열린 세션은 닫힘
+const sA3 = await start(A, '2026-10-26 20:00:00+09');
+{ const r = await q(`select count(*)::int n from public.study_sessions where user_id='${A}' and ended_at is null`); expect('한 사람에 열린 세션 하나', r.rows[0]?.n === 1); }
+for (let m = 1; m <= 20; m++) await beat(A, sA3.id, `2026-10-26 20:${String(m).padStart(2, '0')}:00+09`);
+{ const r = await q(`select ranked_seconds, tokens from public.study_daily where user_id='${A}' and day='2026-10-26'`); expect('22분 → 토큰 2개', r.rows[0]?.ranked_seconds === 1320 && r.rows[0]?.tokens === 2); }
+{ const r = await q(`select count(*)::int n from public.token_ledger where user_id='${A}' and reason='study' and ref_id like '2026-10-26:%'`); expect('공부 토큰 원장 2줄', r.rows[0]?.n === 2); }
+{ const r = await beat(A, sA3.id, '2026-10-26 20:20:30+09', false, true); expect('종료', r?.ended === true); }
+{ const r = await q(`select public._beat_study('${B}', '${sA3.id}', '2026-10-26 20:21:00+09', false, false) r`); expect('남의 세션에 신호 불가', r.rows[0]?.r?.reason === 'not_found'); }
+{ const r = await as(B, CB, `select * from public.study_sessions`, 'B가 본 공부 세션(본인 것만)'); expect('남의 공부 기록 비공개', r.ok && r.rows.length === 0); }
+// 하루 상한: 30토큰
+await q(`update public.study_daily set ranked_seconds = 12*3600 - 30, tokens = 30 where user_id='${A}' and day='2026-10-26'`);
+const sA4 = await start(A, '2026-10-26 21:00:00+09');
+{ const r = await beat(A, sA4.id, '2026-10-26 21:01:00+09'); expect('하루 12시간 넘는 부분은 랭킹 제외', r?.today?.ranked_seconds === 12 * 3600 && r?.today?.tokens === 30); }
+
+// 랭킹
+await as(D, CD, `select public.set_ranking_hidden(true)`);
+{ const r = await as(A, CA, `select public.ranking('study', 2, '2026-10-28') r`, 'A 2학년 공부 랭킹'); const k = r.rows[0]?.r;
+  const c8 = k?.classes?.find((c) => c.class_no === 8);
+  expect('랭킹: 반 8개, 우리 반 표시, 3명이라 참여 부족', k?.classes?.length === 8 && c8?.mine === true && c8?.members === 3 && c8?.eligible === false && c8?.rank === null);
+  expect('랭킹: 주 시작은 월요일', k?.week_start === '2026-10-26');
+  expect('랭킹: 1위 A(닉네임), D는 숨김', k?.top?.[0]?.nickname === '구름위' && k?.top?.[0]?.mine === true && k?.top?.some((t) => t.hidden && t.nickname === null && t.equip === null));
+  expect('랭킹: 내 순위 1위', k?.me?.rank === 1);
+  expect('랭킹 응답에 user_id·이름 없음', !JSON.stringify(k).includes(A) && !JSON.stringify(k).includes('이호원')); }
+for (const [u, e, no] of [['77777777-7777-7777-7777-777777777771', 'f1@unjung.hs.kr', '20803'], ['77777777-7777-7777-7777-777777777772', 'f2@unjung.hs.kr', '20804']]) {
+  await q(`insert into auth.users values ('${u}','${e}')`); await as(u, e, `select public.register_enrollment('${no}','친구')`);
+}
+{ const r = await as(A, CA, `select public.ranking('study', 2, '2026-10-26') r`); const c8 = r.rows[0]?.r?.classes?.find((c) => c.class_no === 8);
+  expect('5명이 되면 반 순위 참여, 평균 = 합계÷5', c8?.eligible === true && c8?.rank === 1 && c8?.avg === Math.round(c8.total / 5)); }
+{ const r = await as(B, CB, `select public.ranking('study', 2, '2026-10-26') r`); expect('다른 학년도 볼 수 있지만 내 순위 없음', r.ok && r.rows[0]?.r?.me === null); }
+{ const r = await as(A, CA, `select public.ranking('tokens', 2, public.seoul_today()) r`, 'A 토큰 랭킹'); expect('토큰 랭킹(관리자 지급 제외)', r.ok && Array.isArray(r.rows[0]?.r?.top)); }
+{ const r = await as(A, CA, `select public.ranking('hack', 2, public.seoul_today())`); expect('잘못된 랭킹 종류 거부', !r.ok); }
+{ const r = await as(X, 'someone@gmail.com', `select public.ranking('study', 2, public.seoul_today())`); expect('외부 계정 랭킹 불가', !r.ok); }
+{ await db.exec('reset role'); const r = await db.query(`set role anon; select public.study_live()`).then(() => ({ ok: true }), () => ({ ok: false })); await db.exec('reset role'); expect('비로그인 study_live 불가', !r.ok); }
+{ const s = await as(E, CE, `select public.start_study('국어') r`, 'E 실제 시작(now)'); const l = await as(A, CA, `select public.study_live() r`); expect('지금 집중 중 1명', s.ok && l.rows[0]?.r?.all === 1 && l.rows[0]?.r?.g2 === 1); }
+
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

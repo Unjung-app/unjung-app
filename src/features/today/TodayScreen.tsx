@@ -1,11 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
-import { Badge, Button, Card, Chip, SampleNotice, SectionTitle } from '@/components/ui/primitives';
+import { Button, Card, Chip, SampleNotice, SectionTitle } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { InstallBanner } from '@/features/install/InstallBanner';
 import { WalletStrip } from '@/features/today/WalletStrip';
+import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
+import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
 import { MEAL_CODE, useTopReview } from '@/features/meal/reviews';
 import { Logo } from '@/components/Logo';
@@ -309,21 +312,37 @@ function MealCard({ today, minutes, meals, grade }: { today: string; minutes: nu
 /* ---------- 아래 두 칸 ---------- */
 
 function StudyCard() {
+  const openFeature = useOpenFeature();
+  const { status } = useAuth();
+  const ready = status === 'ready';
+  const live = useStudyLive(ready);
+  const [today, setToday] = useState<StudyToday | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    supabase.rpc('my_study_today').then(({ data }) => data && setToday(data as StudyToday));
+  }, [ready]);
   return (
-    <View style={{ flex: 1, backgroundColor: color.surface, borderRadius: radius.card, padding: space.lg, gap: 6 }}>
-      <AppText variant="label" weight="regular" color={color.inkMuted}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`오늘 공부 ${today ? durationLabel(today.ranked_seconds) : ''}. 공부 타이머 열기`}
+      onPress={() => openFeature('study')}
+      style={({ pressed }) => ({ flex: 1, backgroundColor: pressed ? color.navyRaised : color.navy, borderRadius: radius.card, padding: space.lg, gap: 6 })}>
+      <AppText variant="label" weight="regular" color={color.onNavyMuted}>
         오늘 공부
       </AppText>
-      <AppText variant="heading" style={{ fontSize: 20, lineHeight: 26 }}>
-        타이머 준비 중
+      <AppText variant="heading" color={color.onNavy} style={{ fontSize: 22, lineHeight: 28 }}>
+        {ready ? durationLabel(today?.ranked_seconds ?? 0) : '집중 모드'}
       </AppText>
-      <AppText variant="caption" color={color.inkMuted}>
-        공부 시간이 토큰과 반 랭킹으로 이어져요
+      <AppText variant="caption" color={color.onNavySub}>
+        {ready ? `토큰 ${today?.tokens ?? 0}/30 · 10분마다 +1` : '로그인하면 공부 시간이 반 랭킹이 돼요'}
       </AppText>
-      <View style={{ marginTop: 'auto', paddingTop: 6, alignSelf: 'flex-start' }}>
-        <Badge label="곧 열려요" />
+      <View style={{ marginTop: 'auto', paddingTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: live?.all ? color.liveOnNavy : color.navyDone }} />
+        <AppText variant="caption" weight="semibold" color={color.accent}>
+          {ready ? `${live?.all ?? 0}명 집중 중 · 시작 ›` : '시작 ›'}
+        </AppText>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

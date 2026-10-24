@@ -25,6 +25,8 @@ export const color = {
 
   success: '#1B6B3A',
   successSoft: '#E3F4EA',
+  /** 어두운(네이비) 배경 위 '지금 켜져 있음' 점 */
+  liveOnNavy: '#4ADE80',
   danger: '#B42318',
   dangerSoft: '#FDECEA',
 } as const;
