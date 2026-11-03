@@ -83,7 +83,10 @@ if (!IN_CODESPACES) {
 git(["config", "user.name", name]);
 
 // ── 2. 작업 고르기 ──────────────────────────────────────────
-const { core, labs } = targetsAt("origin/main");
+const all = targetsAt("origin/main");
+const core = all.core;
+// 예시(example)는 참고용이라 목록에 넣지 않습니다.
+const labs = all.labs.filter((t) => t.slug !== "example");
 // 아직 main에 합쳐지지 않은 '내 실험실 기능'도 목록에 넣습니다.
 const known = (slug) => labs.some((t) => t.slug === slug) || core.some((t) => t.slug === slug);
 const myRefs = git(["for-each-ref", "--format=%(refname:short)", "refs/heads/feat/", "refs/remotes/origin/feat/"], {
