@@ -115,6 +115,20 @@ export function targetsAt(ref) {
   return { core, labs };
 }
 
+// 저장(커밋)하지 않은 변경 파일 목록
+export function changedFiles() {
+  // -z: 파일 이름을 따옴표·이스케이프 없이 NUL 문자로 구분해서 받음 (한글 파일명 대비)
+  const r = spawnSync("git", ["status", "--porcelain", "-uall", "-z"], { encoding: "utf8" });
+  const parts = (r.stdout || "").split("\0").filter(Boolean);
+  const files = [];
+  for (let i = 0; i < parts.length; i++) {
+    const code = parts[i].slice(0, 2);
+    files.push(parts[i].slice(3));
+    if (code.includes("R") || code.includes("C")) i++; // 이름 변경은 원래 이름이 한 칸 더 붙음
+  }
+  return files;
+}
+
 // ── 입력 받기 ─────────────────────────────────────────────
 // 한 줄씩 입력받기. 여러 줄을 한꺼번에 붙여넣어도 순서대로 하나씩 쓰입니다.
 let rl;
