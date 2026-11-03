@@ -5,7 +5,7 @@
     "icn1"
   ],
   "installCommand": "npm ci --no-audit --no-fund",
-  "buildCommand": "EXPO_PUBLIC_BUILD_ID=$VERCEL_GIT_COMMIT_SHA npm run build:web",
+  "buildCommand": "EXPO_PUBLIC_BUILD_ID=$VERCEL_GIT_COMMIT_SHA EXPO_PUBLIC_VERCEL_ENV=$VERCEL_ENV npm run build:web",
   "outputDirectory": "dist",
   "rewrites": [
     {

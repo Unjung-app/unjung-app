@@ -36,7 +36,7 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-example
+/example
 
 # generated native folders
 /ios
@@ -44,3 +44,7 @@ example
 
 # vercel
 .vercel
+
+# 참여원 도우미가 만드는 파일
+ai-context.md
+conflict-help.md

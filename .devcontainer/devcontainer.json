@@ -1,0 +1,42 @@
+// GitHub Codespaces(브라우저에서 바로 쓰는 개발 환경) 설정 — 참여원용
+// 저장소 화면 [Code] → [Codespaces] → [Create codespace on main] 으로 시작합니다.
+{
+  "name": "운중고 앱 (참여원)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+
+  // 처음 만들 때 부품 설치. 끝날 때까지 기다린 뒤 편집기가 열립니다.
+  "updateContentCommand": "npm ci --no-audit --no-fund --loglevel=error",
+
+  // 급식·시간표 같은 학교 데이터는 실제 서버(/api)에서 받아옵니다.
+  "containerEnv": {
+    "EXPO_PUBLIC_API_BASE": "https://unjung-app.vercel.app",
+    "EXPO_NO_TELEMETRY": "1"
+  },
+
+  // 앱 주소(8081번)를 자동으로 연결하고 편집기 옆에 미리보기를 엽니다.
+  "forwardPorts": [8081],
+  "portsAttributes": {
+    "8081": { "label": "운중고 앱", "onAutoForward": "openPreview" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["GitHub.copilot", "GitHub.copilot-chat"],
+      "settings": {
+        // 폴더를 열면 앱이 자동으로 켜지도록 (.vscode/tasks.json)
+        "task.allowAutomaticTasks": "on",
+        // 저장(Ctrl+S)을 잊어도 자동 저장
+        "files.autoSave": "afterDelay",
+        "workbench.startupEditor": "none",
+        "editor.wordWrap": "on",
+        "git.openRepositoryInParentFolders": "never",
+        // Copilot: 참여원 규칙(.github/copilot-instructions.md)과 요청 양식(.github/prompts) 사용
+        "chat.agent.enabled": true,
+        "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+        "chat.promptFiles": true,
+        // AGENTS.md 는 리드(대표) AI용 규칙이라 참여원 Copilot에는 쓰지 않음
+        "chat.useAgentsMdFile": false
+      }
+    }
+  }
+}

@@ -7,6 +7,7 @@ import { Screen } from '@/components/ui/Screen';
 import { AccountCard } from '@/features/auth/AccountCard';
 import { classLabel, useOpenFeature } from '@/features/hooks';
 import { DEV_TEAM, DEV_TEAM_NAME, FEATURES } from '@/features/registry';
+import { LAB_FEATURES, labVisible } from '@/lab/registry';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { useWallet } from '@/state/wallet';
@@ -117,6 +118,30 @@ export function MoreScreen() {
           </View>
         )),
       )}
+
+      {labVisible(role) && LAB_FEATURES.length > 0 ? (
+        <>
+          <AppText variant="heading" style={{ marginTop: space.sm }}>
+            실험실 (베타)
+          </AppText>
+          <AppText variant="caption" color={color.inkMuted}>
+            학생 개발팀이 만들고 있는 기능이에요. 개발 환경과 관리자에게만 보여요.
+          </AppText>
+          {group(
+            LAB_FEATURES.map((f, i) => (
+              <View key={f.slug}>
+                {i > 0 ? <Divider /> : null}
+                <ListRow
+                  title={`${f.emoji ?? '🧪'} ${f.title}`}
+                  subtitle={[f.desc, f.makers.length ? `만든 사람 · ${f.makers.join(', ')}` : ''].filter(Boolean).join(' · ')}
+                  onPress={() => router.push(`/lab/${f.slug}`)}
+                  right={<Badge label={f.status === 'ready' ? '완성' : '만드는 중'} tone={f.status === 'ready' ? 'success' : 'muted'} />}
+                />
+              </View>
+            )),
+          )}
+        </>
+      ) : null}
 
       <View style={{ marginTop: space.xl, gap: 4, alignItems: 'center' }}>
         <AppText variant="caption" color={color.inkMuted} align="center">

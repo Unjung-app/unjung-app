@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>운중고 앱 참여 안내서</title>
+<style>
+:root{
+  --bg:#f4f7fb; --surface:#ffffff; --ink:#14233b; --ink-2:#44546c; --ink-3:#7a889c;
+  --line:#dde4ee; --navy:#0e2748; --num:#0e2748; --blue:#245ba3; --blue-tint:#e8f0fb;
+  --green:#1e7f5c; --green-tint:#e6f4ee; --amber-tint:#fdf3e1;
+  --code-bg:#0f1b2e; --code-ink:#e3ebf7;
+  --sans:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","맑은 고딕","Noto Sans KR",system-ui,sans-serif;
+  --mono:Consolas,"D2Coding","SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1420; --surface:#152032; --ink:#e6edf7; --ink-2:#b4c1d4; --ink-3:#8796ab;
+    --line:#26354b; --navy:#0a1a30; --num:#2a4f86; --blue:#7fb0ef; --blue-tint:#1a2c46;
+    --green:#5fcfa1; --green-tint:#14302a; --amber-tint:#33280f; --code-bg:#0a121e;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.7;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:var(--blue)}
+.top{background:var(--navy);color:#fff}
+.top-in{max-width:760px;margin:0 auto;padding:12px 16px;display:flex;align-items:center}
+.top b{font-size:15px}
+.top a{margin-left:auto;color:#cfdcf0;font-size:13px;font-weight:700;text-decoration:none}
+main{max-width:760px;margin:0 auto;padding:28px 16px 100px}
+h1{font-size:clamp(24px,5vw,30px);line-height:1.3;font-weight:800;letter-spacing:-.4px}
+.lead{color:var(--ink-2);margin-top:8px}
+.rules{margin-top:14px;background:var(--amber-tint);border-radius:12px;padding:10px 14px;font-size:15px}
+
+.step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;margin-top:16px}
+.step h2{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:800}
+.step h2 .n{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--num);color:#fff;font-size:15px;flex-shrink:0}
+.step ol,.step ul{margin:10px 0 0 22px}
+.step li{margin:5px 0}
+.done{margin-top:10px;background:var(--green-tint);border-radius:10px;padding:8px 12px;font-size:15px}
+.done::before{content:"✓ ";font-weight:800;color:var(--green)}
+.note{color:var(--ink-3);font-size:14px;margin-top:8px}
+
+.cmd{display:flex;align-items:center;gap:8px;background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:9px 9px 9px 14px;margin:8px 0;font-family:var(--mono);font-size:15px}
+.cmd code{flex:1;overflow-x:auto;white-space:pre}
+.cmd button{flex-shrink:0;border:0;border-radius:8px;background:#2a4f86;color:#fff;font:700 13px var(--sans);padding:6px 12px;cursor:pointer}
+.cmd button.ok{background:var(--green)}
+code.k{font-family:var(--mono);font-size:.92em;background:var(--blue-tint);padding:1px 6px;border-radius:5px}
+kbd{font-family:var(--sans);font-size:.85em;font-weight:700;background:var(--surface);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 6px;white-space:nowrap}
+.prompt{background:var(--surface);border:1px dashed var(--blue);border-radius:10px;padding:10px 12px;margin-top:8px;white-space:pre-wrap;font-size:15px}
+
+h3.more{margin-top:40px;font-size:15px;color:var(--ink-3);font-weight:700}
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-top:8px}
+details summary{cursor:pointer;padding:12px 16px;font-weight:700;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"▸ ";color:var(--blue)}
+details[open] summary::before{content:"▾ "}
+details .in{padding:0 16px 14px}
+details ul,details ol{margin:4px 0 0 20px} details li{margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}
+td:first-child{width:42%;color:var(--ink-2)}
+footer{margin-top:48px;color:var(--ink-3);font-size:13px;text-align:center}
+@media print{.cmd button{display:none} details .in{display:block}}
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in"><b>운중고 앱 참여 안내서</b><a href="/">앱 열기 →</a></div></div>
+
+<main>
+<h1>4단계만 따라 하세요</h1>
+<p class="lead">무엇을 만들지는 내가 정하고, 코드는 AI(Copilot)가 씁니다. 설치할 프로그램은 없어요.</p>
+<p class="rules"><b>지킬 것 3가지</b> · 내 폴더 안에서만 고치기 · 비밀번호·개인정보 넣지 않기 · 10분 막히면 대표에게</p>
+
+<section class="step">
+  <h2><span class="n">1</span>열기</h2>
+  <ul>
+    <li>GitHub에 로그인 (계정이 없거나 초대를 못 받았으면 대표에게)</li>
+    <li><b>처음:</b> <a href="https://github.com/Unjung-app/unjung-app" target="_blank" rel="noopener">앱 GitHub 페이지</a>에서 초록색 <b>Code</b> → <b>Codespaces</b> → <b>Create codespace on main</b> (3~5분)</li>
+    <li><b>다음부터:</b> <a href="https://github.com/codespaces" target="_blank" rel="noopener">github.com/codespaces</a>에서 내 것을 다시 열기. 새로 만들지 마세요.</li>
+    <li>화면 아래 터미널 패널의 <b>+</b>를 눌러 새 터미널을 열고, 명령은 여기에 입력해요. ('앱 실행' 터미널은 그대로 두기)</li>
+  </ul>
+  <p class="done">오른쪽(또는 새 탭)에 앱 미리보기가 보이면 성공. 처음엔 1분쯤 걸려요.</p>
+</section>
+
+<section class="step">
+  <h2><span class="n">2</span>고르기</h2>
+  <div class="cmd"><code>npm run work</code><button type="button">복사</button></div>
+  <ul>
+    <li>영문 이름을 입력하고, 번호를 고릅니다. <b>무엇을 할지는 내가 정해요.</b></li>
+    <li><b>0번</b> = 내 아이디어로 <b>새 기능</b> 만들기 (실험실에 생겨요)</li>
+    <li><b>실험실 기능</b> = 친구 기능에 함께하거나 내 기능 이어 하기</li>
+    <li><b>정식 기능</b> = 급식·시간표처럼 이미 앱에 있는 기능 <b>고치기·개선하기</b></li>
+  </ul>
+  <p class="done"><b>준비 끝!</b>이 나오면 성공. 마지막에 나온 <b>고칠 폴더</b>를 기억해 두세요.</p>
+  <p class="note">실험실 기능은 미리보기 아래 탭 <b>전체 → 실험실 (베타)</b>에서 볼 수 있어요.</p>
+</section>
+
+<section class="step">
+  <h2><span class="n">3</span>만들기 (Copilot)</h2>
+  <ol>
+    <li><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>I</kbd> 로 Copilot 채팅 열기 (처음이면 GitHub 로그인 허락)</li>
+    <li>채팅 입력칸 아래에서 <b>Agent</b>가 선택돼 있는지 확인</li>
+    <li>요청 양식으로 한 번에 자세히 부탁하기
+      <div class="prompt"><b>새 기능</b>  /feature 시험 기간에 1학년이 쓰는 기능. 화면에 시험까지 남은 날짜와 과목 목록이 보이고, 과목을 누르면 공부 완료 체크가 돼. 정보는 내가 직접 입력.</div>
+      <div class="prompt"><b>고치기</b>  /improve src/features/meal/ — 지금은 오늘 급식만 크게 보여. 내일 급식도 바로 아래에 작게 보였으면 좋겠어.</div>
+    </li>
+    <li>Copilot이 파일을 직접 고쳐요. 미리보기에서 확인하고 마음에 들면 <b>Keep</b>, 아니면 <b>Undo</b></li>
+    <li>Copilot이 명령을 실행해도 되냐고 물으면 <code class="k">npx tsc --noEmit</code>(오류 검사)일 때만 <b>Allow</b>/<b>Continue</b>. <code class="k">git</code>·<code class="k">npm install</code> 같은 다른 명령은 <b>Skip</b>(거절)</li>
+  </ol>
+  <p class="note">무료 Copilot은 한 달에 채팅 약 50번이에요. 짧게 여러 번보다 <b>한 번에 자세히</b> 부탁하세요.</p>
+</section>
+
+<section class="step">
+  <h2><span class="n">4</span>올리기</h2>
+  <div class="cmd"><code>npm run save</code><button type="button">복사</button></div>
+  <ul>
+    <li>무엇을 했는지 한 줄로 적기</li>
+    <li>주소가 나오면 <kbd>Ctrl</kbd>+클릭 → 초록색 <b>Create pull request</b></li>
+  </ul>
+  <p class="done"><b>할 일 끝!</b>이 나오거나 PR을 만들면 성공. 대표가 확인하고 합치면 실제 앱에 나와요.</p>
+  <p class="note">작은 것이라도 될 때마다 올리세요. 끝날 때도 한 번 더.</p>
+</section>
+
+<h3 class="more">필요할 때만 펼쳐 보세요</h3>
+
+<details>
+  <summary>막혔을 때</summary>
+  <div class="in">
+    <p>먼저 이것부터. ❌가 나온 줄의 안내를 따라 하세요.</p>
+    <div class="cmd"><code>npm run doctor</code><button type="button">복사</button></div>
+    <table>
+      <tr><td>미리보기가 안 보임</td><td>아래 <b>PORTS</b> 탭 → 8081번의 🌐 아이콘</td></tr>
+      <tr><td>'앱 실행' 터미널이 없음</td><td>새 터미널에서 <code class="k">npm run app</code></td></tr>
+      <tr><td>화면이 하얗거나 빨간 오류</td><td>오류 글자를 전부 복사해서 Copilot에게 "이 오류 고쳐 줘"</td></tr>
+      <tr><td>아래에 빨간 <b>Received `false` for a non-boolean attribute</b></td><td>앱 부품 쪽 경고라 무시해도 돼요 (✕로 닫기)</td></tr>
+      <tr><td>고쳤는데 화면이 그대로</td><td>미리보기 새로고침</td></tr>
+      <tr><td>Copilot 채팅이 안 열림·한도 끝</td><td>아래 "Copilot 대신 다른 AI 쓰기"</td></tr>
+      <tr><td>한글 입력 후 Enter가 안 먹힘</td><td><kbd>Enter</kbd> 한 번 더</td></tr>
+      <tr><td>2분 넘게 반응 없음</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> 후 같은 명령 다시</td></tr>
+      <tr><td>그래도 안 됨</td><td><code class="k">npm run doctor</code> 화면을 캡처해서 대표에게</td></tr>
+    </table>
+  </div>
+</details>
+
+<details>
+  <summary>AI에게 잘 부탁하는 법</summary>
+  <div class="in">
+    <p>네 가지를 넣으면 한 번에 잘 만들어요.</p>
+    <ul>
+      <li><b>누가 언제</b> 쓰나 · 화면에 <b>무엇이 보이나</b> · <b>누르면</b> 어떻게 되나 · 어떤 <b>정보</b>를 쓰나</li>
+      <li>Copilot이 ①②③ 보기로 물어보면 번호로 답해도 돼요.</li>
+    </ul>
+    <p style="margin-top:10px">잘 안 될 때:</p>
+    <div class="prompt">[한 것] 과목을 눌렀어.
+[기대] 체크 표시가 생겨야 해.
+[실제] 아무 반응이 없어.
+[오류] (빨간 글자 전부, 없으면 "없음")</div>
+  </div>
+</details>
+
+<details>
+  <summary>"충돌"이 났다고 나오면</summary>
+  <div class="in">
+    <p>다른 사람과 같은 곳을 고쳐서 생긴 일이에요. 망가진 게 아니에요.</p>
+    <ol>
+      <li>자동으로 열린 <code class="k">conflict-help.md</code>를 Copilot 채팅에 끌어다 놓고 "이대로 충돌 해결해 줘"</li>
+      <li>미리보기에서 내 기능과 다른 사람 기능이 둘 다 되는지 확인</li>
+      <li><code class="k">npm run save</code></li>
+    </ol>
+    <p class="note">AI가 "한쪽 코드를 지워야 한다"고 하면, 진행하기 전에 대표에게 물어보세요.</p>
+  </div>
+</details>
+
+<details>
+  <summary>다 만들었을 때 · 아이디어 올리기</summary>
+  <div class="in">
+    <ul>
+      <li>실험실 기능을 다 만들면 Copilot에게 "<code class="k">meta.json</code>의 status를 ready로 바꿔 줘" → <code class="k">npm run save</code>. 실험실에 <b>완성</b> 표시가 붙어요.</li>
+      <li>이모지(✨)를 바꾸고 싶으면 "meta.json의 emoji를 🎵로 바꿔 줘"</li>
+      <li>공용 부분(로그인·서버·데이터 저장)이 필요하면 PR 설명에 "○○가 필요해요"라고 적어 주세요. 대표가 도와줘요.</li>
+      <li>아이디어만 남기고 싶으면 GitHub <b>Issues → New issue → 💡 기능 아이디어</b></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Copilot 대신 다른 AI 쓰기 (ChatGPT·Gemini 등)</summary>
+  <div class="in">
+    <div class="cmd"><code>npm run ai</code><button type="button">복사</button></div>
+    <ol>
+      <li>열린 <code class="k">ai-context.md</code> 안을 클릭 → <kbd>Ctrl</kbd>+<kbd>A</kbd> → <kbd>Ctrl</kbd>+<kbd>C</kbd></li>
+      <li>AI 채팅에 붙여넣기 → AI가 "준비됐어"</li>
+      <li>만들고 싶은 것을 말하고, AI가 준 파일을 왼쪽 목록에서 열어 <b>통째로</b> 바꾸기</li>
+    </ol>
+    <p class="note">AI 서비스마다 나이 제한이 있어요(예: Claude.ai는 만 18세 이상). 내가 쓸 수 있는 서비스를 쓰세요.</p>
+  </div>
+</details>
+
+<details>
+  <summary>처음 한 번: 사전 점검</summary>
+  <div class="in">
+    <ul>
+      <li>☐ 학교 컴퓨터에서 GitHub 로그인이 된다 (인증용 휴대폰 준비)</li>
+      <li>☐ <a href="https://github.com/settings/copilot" target="_blank" rel="noopener">github.com/settings/copilot</a>에서 <b>Copilot Free</b>를 켰다</li>
+      <li>☐ <code class="k">npm run doctor</code>가 모두 ✅</li>
+    </ul>
+    <p class="note">학생 인증(GitHub Education)을 받으면 Copilot을 더 많이 쓸 수 있어요. 선택 사항이에요.</p>
+  </div>
+</details>
+
+<details>
+  <summary>내 노트북에서 하고 싶다면</summary>
+  <div class="in">
+    <p>Git, Node.js(LTS), VS Code를 설치한 뒤 명령 프롬프트에서 한 줄씩:</p>
+    <div class="cmd"><code>git clone https://github.com/Unjung-app/unjung-app.git</code><button type="button">복사</button></div>
+    <div class="cmd"><code>cd unjung-app</code><button type="button">복사</button></div>
+    <div class="cmd"><code>npm install</code><button type="button">복사</button></div>
+    <div class="cmd"><code>code .</code><button type="button">복사</button></div>
+    <p class="note">VS Code 터미널에서 <code class="k">npm run app</code>으로 앱을 켜요(주소 localhost:8081, 급식·시간표는 예시 데이터로 보여요). VS Code에 Copilot 확장을 설치한 뒤 2~4단계는 같아요.</p>
+  </div>
+</details>
+
+<footer>NERD LAB × 알고리즘 동아리</footer>
+</main>
+
+<script>
+document.querySelectorAll('.cmd button').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var text = btn.parentElement.querySelector('code').innerText.trim();
+    function done(){ btn.textContent='복사됨'; btn.classList.add('ok'); setTimeout(function(){ btn.textContent='복사'; btn.classList.remove('ok'); },1500); }
+    function fallback(){ var ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); done(); }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+  });
+});
+</script>
+</body>
+</html>

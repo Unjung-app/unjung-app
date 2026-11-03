@@ -33,8 +33,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(SHELL).then((c) => c.put('/', copy));
+          // 앱 화면만 오프라인용으로 저장한다(안내서·개인정보 처리방침 같은 별도 .html은 제외)
+          if (res.ok && !/\.html$/.test(url.pathname)) {
+            const copy = res.clone();
+            caches.open(SHELL).then((c) => c.put('/', copy));
+          }
           return res;
         })
         .catch(() => caches.match('/')),
