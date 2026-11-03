@@ -240,6 +240,6 @@ say(`  내 작업   : ${feature.kind === "lab" ? "실험실 기능" : "정식 �
 say(`  내 화면   : 미리보기에서 ${where}`);
 say(`  고칠 폴더 : ${folderOf(feature)}`);
 say("");
-say("  다음 → Copilot 채팅(Ctrl+Alt+I)에서 /improve 또는 /feature");
+say(`  다음 → Copilot 채팅(Ctrl+Alt+I)에서 ${feature.kind === "lab" ? "/feature 또는 /improve" : "/improve"}`);
 say("        (Copilot을 못 쓰면 npm run ai)");
 say("");

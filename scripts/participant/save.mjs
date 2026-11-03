@@ -57,7 +57,7 @@ const others = changed.filter((f) => !f.startsWith(folder));
 
 if (others.length > 0) {
   warn(`내 폴더 밖에서 바뀐 파일은 올라가지 않아요: ${others.join(", ")}`);
-  say(`        내 화면에 필요한 파일이면 AI에게 "이 파일을 ${folder}_components/ 안으로 옮겨 줘"`);
+  say(`        내 화면에 필요한 파일이면 AI에게 "이 파일을 ${folder} 안으로 옮겨 줘"`);
   say("");
 }
 
@@ -87,11 +87,17 @@ if (mine.length > 0) {
   say("  코드 검사 중... (10~30초)");
   const tc = spawnSync("npx", ["tsc", "--noEmit", "--pretty", "false"], { encoding: "utf8", shell: process.platform === "win32" });
   if (tc.status !== 0) {
-    const lines = `${tc.stdout || ""}${tc.stderr || ""}`.split("\n").filter((l) => l.includes("error"));
-    warn(`코드 오류가 ${lines.length}개 있어요. 저장은 해 두지만, 이대로면 PR 자동 검사에서 빨간 X가 나요.`);
-    lines.slice(0, 5).forEach((l) => say(`        ${l.slice(0, 160)}`));
-    say("        → 위 글을 복사해서 Copilot에게 \"이 오류 고쳐 줘\"라고 보내세요.");
-    say("");
+    // 내 폴더의 오류만 보여 준다(폴더 밖 파일은 어차피 올라가지 않음)
+    const lines = `${tc.stdout || ""}${tc.stderr || ""}`
+      .split("\n")
+      .filter((l) => l.includes("error TS") && l.replaceAll("\\", "/").startsWith(folder));
+    if (lines.length === 0) ok("코드 검사 통과");
+    else {
+      warn(`코드 오류가 ${lines.length}개 있어요. 저장은 해 두지만, 이대로면 PR 자동 검사에서 빨간 X가 나요.`);
+      lines.slice(0, 5).forEach((l) => say(`        ${l.slice(0, 160)}`));
+      say("        → 위 글을 복사해서 Copilot에게 \"이 오류 고쳐 줘\"라고 보내세요.");
+      say("");
+    }
   } else ok("코드 검사 통과");
 }
 
