@@ -11,6 +11,9 @@ src/
     (tabs)/            하단 탭 화면들 (오늘·시간표·급식·…·전체)
     feature/[id].tsx   하단 탭에 없는 기능을 '전체'에서 열 때 (뒤로가기 있음)
     settings/          설정 (내 반, 하단 탭)
+    lab/[slug].tsx     실험실 기능 화면
+  lab/                 실험실(베타) — 참여원 기능. 폴더(meta.json + index.tsx)만 추가하면
+                       '전체 → 실험실'에 자동 등록. 운영 사이트에서는 관리자에게만 보임
   features/            기능별 화면과 로직
     registry.ts        기능 목록 ← 새 기능은 여기에 한 줄 추가
     screens.tsx        기능 id → 화면 연결
@@ -64,7 +67,24 @@ npm run check        # 타입 검사 + 웹 빌드 (PR 전에)
 npm run test:db      # DB 규칙 검사
 ```
 
+## 참여원(학생 개발팀)
+
+안내서: `/guide.html` (앱 주소 뒤에 붙여 열기). Codespaces + Copilot으로 4단계.
+
+```bash
+npm run work         # 할 일 고르기 (0 = 실험실 새 기능, 실험실 이어 하기, 정식 기능 고치기)
+npm run save         # 저장·제출 (브랜치 feat/<기능>-<이름> → PR)
+npm run doctor       # 막혔을 때 점검
+npm run ai           # Copilot 대신 웹 AI 채팅용 맥락 파일 만들기
+npm run app          # 앱 실행 (웹, 8081) — Codespaces에서는 자동 실행
+```
+
+- Copilot 규칙: `.github/copilot-instructions.md` · 요청 양식: `.github/prompts/` (`/feature`, `/improve`)
+- 참여원 스크립트: `scripts/participant/` · 환경: `.devcontainer/`, `.vscode/tasks.json`
+- 실험실 기능을 정식 기능으로 올릴 때는 리드가 `features/registry.ts` 절차로 옮긴다.
+
 ## 브랜치 규칙
 
 - `lead/*` : 리드 에이전트 작업. PR → 대표 승인 → 병합
+- `feat/*` : 참여원 작업 (`npm run save`가 만듦). Vercel 미리보기 배포는 끔
 - `main`  : 배포 버전 (unjung-app.vercel.app)
