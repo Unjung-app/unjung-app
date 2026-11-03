@@ -56,8 +56,14 @@ const mine = changed.filter((f) => f.startsWith(folder));
 const others = changed.filter((f) => !f.startsWith(folder));
 
 if (others.length > 0) {
-  warn(`내 폴더 밖에서 바뀐 파일은 올라가지 않아요: ${others.join(", ")}`);
-  say(`        내 화면에 필요한 파일이면 AI에게 "이 파일을 ${folder} 안으로 옮겨 줘"`);
+  warn(`내 폴더(${folder}) 밖에서 바뀐 파일이 있어요: ${others.join(", ")}`);
+  say("        이 파일들은 올라가지 않고 따로 보관돼요(미리보기에서도 사라져요).");
+  say(`        내 화면에 필요한 내용이면 멈추고, Copilot에게 "이 내용을 ${folder} 안으로 옮겨 줘"라고 한 뒤 다시 save 하세요.`);
+  const a = (await ask("  그대로 계속할까요? (y = 계속 / Enter = 멈춤): ")).toLowerCase();
+  if (a !== "y" && a !== "yes" && a !== "예" && a !== "네") {
+    doneAsking();
+    fail("멈췄습니다. 옮긴 뒤 다시 npm run save 하세요.");
+  }
   say("");
 }
 
@@ -82,25 +88,6 @@ if (weakFiles.length > 0) {
   }
 }
 
-// ── 2-1. 타입 검사 (PR 자동 검사와 같은 검사를 미리) ─────────────
-if (mine.length > 0) {
-  say("  코드 검사 중... (10~30초)");
-  const tc = spawnSync("npx", ["tsc", "--noEmit", "--pretty", "false"], { encoding: "utf8", shell: process.platform === "win32" });
-  if (tc.status !== 0) {
-    // 내 폴더의 오류만 보여 준다(폴더 밖 파일은 어차피 올라가지 않음)
-    const lines = `${tc.stdout || ""}${tc.stderr || ""}`
-      .split("\n")
-      .filter((l) => l.includes("error TS") && l.replaceAll("\\", "/").startsWith(folder));
-    if (lines.length === 0) ok("코드 검사 통과");
-    else {
-      warn(`코드 오류가 ${lines.length}개 있어요. 저장은 해 두지만, 이대로면 PR 자동 검사에서 빨간 X가 나요.`);
-      lines.slice(0, 5).forEach((l) => say(`        ${l.slice(0, 160)}`));
-      say("        → 위 글을 복사해서 Copilot에게 \"이 오류 고쳐 줘\"라고 보내세요.");
-      say("");
-    }
-  } else ok("코드 검사 통과");
-}
-
 // ── 3. 커밋 ───────────────────────────────────────────────
 if (mine.length > 0) {
   say(`  저장할 파일 ${mine.length}개: ${mine.map((f) => f.slice(folder.length)).join(", ")}`);
@@ -121,29 +108,39 @@ say("  최신 내용을 확인하고 올리는 중...");
 if (!gitLive(["fetch", "origin", "--prune", "--quiet"])) {
   fail("GitHub에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 실행하세요. (저장한 내용은 안전합니다)");
 }
-prepareForSync(folder, { quiet: true }); // 폴더 밖 변경은 따로 보관 (합치다가 멈추지 않도록)
+prepareForSync(folder, { quiet: true }); // 폴더 밖 변경은 따로 보관 (위에서 이미 알림)
 // GitHub 쪽 내 브랜치가 앞서 있으면(대표가 PR에서 고쳤거나 다른 컴퓨터에서 올림) 먼저 합칩니다.
 if (syncWith(`origin/${branch}`) === "conflict" || syncWithMain() === "conflict") {
   explainConflict();
   process.exit(1);
 }
 
+// ── 4-1. 타입 검사: PR 자동 검사와 같은 검사를 '올라갈 내용 그대로' 미리 ──────
+say("  코드 검사 중... (10~30초)");
+{
+  const tc = spawnSync("npx", ["tsc", "--noEmit", "--pretty", "false"], { encoding: "utf8", shell: process.platform === "win32" });
+  if (tc.status !== 0) {
+    const lines = `${tc.stdout || ""}${tc.stderr || ""}`.split("\n").filter((l) => l.includes("error TS"));
+    warn(`코드 오류가 ${lines.length || "몇"}개 있어요. 올리긴 하지만, 이대로면 PR 자동 검사에서 빨간 X가 나요.`);
+    lines.slice(0, 5).forEach((l) => say(`        ${l.slice(0, 160)}`));
+    say("        → 위 글을 복사해서 Copilot에게 \"이 오류 고쳐 줘\" → 고친 뒤 다시 npm run save");
+    say("");
+  } else ok("코드 검사 통과");
+}
+
 // ── 5. 올리기(push) ────────────────────────────────────────
 // GitHub에 내 브랜치가 이미 있었는지 (없으면 = 처음이거나, 지난 PR이 합쳐져서 지워진 것 → 새 PR 필요)
 const wasOnGitHub =
   git(["rev-parse", "--verify", "--quiet", `refs/remotes/origin/${branch}`], { allowFail: true }).code === 0;
-if (wasOnGitHub) {
-  const ahead = git(["rev-list", "--count", `origin/${branch}..HEAD`]).out;
-  if (ahead === "0") {
-    say("");
-    ok("이미 다 올라가 있어요. 할 일 끝!");
-    process.exit(0);
+const upToDate = wasOnGitHub && git(["rev-list", "--count", `origin/${branch}..HEAD`]).out === "0";
+if (upToDate) {
+  ok("이미 다 올라가 있어요.");
+} else {
+  if (!gitLive(["push", "--quiet", "-u", "origin", branch])) {
+    fail(explainPushFailure());
   }
+  ok("GitHub에 올림");
 }
-if (!gitLive(["push", "--quiet", "-u", "origin", branch])) {
-  fail(explainPushFailure());
-}
-ok("GitHub에 올림");
 
 // ── 6. PR 안내 ────────────────────────────────────────────
 // 열린 PR이 있는지 GitHub에 물어봅니다 (실패하면 일반 안내)
@@ -168,7 +165,7 @@ async function findOpenPr() {
 const pr = await findOpenPr();
 const url = `${REPO_URL}/compare/main...${branch}?expand=1`;
 if (pr) {
-  ok(`열려 있는 PR #${pr.number}에 자동으로 추가됐어요. 할 일 끝!`);
+  ok(upToDate ? `PR #${pr.number}이 열려 있어요. 할 일 끝!` : `열려 있는 PR #${pr.number}에 자동으로 추가됐어요. 할 일 끝!`);
 } else {
   title("한 단계 남았어요");
   say("  아래 주소를 Ctrl+클릭 → 초록색 [Create pull request]");

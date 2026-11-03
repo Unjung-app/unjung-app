@@ -307,6 +307,20 @@ export function restoreLockfile() {
 // 최신 main을 합치기 전에 정리합니다.
 //  - 내 폴더의 저장 안 된 변경 → '자동 저장' 커밋 (합치다가 덮어써지지 않도록)
 //  - 내 폴더 밖의 변경 → 따로 보관(stash). 어차피 올라가지 않는 파일들입니다.
+// 기능 브랜치가 아닐 때(main 등) 생긴 변경은 올릴 곳이 없으므로 따로 보관합니다.
+// ('npm run work'와 'npm run save'가 서로 상대를 먼저 하라고 하는 막힘을 막기 위해)
+export function parkStrayChanges() {
+  if (parseBranch(currentBranch()) || mergeInProgress()) return;
+  restoreLockfile();
+  const dirty = changedFiles();
+  if (dirty.length === 0) return;
+  const r = git(["stash", "push", "--include-untracked", "-m", "기능 고르기 전 변경 자동 보관"], { allowFail: true });
+  if (r.code === 0) {
+    warn(`기능을 고르기 전에 바뀐 파일 ${dirty.length}개는 따로 보관했어요: ${dirty.slice(0, 5).join(", ")}`);
+    say("        필요하면 대표에게 '보관함(stash)에서 꺼내 달라'고 하세요.");
+  }
+}
+
 export function prepareForSync(folder, { quiet = false } = {}) {
   restoreLockfile();
   const changed = changedFiles();

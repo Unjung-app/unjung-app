@@ -48,7 +48,10 @@
 - 아이콘은 `@/components/ui/Icon`의 이름만: today, timetable, meal, calendar, study, ranking, library, notice, voice, sports, more, coin, game, task, bag, user, settings, plus, close, share, minus, check, search, external, info, pin, chevronRight.
 - 누를 수 있는 것은 최소 44×44, `accessibilityRole`과 `accessibilityLabel`을 단다(`Button`은 알아서 됨).
 - 날짜·시각은 `@/lib/date`만 쓴다(`seoulNow`, `toYmd`, `addDays`, `weekdayLabel`, `dDayLabel` 등). `new Date()`로 날짜 계산하지 않기.
-- 학교 데이터(읽기만): `@/features/data`의 `useWeekMeals(날짜)`, `useWeekTimetable(날짜, 반)`, `useUpcomingSchedule(오늘)`. 반 정보는 `@/state/prefs`의 `usePrefs().myClass`.
+- 학교 데이터(읽기만): `@/features/data`의 `useWeekMeals(날짜)`, `useWeekTimetable(날짜, 반)`, `useUpcomingSchedule(오늘)`.
+  - 날짜는 `'20261105'` 같은 8자리 문자열이다. 오늘은 `seoulNow().ymd` (`@/lib/date`). `'2026-11-05'`나 `Date`를 넣지 않는다.
+  - 반 정보는 `@/state/prefs`의 `usePrefs().myClass` (`{ grade, classNo }` 또는 `null`).
+  - 결과는 `{ items, source, refreshing, refresh }`. `source === 'sample'`이면 화면에 `<SampleNotice />`를 보여 준다.
 - 로그인 정보(읽기만): `@/state/auth`의 `useAuth()` → `status`, `role`, `enrollment`(학년·반).
 - 상태는 `useState`. 기기에 저장이 필요하면 `@react-native-async-storage/async-storage`를 쓰고 `try/catch`로 감싼다. 저장 키는 `lab:<영문이름>:...`처럼 폴더 이름을 앞에 붙인다.
 - 예시 데이터는 작업 폴더 안에 둔다(예: `src/lab/<영문이름>/data.ts`).

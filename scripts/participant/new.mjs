@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import {
   IN_CODESPACES, NAME_RE, REPO_URL, title, say, ok, fail, ask, doneAsking, git, gitLive, npmLive,
-  ensureRepoRoot, changedFiles, parseBranch, suggestName, targetsAt, mergeInProgress, restoreLockfile,
+  ensureRepoRoot, changedFiles, parseBranch, suggestName, targetsAt, mergeInProgress, restoreLockfile, parkStrayChanges,
 } from "./common.mjs";
 import { SLUG_RE, RESERVED, isMain } from "./targets.mjs";
 
@@ -15,6 +15,7 @@ export async function newFeature(opts = {}) {
   title("운중고 앱 · 새 기능 만들기 (실험실)");
 
   if (mergeInProgress()) fail("충돌 해결이 끝나지 않았습니다. 먼저 'npm run save'로 마무리하세요.");
+  parkStrayChanges();
   restoreLockfile();
   const dirty = changedFiles();
   if (dirty.length > 0) {

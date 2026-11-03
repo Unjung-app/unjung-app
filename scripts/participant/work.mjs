@@ -6,7 +6,7 @@ import fs from "node:fs";
 import {
   IN_CODESPACES, NAME_RE, title, say, ok, warn, fail, ask, doneAsking, git, gitLive, npmLive,
   ensureRepoRoot, currentBranch, parseBranch, changedFiles, suggestName, targetsAt,
-  mergeInProgress, restoreLockfile, syncWithMain, syncWith, explainConflict, prepareForSync,
+  mergeInProgress, restoreLockfile, parkStrayChanges, syncWithMain, syncWith, explainConflict, prepareForSync,
 } from "./common.mjs";
 import { folderOf, parseLabMeta } from "./targets.mjs";
 import { newFeature } from "./new.mjs";
@@ -31,6 +31,7 @@ if (!gitLive(["fetch", "origin", "--prune", "--quiet"])) {
   fail("GitHub에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 실행하세요.");
 }
 
+parkStrayChanges();
 const before = parseBranch(currentBranch());
 
 // ── 1. 내 이름 ──────────────────────────────────────────────
@@ -84,7 +85,10 @@ git(["config", "user.name", name]);
 
 // ── 2. 작업 고르기 ──────────────────────────────────────────
 const all = targetsAt("origin/main");
-const core = all.core;
+// 준비 중이거나 폴더가 없는 정식 기능은 고쳐도 화면에 안 나오므로 빼고 보여 줍니다.
+const core = all.core.filter(
+  (t) => t.status !== "soon" && git(["cat-file", "-e", `origin/main:src/features/${t.slug}`], { allowFail: true }).code === 0
+);
 // 예시(example)는 참고용이라 목록에 넣지 않습니다.
 const labs = all.labs.filter((t) => t.slug !== "example");
 // 아직 main에 합쳐지지 않은 '내 실험실 기능'도 목록에 넣습니다.
@@ -118,7 +122,7 @@ labs.forEach((t, i) => {
   say(`    ${i + 1}. ${t.emoji} ${t.title} [${t.status === "ready" ? "완성" : "만드는 중"}${who}]`);
 });
 say("  ── 정식 기능 고치기·개선하기 ──");
-core.forEach((t, i) => say(`    ${labs.length + i + 1}. ${t.title}${t.status === "soon" ? " (준비 중)" : ""}`));
+core.forEach((t, i) => say(`    ${labs.length + i + 1}. ${t.title}`));
 const beforeIdx = before ? choices.findIndex((t) => t.slug === before.slug) : -1;
 let feature;
 while (!feature) {

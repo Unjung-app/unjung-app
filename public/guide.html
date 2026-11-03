@@ -106,7 +106,7 @@ footer{margin-top:48px;color:var(--ink-3);font-size:13px;text-align:center}
       <div class="prompt"><b>고치기</b>  /improve src/features/meal/ — 지금은 오늘 급식만 크게 보여. 내일 급식도 바로 아래에 작게 보였으면 좋겠어.</div>
     </li>
     <li>Copilot이 파일을 직접 고쳐요. 미리보기에서 확인하고 마음에 들면 <b>Keep</b>, 아니면 <b>Undo</b></li>
-    <li>Copilot이 명령을 실행해도 되냐고 물으면(<code class="k">npx tsc</code> 등) <b>Allow</b> 또는 <b>Continue</b></li>
+    <li>Copilot이 명령을 실행해도 되냐고 물으면 <code class="k">npx tsc --noEmit</code>(오류 검사)일 때만 <b>Allow</b>/<b>Continue</b>. <code class="k">git</code>·<code class="k">npm install</code> 같은 다른 명령은 <b>Skip</b>(거절)</li>
   </ol>
   <p class="note">무료 Copilot은 한 달에 채팅 약 50번이에요. 짧게 여러 번보다 <b>한 번에 자세히</b> 부탁하세요.</p>
 </section>
@@ -217,7 +217,7 @@ footer{margin-top:48px;color:var(--ink-3);font-size:13px;text-align:center}
     <div class="cmd"><code>cd unjung-app</code><button type="button">복사</button></div>
     <div class="cmd"><code>npm install</code><button type="button">복사</button></div>
     <div class="cmd"><code>code .</code><button type="button">복사</button></div>
-    <p class="note">VS Code 터미널에서 <code class="k">npm run app</code>으로 앱을 켜요(주소 localhost:8081). VS Code에 Copilot 확장을 설치한 뒤 2~4단계는 같아요.</p>
+    <p class="note">VS Code 터미널에서 <code class="k">npm run app</code>으로 앱을 켜요(주소 localhost:8081, 급식·시간표는 예시 데이터로 보여요). VS Code에 Copilot 확장을 설치한 뒤 2~4단계는 같아요.</p>
   </div>
 </details>
 

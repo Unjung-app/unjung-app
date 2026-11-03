@@ -133,7 +133,7 @@ export function MoreScreen() {
                 {i > 0 ? <Divider /> : null}
                 <ListRow
                   title={`${f.emoji ?? '🧪'} ${f.title}`}
-                  subtitle={[f.desc, f.makers?.length ? `만든 사람 · ${f.makers.join(', ')}` : ''].filter(Boolean).join(' · ')}
+                  subtitle={[f.desc, f.makers.length ? `만든 사람 · ${f.makers.join(', ')}` : ''].filter(Boolean).join(' · ')}
                   onPress={() => router.push(`/lab/${f.slug}`)}
                   right={<Badge label={f.status === 'ready' ? '완성' : '만드는 중'} tone={f.status === 'ready' ? 'success' : 'muted'} />}
                 />
