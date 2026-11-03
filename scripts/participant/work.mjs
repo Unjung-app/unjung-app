@@ -1,0 +1,245 @@
+// npm run work — 작업 시작 준비를 한 번에 해 줍니다.
+//  1) 이름 확인  2) 작업 고르기(새 기능 = 실험실 / 실험실 기능 이어 하기 / 정식 기능 고치기)
+//  3) 내 브랜치로 이동 + 최신 main 자동 합치기  4) 부품 설치
+
+import fs from "node:fs";
+import {
+  IN_CODESPACES, NAME_RE, title, say, ok, warn, fail, ask, doneAsking, git, gitLive, npmLive,
+  ensureRepoRoot, currentBranch, parseBranch, changedFiles, suggestName, targetsAt,
+  mergeInProgress, restoreLockfile, syncWithMain, syncWith, explainConflict, prepareForSync,
+} from "./common.mjs";
+import { folderOf, parseLabMeta } from "./targets.mjs";
+import { newFeature } from "./new.mjs";
+
+ensureRepoRoot();
+title("운중고 앱 · 작업 시작 준비");
+
+// Node 버전 확인 (Expo는 20 이상 필요)
+const [maj, min] = process.versions.node.split(".").map(Number);
+if (maj < 20 || (maj === 20 && min < 9)) {
+  fail(`Node.js 버전이 낮습니다 (지금 ${process.versions.node}). nodejs.org에서 LTS 버전을 설치해 주세요.`);
+}
+
+if (mergeInProgress()) {
+  explainConflict();
+  fail("충돌 해결이 끝나지 않았습니다. 위 안내대로 고친 뒤 'npm run save'를 실행하세요.");
+}
+
+// ── 0. 최신 정보 받기 ────────────────────────────────────────
+say("  준비하는 중...");
+if (!gitLive(["fetch", "origin", "--prune", "--quiet"])) {
+  fail("GitHub에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 실행하세요.");
+}
+
+const before = parseBranch(currentBranch());
+
+// ── 1. 내 이름 ──────────────────────────────────────────────
+// 지난번에 다른 Codespace에서 쓴 이름 찾기: 내 이메일로 올린 feat/ 브랜치에서
+function nameFromMyBranches() {
+  const email = git(["config", "user.email"], { allowFail: true }).out;
+  if (!email) return "";
+  const refs = git(["for-each-ref", "--format=%(refname:short)", "refs/remotes/origin/feat/"], {
+    allowFail: true,
+  }).out.split("\n").filter(Boolean);
+  for (const ref of refs) {
+    // 그 브랜치의 (main에 없는) 커밋 중에 내 이메일로 만든 것이 있으면 내 브랜치
+    const mine = git(["log", "-1", "--format=%H", "--fixed-strings", `--author=${email}`, `origin/main..${ref}`], {
+      allowFail: true,
+    }).out;
+    if (mine) {
+      const p = parseBranch(ref.replace(/^origin\//, ""));
+      if (p) return p.name;
+    }
+  }
+  return "";
+}
+const guess =
+  before?.name ||
+  nameFromMyBranches() ||
+  suggestName(git(["config", "--local", "user.name"], { allowFail: true }).out) ||
+  suggestName(process.env.GITHUB_USER);
+let name;
+while (!name) {
+  const hint = guess ? ` [Enter = ${guess}]` : "";
+  const a = (await ask(`\n  내 영문 이름 (소문자, 띄어쓰기 없이. 예: howon)${hint}: `)).toLowerCase();
+  if (!a && guess) name = guess;
+  else if (NAME_RE.test(a)) name = a;
+  else say("  영어 소문자로 시작하고, 소문자·숫자만 2~20글자로 입력하세요.");
+}
+
+// 커밋에 남길 이메일 — Codespaces는 GitHub가 자동으로 설정하므로 묻지 않습니다.
+if (!IN_CODESPACES) {
+  const oldEmail = git(["config", "--local", "user.email"], { allowFail: true }).out;
+  let email;
+  while (!email) {
+    const hint = oldEmail ? ` [Enter = ${oldEmail}]` : "";
+    const a = await ask(`  GitHub에 등록된 내 이메일${hint}: `);
+    if (!a && oldEmail) email = oldEmail;
+    else if (/^\S+@\S+\.\S+$/.test(a)) email = a;
+    else say("  이메일 형식으로 입력하세요. (GitHub → Settings → Emails 에서 확인)");
+  }
+  git(["config", "user.email", email]);
+}
+git(["config", "user.name", name]);
+
+// ── 2. 작업 고르기 ──────────────────────────────────────────
+const { core, labs } = targetsAt("origin/main");
+// 아직 main에 합쳐지지 않은 '내 실험실 기능'도 목록에 넣습니다.
+const known = (slug) => labs.some((t) => t.slug === slug) || core.some((t) => t.slug === slug);
+const myRefs = git(["for-each-ref", "--format=%(refname:short)", "refs/heads/feat/", "refs/remotes/origin/feat/"], {
+  allowFail: true,
+}).out.split("\n").filter(Boolean);
+for (const ref of myRefs) {
+  const p = parseBranch(ref.replace(/^origin\//, ""));
+  if (!p || p.name !== name || known(p.slug)) continue;
+  const j = git(["show", `${ref}:src/lab/${p.slug}/meta.json`], { allowFail: true });
+  const t = j.code === 0 ? parseLabMeta(p.slug, j.out) : null;
+  if (t) labs.push({ ...t, mine: true });
+}
+// 지금 브랜치의 기능이 목록에 없으면(아직 한 번도 올리지 않은 새 기능) 이 컴퓨터의 파일에서 읽어 넣습니다.
+if (before && before.name === name && !known(before.slug)) {
+  try {
+    const t = parseLabMeta(before.slug, fs.readFileSync(`src/lab/${before.slug}/meta.json`, "utf8"));
+    if (t) labs.push({ ...t, mine: true });
+  } catch {
+    /* 무시 */
+  }
+}
+const choices = [...labs, ...core];
+say("");
+say("  무엇을 할까요?");
+say("    0. ✨ 새 기능 만들기 (실험실에 내 아이디어로)");
+if (labs.length) say("  ── 실험실 기능 이어 하기 ──");
+labs.forEach((t, i) => {
+  const who = t.makers.length ? ` · ${t.makers.join(", ")}` : "";
+  say(`    ${i + 1}. ${t.emoji} ${t.title} [${t.status === "ready" ? "완성" : "만드는 중"}${who}]`);
+});
+say("  ── 정식 기능 고치기·개선하기 ──");
+core.forEach((t, i) => say(`    ${labs.length + i + 1}. ${t.title}${t.status === "soon" ? " (준비 중)" : ""}`));
+const beforeIdx = before ? choices.findIndex((t) => t.slug === before.slug) : -1;
+let feature;
+while (!feature) {
+  const hint = beforeIdx >= 0 ? ` [Enter = ${beforeIdx + 1}]` : "";
+  const a = await ask(`  번호${hint}: `);
+  if (a === "0") {
+    // 새 기능 만들기는 new.mjs 가 이어서 처리합니다.
+    await newFeature({ name, fetched: true });
+    process.exit(0);
+  }
+  if (!a && beforeIdx >= 0) feature = choices[beforeIdx];
+  else feature = choices[Number(a) - 1];
+  if (!feature) {
+    say(`  0~${choices.length} 중에서 입력하세요.`);
+    continue;
+  }
+  // 다른 사람이 이미 만들고 있는 실험실 기능이면 한 번 확인합니다 (같은 파일을 함께 고치면 충돌이 나기 쉬움)
+  const others = feature.makers.filter((m) => m !== name && m !== "leads");
+  const alreadyMine =
+    before?.slug === feature.slug ||
+    git(["rev-parse", "--verify", "--quiet", `refs/heads/feat/${feature.slug}-${name}`], { allowFail: true }).code === 0 ||
+    git(["rev-parse", "--verify", "--quiet", `refs/remotes/origin/feat/${feature.slug}-${name}`], { allowFail: true }).code === 0;
+  if (feature.kind === "lab" && others.length > 0 && !feature.makers.includes(name) && !alreadyMine) {
+    say("");
+    say(`  '${feature.title}'은(는) ${others.join(", ")}이(가) 만들고 있어요.`);
+    say("  함께 만들려면 먼저 그 친구와 나눠서 할 부분을 이야기하세요.");
+    const c = (await ask("  함께 만들기로 했으면 y(또는 '네'), 다른 번호를 고르려면 그냥 Enter: ")).toLowerCase().trim();
+    if (!["y", "yes", "ㅛ", "네", "예", "응", "ㅇ", "ok"].includes(c)) {
+      say("  알겠어요. 번호를 다시 골라 주세요.");
+      feature = null;
+    }
+  }
+}
+doneAsking();
+
+// ── 3. 브랜치 준비 ─────────────────────────────────────────
+const branch = `feat/${feature.slug}-${name}`;
+const now = currentBranch();
+restoreLockfile();
+const dirty = changedFiles();
+if (now !== branch && dirty.length > 0) {
+  fail(
+    `저장하지 않은 변경 파일이 ${dirty.length}개 있어 다른 기능으로 옮길 수 없습니다.\n` +
+      `  지금 브랜치(${now})에서 'npm run save'로 먼저 저장하거나, 대표에게 물어보세요.`
+  );
+}
+
+const exists = (ref) => git(["rev-parse", "--verify", "--quiet", ref], { allowFail: true }).code === 0;
+const hasRemote = exists(`refs/remotes/origin/${branch}`);
+const hasLocal = exists(`refs/heads/${branch}`);
+
+if (hasRemote) {
+  if (hasLocal) {
+    if (now !== branch) git(["switch", branch]);
+    // GitHub 쪽 내 브랜치의 새 내용은 아래(정리 후)에서 합칩니다.
+  } else {
+    git(["switch", "--track", "-c", branch, `origin/${branch}`]);
+  }
+  ok("지난 작업을 불러왔어요.");
+} else if (hasLocal) {
+  // GitHub에서는 지워졌다 = 보통 PR이 합쳐진 것. 내 폴더 내용이 main과 같으면 최신 main에서 새로 시작합니다.
+  // (스쿼시 병합이었어도 지난 작업과 충돌하지 않도록)
+  const same = git(["diff", "--quiet", "origin/main", branch, "--", folderOf(feature)], { allowFail: true }).code === 0;
+  if (same && changedFiles().length === 0) {
+    if (now === branch) git(["switch", "--detach", "origin/main"]);
+    git(["branch", "-D", branch]);
+    git(["switch", "--no-track", "-c", branch, "origin/main"]);
+    ok("지난 작업은 이미 앱에 들어갔어요. 이어서 새로 시작해요.");
+  } else {
+    if (now !== branch) git(["switch", branch]);
+    ok("지난 작업을 불러왔어요.");
+  }
+} else {
+  git(["switch", "--no-track", "-c", branch, "origin/main"]);
+  ok("새로 시작해요.");
+}
+
+// 합치기 전에 저장 안 된 작업 정리 (내 폴더 = 자동 저장, 폴더 밖 = 따로 보관)
+prepareForSync(folderOf(feature));
+
+// GitHub 쪽 내 브랜치가 더 앞서 있으면(다른 컴퓨터에서 올렸거나, 대표가 PR에서 고쳤거나) 먼저 합칩니다.
+if (hasRemote && syncWith(`origin/${branch}`) === "conflict") {
+  explainConflict();
+  process.exit(1);
+}
+
+// 다른 사람들이 그동안 main에 합친 작업을 내 브랜치에도 가져옵니다.
+// (이걸 해야 내 화면에서도 다른 사람의 기능이 보이고, 나중에 충돌이 줄어듭니다)
+if (syncWithMain() === "conflict") {
+  explainConflict();
+  process.exit(1);
+}
+
+// ── 4. 실험실 기능이면 만든 사람 목록에 내 이름 올리기 ──────────────
+if (feature.kind === "lab") {
+  const metaFile = `src/lab/${feature.slug}/meta.json`;
+  try {
+    const meta = JSON.parse(fs.readFileSync(metaFile, "utf8"));
+    meta.makers = Array.isArray(meta.makers) ? meta.makers : [];
+    if (!meta.makers.includes(name)) {
+      meta.makers.push(name);
+      fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2) + "\n", "utf8");
+      git(["add", "--", metaFile]);
+      git(["commit", "-m", `chore: ${feature.title} 만든 사람에 ${name} 추가`, "--quiet"]);
+    }
+  } catch {
+    warn(`${metaFile} 을 읽지 못했습니다. 대표에게 알려 주세요.`);
+  }
+}
+
+// ── 5. 부품 설치 ───────────────────────────────────────────
+say("");
+say("  앱 부품을 확인하는 중... (처음엔 1~2분)");
+if (!npmLive("install --no-audit --no-fund --loglevel=error")) {
+  fail("npm install 중 문제가 생겼습니다. 이 화면을 캡처해서 대표에게 보여 주세요.");
+}
+restoreLockfile();
+
+title("준비 끝!");
+const where = feature.kind === "lab" ? `전체 → 실험실 → "${feature.title}"` : `앱의 "${feature.title}" 화면`;
+say(`  내 작업   : ${feature.kind === "lab" ? "실험실 기능" : "정식 기능 고치기"} · ${feature.title}`);
+say(`  내 화면   : 미리보기에서 ${where}`);
+say(`  고칠 폴더 : ${folderOf(feature)}`);
+say("");
+say("  다음 → Copilot 채팅(Ctrl+Alt+I)에서 /improve 또는 /feature");
+say("        (Copilot을 못 쓰면 npm run ai)");
+say("");
