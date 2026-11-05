@@ -1,4 +1,4 @@
-# 운중고 스마트 캠퍼스 (v1.0.0)
+# 운중고 스마트 스쿨 (v1.0.0)
 
 운중고 학생 전용 학교 앱. **iOS · Android 앱 + 웹을 한 코드로** 만든다.
 Expo SDK 58 (React Native 0.88) · Expo Router · TypeScript · Vercel(웹 + 서버 함수)

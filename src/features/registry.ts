@@ -54,4 +54,4 @@ export function sanitizeTabs(ids: unknown): string[] {
 
 /** 앱 정보에 표시하는 개발팀 (순서 그대로 표시) */
 export const DEV_TEAM_NAME = '운중고 앱 학생 개발팀';
-export const DEV_TEAM = ['이호원', '배종범', '김현석', '백지원', '김용원', '차지현'];
+export const DEV_TEAM = ['이호원', '김용원', '안연준', '김현석', '배종범', '장원준', '송현우', '차지현', '안현준', '백지원'];
