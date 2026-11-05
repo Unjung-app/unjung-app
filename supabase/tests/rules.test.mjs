@@ -617,5 +617,56 @@ await sub(B, CB, 'a7');
   const b0 = await bal(D); await as(A, CA, `select public.admin_update_feedback(${id}, 'done', '고쳤어요')`); expect('의견 반영 +10', (await bal(D)) === b0 + 10); }
 { const r = await q(`select value from public.app_config where key='app_url'`); expect('알림 서버 주소 = 정식 주소', r.rows[0]?.value === 'https://unjung-app.vercel.app'); }
 
+// ───── 스터디 윗미(교육활동부 행사) ─────
+{ const M = '99999999-9999-9999-9999-999999999901', CM = 'm1@unjung.hs.kr';      // 교육활동부(20507)
+  const S1 = '99999999-9999-9999-9999-999999999911', C1 = 's1@unjung.hs.kr';     // 1학년, 닉네임 있음
+  const S2 = '99999999-9999-9999-9999-999999999912', C2 = 's2@unjung.hs.kr';     // 2학년, 닉네임 없음
+  const S3 = '99999999-9999-9999-9999-999999999913', C3 = 's3@unjung.hs.kr';     // 2학년, 닉네임 있음
+  await q(`insert into auth.users values ('${M}','${CM}'),('${S1}','${C1}'),('${S2}','${C2}'),('${S3}','${C3}')`);
+  await as(M, CM, `select public.register_enrollment('20507','관리자')`); await as(M, CM, `select public.set_nickname('교육부장')`);
+  await as(S1, C1, `select public.register_enrollment('10111','일학년')`); await as(S1, C1, `select public.set_nickname('새내기')`);
+  await as(S2, C2, `select public.register_enrollment('20611','이학년')`);
+  await as(S3, C3, `select public.register_enrollment('20612','삼번')`); await as(S3, C3, `select public.set_nickname('열공러')`);
+  const g = (await q(`select id, grade from public.study_groups order by grade`)).rows; const G1 = g[0]?.id, G2 = g[1]?.id;
+  expect('행사 그룹 2개(1·2학년)', g.length === 2 && g[0].grade === 1 && g[1].grade === 2);
+  { const r = await as(S3, C3, `select * from public.study_groups`); expect('그룹 원본 표(비밀번호) 직접 읽기 불가', r.ok && r.rows.length === 0); }
+  { const r = await as(S3, C3, `select public.study_group_list() r`); const l = r.rows[0]?.r ?? [];
+    expect('그룹 목록: 내 학년만, 비밀번호 없음', l.length === 1 && l[0].grade === 2 && !JSON.stringify(l).includes('2026"') && !('password' in l[0])); }
+  { const r = await as(M, CM, `select public.is_study_manager() a`); const n = await as(S3, C3, `select public.is_study_manager() a`);
+    expect('교육활동부 학번은 자동 관리자, 일반 학생은 아님', r.rows[0]?.a === true && n.rows[0]?.a === false); }
+  { const r = await as(M, CM, `select public.study_group_list() r`); expect('관리자는 모든 학년 그룹을 봄', (r.rows[0]?.r ?? []).length === 2); }
+  { const r = await as(S3, C3, `select public.join_study_group(${G2}, '1234')`); expect('비밀번호 틀리면 참여 불가', !r.ok && /비밀번호/.test(r.err ?? '')); }
+  { const r = await as(S3, C3, `select public.join_study_group(${G1}, '2026')`); expect('다른 학년 그룹 참여 불가', !r.ok && /1학년만/.test(r.err ?? '')); }
+  { const r = await as(S2, C2, `select public.join_study_group(${G2}, '2026')`); expect('닉네임 없으면 참여 불가', !r.ok && /닉네임/.test(r.err ?? '')); }
+  { const r = await as(S3, C3, `select public.join_study_group(${G2}, ' 2026 ')`); const again = await as(S3, C3, `select public.join_study_group(${G2}, '2026')`);
+    expect('비밀번호 맞으면 참여(두 번 눌러도 한 번)', r.ok && again.ok && (await q(`select count(*)::int n from public.study_group_members where user_id='${S3}'`)).rows[0]?.n === 1); }
+  await as(S1, C1, `select public.join_study_group(${G1}, '2026')`);
+  { const r = await as(S1, C1, `select public.study_group_board(${G2})`); expect('다른 그룹 보드는 못 봄', !r.ok); }
+  // 기간 공부 기록: 11/10 40분(랭킹 30 + 수업 10), 11/11 20분 → 누적 60분, 참여일 1일
+  await q(`insert into public.study_daily (user_id, day, school_year, grade, class_no, ranked_seconds, class_seconds, tokens) values
+    ('${S3}', '2026-11-10', 2026, 2, 6, 1800, 600, 3), ('${S3}', '2026-11-11', 2026, 2, 6, 1200, 0, 2), ('${S3}', '2026-11-30', 2026, 2, 6, 9000, 0, 12)`);
+  { const r = await as(M, CM, `select public.study_group_admin(${G2}) r`); const m = r.rows[0]?.r?.members?.[0];
+    expect('관리자 보드: 실명·학번, 기간 누적(수업 포함), 참여일(30분↑), 기간 밖 제외', r.ok && m?.name === '삼번' && m?.student_no === '20612' && m?.period_seconds === 3600 && m?.days === 1 && m?.by_day?.['2026-11-10'] === 2400 && r.rows[0]?.r?.days?.length === 17); }
+  { const r = await as(S3, C3, `select public.study_group_admin(${G2})`); expect('관리자 보드는 관리자만', !r.ok); }
+  await as(M, CM, `select public.manage_study_group(${G2}, null, null, '2026-11-01', null, null)`);
+  { const r = await as(S3, C3, `select public.study_group_board(${G2}) r`); const b = r.rows[0]?.r; const me = b?.members?.[0];
+    expect('그룹 보드: 닉네임만(실명·학번 없음), 기간 누적', r.ok && me?.nickname === '열공러' && me?.mine === true && me?.period_seconds === 3600 && !JSON.stringify(b).includes('삼번') && !JSON.stringify(b).includes('20612')); }
+  { const r = await as(S3, C3, `select public.manage_study_group(${G2}, '0000', null, null, null, null)`); expect('일반 학생은 그룹 설정 불가', !r.ok); }
+  { await q(`update public.study_groups set capacity = 2 where id = ${G2}`); await as(M, CM, `select public.join_study_group(${G2}, '2026')`);
+    const U = '99999999-9999-9999-9999-999999999914', CU = 's4@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
+    await as(U, CU, `select public.register_enrollment('20613','넷째')`); await as(U, CU, `select public.set_nickname('넷째공부')`);
+    const r = await as(U, CU, `select public.join_study_group(${G2}, '2026')`); expect('정원이 차면 참여 불가', !r.ok && /정원/.test(r.err ?? ''));
+    await q(`update public.study_groups set capacity = 50 where id = ${G2}`); }
+  { const r = await as(M, CM, `select public.manage_study_member(${G2}, '${S3}')`); const n = await q(`select count(*)::int n from public.study_group_members where group_id=${G2} and user_id='${S3}'`);
+    expect('관리자가 멤버 내보내기', r.ok && n.rows[0]?.n === 0); }
+  { const s = await as(S1, C1, `select public.save_study_subject(null, '수학', 'blue', 1) id`); const dup = await as(S1, C1, `select public.save_study_subject(null, '수학', 'red', 2)`);
+    const other = await as(S3, C3, `select public.save_study_subject(${s.rows[0]?.id}, '해킹', null, null)`);
+    expect('내 과목 추가·중복 금지·남의 과목 수정 불가', s.ok && !dup.ok && /같은 이름/.test(dup.err ?? '') && !other.ok); }
+  { const st = await as(S1, C1, `select public.start_study('수학') r`); const d = await as(S1, C1, `select public.my_study_dashboard() r`); const x = d.rows[0]?.r;
+    expect('대시보드: 과목·그룹(지금 공부 중 1명)·관리자 아님', st.ok && x?.subjects?.[0]?.name === '수학' && x?.groups?.[0]?.live === 1 && x?.manager === false && typeof x?.today?.total_seconds === 'number'); }
+  { const r = await as(A, CA, `select is_study_manager from public.admin_find_user('20507')`); const s = await as(A, CA, `select public.admin_set_study_manager('${S3}', true)`);
+    const ok = await as(S3, C3, `select public.is_study_manager() a`); expect('관리자: 스터디 관리자 지정', r.rows[0]?.is_study_manager === false && s.ok && ok.rows[0]?.a === true); }
+}
+
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

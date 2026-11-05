@@ -94,6 +94,9 @@ function Root() {
         <Stack.Screen name="voice/survey/[id]" options={{ title: '설문' }} />
         <Stack.Screen name="voice/survey/new" options={{ title: '설문 만들기' }} />
         <Stack.Screen name="voice/suggest" options={{ title: '건의 올리기' }} />
+        <Stack.Screen name="study/focus" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
+        <Stack.Screen name="study/group/[id]" options={{ title: '그룹 순위' }} />
+        <Stack.Screen name="study/admin/[id]" options={{ title: '스터디 윗미 관리' }} />
         <Stack.Screen name="login" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>

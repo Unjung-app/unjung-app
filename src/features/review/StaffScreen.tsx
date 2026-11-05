@@ -21,6 +21,7 @@ type Found = {
   nickname: string | null;
   is_planner?: boolean;
   balance?: number;
+  is_study_manager?: boolean;
 };
 type Staff = { user_id: string; name: string | null; student_no: string | null; role: Role; is_planner?: boolean };
 const ROLE: Record<Role, string> = { student: '학생', reviewer: '검토위원', admin: '관리자' };
@@ -150,6 +151,7 @@ function StudentCard({ f, me, act }: { f: Found; me: string; act: (fn: string, a
         <AppText variant="heading">{f.name ?? '학적 없음'}</AppText>
         <Badge label={ROLE[f.role]} tone={f.role === 'student' ? 'muted' : 'accent'} />
         {f.is_planner ? <Badge label="기획행정부" tone="success" /> : null}
+        {f.is_study_manager ? <Badge label="스터디 윗미 관리" tone="success" /> : null}
       </View>
       <AppText variant="caption" color={color.inkMuted}>
         {f.student_no ? `${f.grade}학년 ${f.class_no}반 · ${f.student_no}` : '올해 학번 미등록'} · {f.email} · 닉네임 {f.nickname ?? '없음'} · 🪙 {f.balance ?? 0}
@@ -166,6 +168,13 @@ function StudentCard({ f, me, act }: { f: Found; me: string; act: (fn: string, a
             label={f.is_planner ? '기획행정부 빼기' : '기획행정부 지정'}
             variant="soft"
             onPress={() => act('admin_set_planner', { p_user: f.user_id, p_on: !f.is_planner }, f.is_planner ? '기획행정부에서 뺐어요' : '기획행정부로 지정했어요')}
+          />
+          <Button
+            label={f.is_study_manager ? '스터디 관리 해제' : '스터디 윗미 관리자'}
+            variant="soft"
+            onPress={() =>
+              act('admin_set_study_manager', { p_user: f.user_id, p_on: !f.is_study_manager }, f.is_study_manager ? '스터디 윗미 관리자에서 뺐어요' : '스터디 윗미 관리자로 지정했어요')
+            }
           />
         </View>
       ) : null}

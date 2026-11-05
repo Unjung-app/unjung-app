@@ -144,7 +144,7 @@ export function RankingScreen({ inStack = false }: { inStack?: boolean }) {
       {kind === 'study' && week === 0 ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`지금 ${live?.all ?? 0}명 집중 중. 공부 타이머 열기`}
+          accessibilityLabel={`지금 ${live?.all ?? 0}명 집중 중. 스터디 윗미 열기`}
           onPress={() => openFeature('study')}
           style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: pressed ? color.navyRaised : color.navy, borderRadius: radius.card, padding: space.lg })}>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: live?.all ? color.liveOnNavy : color.navyDone }} />
