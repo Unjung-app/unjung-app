@@ -1,0 +1,51 @@
+# 새 게임 체계 (HTML 게임) — 작업 메모
+
+호원 결정(11-05): 기존 학습형 게임(영단어·암산·운중 라이프 퀴즈)은 **재미 중심의 새 게임으로 전부 교체**한다.
+앱 개발 참여자 대부분이 게임을 만든다. 각자 생성형 AI로 **HTML 파일 하나**를 만들어 호원에게 내고, 호원이 리드 에이전트에게 넘기면 검토 후 앱에 넣는다.
+수업 시간에는 계속 막는다(쉬는 시간·점심은 허용).
+
+- 참여자 가이드(Docs): https://claude.ai/artifact/1sPNn8pNtnk1esyc4eDXhb
+- 템플릿: `public/games/_template/index.html` → https://unjung-app.vercel.app/games/_template/index.html
+- 제출 마감(1차 반영): 11/8(일) 21:00. 늦게 낸 것은 다음 업데이트 때 넣는다.
+
+## 게임 파일 규칙 (참여자에게 안내한 것)
+
+1. 파일 하나. 외부 라이브러리·이미지·글꼴 금지(이모지·캔버스·인라인 데이터만)
+2. 세로 폰(360~430px)에서 터치로 플레이. 한 판 1~5분
+3. 끝나면 `UnjungGame.submitScore(정수)`. 높을수록 좋은 점수
+4. 템플릿의 "앱 연결 코드" 블록은 고치지 않는다
+5. `UnjungGame.onPause`가 오면 멈춘다
+6. 실명, 욕설, 선정·혐오 내용, 도박 구조 금지. 선생님을 적으로 쓰지 않는다
+
+## 앱 연결 코드(브리지) 약속
+
+- 게임은 `<iframe src="/games/<id>/index.html?unjung=1">` 안에서 열린다.
+- 게임 → 앱: `postMessage({ unjung: 1, id, type, data })`
+  - `ready`: 로드 완료
+  - `score {score}`: 점수 제출
+  - `save <string>`: 이어하기 저장(10KB까지)
+  - `load`: 저장 불러오기
+  - `exit`: 앱으로 돌아가기
+- 앱 → 게임: `{ unjung: 1, reply: id, data }`로 요청에 답한다.
+  - 앱이 먼저 보내는 것: `{ unjung: 1, type: 'player', data: { nickname, grade } }`, `{ unjung: 1, type: 'pause' }`
+- 앱 밖(브라우저·AI 미리보기)에서는 같은 함수가 localStorage로 흉내 낸다(연습 모드).
+
+## 남은 일 (다음 세션에서 이어서)
+
+1. **앱 쪽 게임 호스트 화면**
+   - `src/app/game/[id].tsx`를 HTML 게임용으로 바꾼다.
+   - iframe을 띄우고, 위 브리지를 처리하고, 수업 시간에는 막는다.
+   - 화면이 가려지면 pause를 보내고, 수업이 시작되면 pause를 보낸 뒤 막는 화면을 띄운다.
+   - 기존 `game_status`의 수업 판정을 재사용한다.
+2. **게임 목록 등록부** `src/features/games/catalog.ts`
+   - 항목: id, 이름, 한 줄 소개, 장르, 만든 사람, 이모지, 점수 단위, 점수 상한(조작 방지)
+   - 화면은 GamesScreen을 새로 만든다.
+3. **DB 마이그레이션**
+   - `game_runs.game` check 제약을 풀거나 새 표 `html_game_scores`(user, game, score, played_at)와 `html_game_saves`(user, game, data ≤10KB)를 만든다.
+   - RPC `submit_html_game(game, score, duration_s)`: 상한·최소 플레이 시간을 검사하고, 수업 시간에는 거부한다.
+   - 주간 랭킹 RPC. 토큰은 점수가 아니라 참여 보상(예: 하루 첫 3판에 +1, 캡). **호원과 확정 필요.**
+4. **기존 학습형 게임 3종 제거**: 화면, 오늘의 미션 '무료 게임' 연결, 지갑 설명 문구.
+5. **제출된 게임 검토 순서**
+   - 규칙 위반, 외부 요청(fetch/script src), `eval`, 무한 루프를 확인한다.
+   - Playwright로 390×844 화면에서 시작부터 게임 오버까지 돌려 보고 콘솔 오류를 본다.
+   - `public/games/<id>/index.html`에 넣고 등록부에 추가한다.
