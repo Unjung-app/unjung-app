@@ -25,6 +25,7 @@ export function StudyAdminScreen() {
   const [open, setOpen] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [pw, setPw] = useState('');
+  const [until, setUntil] = useState('');
 
   const g = a.data;
   if (!g) {
@@ -132,6 +133,30 @@ export function StudyAdminScreen() {
               const e = await call('manage_study_group', { p_id: g.id, p_password: pw, p_capacity: null, p_starts: null, p_ends: null, p_closed: null });
               setMsg(e ?? '비밀번호를 바꿨어요. 이미 들어온 학생은 그대로예요.');
               setPw('');
+              a.reload();
+            }}
+          />
+        </View>
+        <AppText variant="caption" color={color.inkMuted}>
+          참여 신청 마감: {g.join_until ? `${g.join_until} 밤 12시까지` : '없음(기간 중 언제든)'}
+        </AppText>
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <TextInput
+            accessibilityLabel="새 참여 마감일"
+            value={until}
+            onChangeText={(t) => setUntil(t.replace(/[^0-9-]/g, '').slice(0, 10))}
+            placeholder="예) 2026-11-10 (비우면 마감 없음)"
+            placeholderTextColor={color.inkFaint}
+            style={{ ...inputStyle, minHeight: 48, flex: 1, minWidth: 0 }}
+          />
+          <Button
+            label="마감 바꾸기"
+            variant="soft"
+            disabled={!!until && !/^2026-1[12]-\d{2}$/.test(until)}
+            onPress={async () => {
+              const e = await call('set_study_join_until', { p_id: g.id, p_date: until || null });
+              setMsg(e ?? (until ? `참여 마감을 ${until}로 바꿨어요.` : '참여 마감을 없앴어요.'));
+              setUntil('');
               a.reload();
             }}
           />
