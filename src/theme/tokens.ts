@@ -55,6 +55,33 @@ export const profileTheme: Record<string, { bg: string; ink: string; sub: string
   night: { bg: '#0E2748', ink: '#FFFFFF', sub: '#B9CBEA', edge: '#F5A524' },
 };
 
+/** 스터디 윗미: 과목 색 (키는 DB study_subjects.color). 흰 배경·어두운 집중 화면 모두에서 점·막대로 쓴다 */
+export const subjectColor: Record<string, string> = {
+  navy: '#3B5B92',
+  red: '#E5484D',
+  orange: '#F08C2E',
+  yellow: '#E2B714',
+  green: '#30A46C',
+  teal: '#12A594',
+  blue: '#3E7BFA',
+  purple: '#8E4EC6',
+  pink: '#E93D82',
+  gray: '#8B95A7',
+};
+
+/** 스터디 윗미 집중 화면(열품타식 검은 화면) */
+export const focus = {
+  bg: '#05080F',
+  surface: '#111827',
+  line: '#1F2A3D',
+  ink: '#FFFFFF',
+  sub: '#9AA8BF', // bg 대비 8:1
+  live: '#4ADE80',
+  accent: '#F5A524',
+  onAccent: '#0B1B33',
+  danger: '#FF8A80',
+} as const;
+
 export const space ={ xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
 
 export const radius = { card: 22, control: 12, chip: 10, pill: 18, round: 999 } as const;

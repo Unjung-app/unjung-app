@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { DEFAULT_TABS, sanitizeTabs } from '@/features/registry';
+import { DEFAULT_TABS, OLD_DEFAULT_TABS, sanitizeTabs } from '@/features/registry';
 
 // 학생 개인 설정. 지금은 이 기기에만 저장하고, 로그인이 생기면 계정과 동기화한다.
 
@@ -31,7 +31,9 @@ function parse(raw: string | null): Prefs {
       c && [1, 2, 3].includes(c.grade) && Number.isInteger(c.classNo) && c.classNo >= 1 && c.classNo <= 20
         ? { grade: c.grade, classNo: c.classNo }
         : null;
-    return { tabs: sanitizeTabs(v?.tabs), myClass };
+    // 탭 설정을 한 번도 바꾸지 않은 학생(옛 기본값 그대로)은 새 기본값(가운데 '스터디 윗미')으로
+    const old = v?.tabsV !== 2 && Array.isArray(v?.tabs) && v.tabs.join() === OLD_DEFAULT_TABS.join();
+    return { tabs: old ? DEFAULT_TABS : sanitizeTabs(v?.tabs), myClass };
   } catch {
     return DEFAULTS;
   }
@@ -57,7 +59,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     setPrefs((prev) => {
       const next = fn(prev);
       if (next === prev) return prev;
-      AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(KEY, JSON.stringify({ ...next, tabsV: 2 })).catch(() => {});
       return next;
     });
   }, []);

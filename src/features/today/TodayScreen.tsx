@@ -333,14 +333,14 @@ function StudyCard() {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`오늘 공부 ${today ? durationLabel(today.ranked_seconds) : ''}. 공부 타이머 열기`}
+      accessibilityLabel={`오늘 공부 ${today ? durationLabel(today.ranked_seconds + today.class_seconds) : ''}. 스터디 윗미 열기`}
       onPress={() => openFeature('study')}
       style={({ pressed }) => ({ flex: 1, backgroundColor: pressed ? color.navyRaised : color.navy, borderRadius: radius.card, padding: space.lg, gap: 6 })}>
       <AppText variant="label" weight="regular" color={color.onNavyMuted}>
         오늘 공부
       </AppText>
       <AppText variant="heading" color={color.onNavy} style={{ fontSize: 22, lineHeight: 28 }}>
-        {ready ? durationLabel(today?.ranked_seconds ?? 0) : '집중 모드'}
+        {ready ? durationLabel((today?.ranked_seconds ?? 0) + (today?.class_seconds ?? 0)) : '스터디 윗미'}
       </AppText>
       <AppText variant="caption" color={color.onNavySub}>
         {ready ? `토큰 ${today?.tokens ?? 0}/${REWARD.studyDailyCap} · 10분마다 +1` : '로그인하면 공부 시간이 반 랭킹이 돼요'}
