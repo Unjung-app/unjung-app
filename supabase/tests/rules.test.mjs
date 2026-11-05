@@ -656,6 +656,9 @@ await sub(B, CB, 'a7');
   await as(S3, C3, `select public.register_enrollment('20612','삼번')`); await as(S3, C3, `select public.set_nickname('열공러')`);
   const g = (await q(`select id, grade from public.study_groups order by grade`)).rows; const G1 = g[0]?.id, G2 = g[1]?.id;
   expect('행사 그룹 2개(1·2학년)', g.length === 2 && g[0].grade === 1 && g[1].grade === 2);
+  expect('행사 그룹 참여 마감 11/9', (await q(`select count(*)::int n from public.study_groups where join_until = '2026-11-09'`)).rows[0]?.n === 2);
+  // 검사 날짜와 상관없이 돌도록 마감은 따로 시험한다(아래). 여기서는 없앤다
+  await q(`update public.study_groups set join_until = null, ends_on = '2099-12-31'`);
   { const r = await as(S3, C3, `select * from public.study_groups`); expect('그룹 원본 표(비밀번호) 직접 읽기 불가', r.ok && r.rows.length === 0); }
   { const r = await as(S3, C3, `select public.study_group_list() r`); const l = r.rows[0]?.r ?? [];
     expect('그룹 목록: 내 학년만, 비밀번호 없음', l.length === 1 && l[0].grade === 2 && !JSON.stringify(l).includes('2026"') && !('password' in l[0])); }
@@ -672,18 +675,28 @@ await sub(B, CB, 'a7');
   // 기간 공부 기록: 11/10 40분(랭킹 30 + 수업 10), 11/11 20분 → 누적 60분, 참여일 1일
   await q(`insert into public.study_daily (user_id, day, school_year, grade, class_no, ranked_seconds, class_seconds, tokens) values
     ('${S3}', '2026-11-10', 2026, 2, 6, 1800, 600, 3), ('${S3}', '2026-11-11', 2026, 2, 6, 1200, 0, 2), ('${S3}', '2026-11-30', 2026, 2, 6, 9000, 0, 12)`);
+  await q(`update public.study_groups set ends_on = '2026-11-25'`);
   { const r = await as(M, CM, `select public.study_group_admin(${G2}) r`); const m = r.rows[0]?.r?.members?.[0];
     expect('관리자 보드: 실명·학번, 기간 누적(수업 포함), 참여일(30분↑), 기간 밖 제외', r.ok && m?.name === '삼번' && m?.student_no === '20612' && m?.period_seconds === 3600 && m?.days === 1 && m?.by_day?.['2026-11-10'] === 2400 && r.rows[0]?.r?.days?.length === 17); }
   { const r = await as(S3, C3, `select public.study_group_admin(${G2})`); expect('관리자 보드는 관리자만', !r.ok); }
   await as(M, CM, `select public.manage_study_group(${G2}, null, null, '2026-11-01', null, null)`);
   { const r = await as(S3, C3, `select public.study_group_board(${G2}) r`); const b = r.rows[0]?.r; const me = b?.members?.[0];
     expect('그룹 보드: 닉네임만(실명·학번 없음), 기간 누적', r.ok && me?.nickname === '열공러' && me?.mine === true && me?.period_seconds === 3600 && !JSON.stringify(b).includes('삼번') && !JSON.stringify(b).includes('20612')); }
+  await q(`update public.study_groups set ends_on = '2099-12-31'`);
   { const r = await as(S3, C3, `select public.manage_study_group(${G2}, '0000', null, null, null, null)`); expect('일반 학생은 그룹 설정 불가', !r.ok); }
   { await q(`update public.study_groups set capacity = 2 where id = ${G2}`); await as(M, CM, `select public.join_study_group(${G2}, '2026')`);
     const U = '99999999-9999-9999-9999-999999999914', CU = 's4@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
     await as(U, CU, `select public.register_enrollment('20613','넷째')`); await as(U, CU, `select public.set_nickname('넷째공부')`);
     const r = await as(U, CU, `select public.join_study_group(${G2}, '2026')`); expect('정원이 차면 참여 불가', !r.ok && /정원/.test(r.err ?? ''));
     await q(`update public.study_groups set capacity = 50 where id = ${G2}`); }
+  { const U = '99999999-9999-9999-9999-999999999915', CU = 's5@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
+    await as(U, CU, `select public.register_enrollment('20614','다섯째')`); await as(U, CU, `select public.set_nickname('늦게온사람')`);
+    const bad = await as(U, CU, `select public.set_study_join_until(${G2}, public.seoul_today() - 1)`);
+    const set = await as(M, CM, `select public.set_study_join_until(${G2}, public.seoul_today() - 1)`);
+    const late = await as(U, CU, `select public.join_study_group(${G2}, '2026')`); const l = await as(U, CU, `select public.study_group_list() r`);
+    const already = await as(S1, C1, `select public.join_study_group(${G1}, '2026')`);
+    await as(M, CM, `select public.set_study_join_until(${G2}, null)`); const ok = await as(U, CU, `select public.join_study_group(${G2}, '2026')`);
+    expect('참여 마감: 관리자만 설정, 마감 뒤 참여 불가·목록에 참여 불가 표시, 연장하면 참여', !bad.ok && set.ok && !late.ok && /까지였어요/.test(late.err ?? '') && l.rows[0]?.r?.[0]?.can_join === false && already.ok && ok.ok); }
   { const r = await as(M, CM, `select public.manage_study_member(${G2}, '${S3}')`); const n = await q(`select count(*)::int n from public.study_group_members where group_id=${G2} and user_id='${S3}'`);
     expect('관리자가 멤버 내보내기', r.ok && n.rows[0]?.n === 0); }
   { const s = await as(S1, C1, `select public.save_study_subject(null, '수학', 'blue', 1) id`); const dup = await as(S1, C1, `select public.save_study_subject(null, '수학', 'red', 2)`);

@@ -22,6 +22,7 @@ export type GroupInfo = {
   capacity: number;
   starts_on: string;
   ends_on: string;
+  join_until?: string | null;
   closed: boolean;
   members: number;
   joined: boolean;
@@ -69,6 +70,7 @@ export type AdminBoard = {
   capacity: number;
   starts_on: string;
   ends_on: string;
+  join_until?: string | null;
   today: string;
   days: string[];
   members: AdminMember[];
