@@ -3,9 +3,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "앱 실행 (npm run dev)",
-      "type": "npm",
-      "script": "dev",
+      "label": "앱 실행",
+      "type": "shell",
+      "command": "npm run app",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": { "panel": "dedicated", "reveal": "always", "focus": false },

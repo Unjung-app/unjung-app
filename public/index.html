@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>%WEB_TITLE%</title>
+
+    <!-- 홈 화면에 추가(PWA) -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="운중고" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+        background-color: #f3f5f9;
+      }
+      body {
+        overflow: hidden;
+        margin: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>이 앱을 쓰려면 자바스크립트를 켜 주세요.</noscript>
+    <div id="root"></div>
+    <script>
+      // 오프라인에서도 열리고, 나중에 알림을 받을 수 있게 서비스 워커를 등록한다
+      if ('serviceWorker' in navigator && location.protocol === 'https:') {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      }
+      // 안드로이드 크롬의 '앱 설치' 이벤트를 앱이 나중에 쓸 수 있게 잡아 둔다
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__installPrompt = e;
+        window.dispatchEvent(new Event('installprompt-ready'));
+      });
+    </script>
+  </body>
+</html>

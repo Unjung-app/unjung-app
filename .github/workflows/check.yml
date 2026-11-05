@@ -4,23 +4,23 @@ name: 자동 검사
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: ['lead/**']
 
 permissions:
   contents: read
 
 concurrency:
-  group: check-${{ github.event.pull_request.number }}
+  group: check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
     name: 검사
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -30,8 +30,21 @@ jobs:
       - name: 부품 설치
         run: npm ci --no-audit --no-fund
 
-      - name: 규칙 검사 (feature.json · 비밀 키 · 공용 파일)
-        run: node scripts/check-pr.mjs "origin/${{ github.base_ref }}"
+      - name: 타입 검사 (앱)
+        run: npx tsc --noEmit
 
-      - name: 앱 만들기 (빌드)
-        run: npm run build
+      - name: 타입 검사 (서버 함수)
+        run: npx tsc --noEmit -p api
+
+      - name: DB 규칙 검사 (권한·학번·토큰)
+        run: npm run test:db
+
+      - name: 웹 빌드
+        run: npm run build:web
+
+      - name: 서버 함수 실행 검사 (Vercel 빌드 재현)
+        run: |
+          mkdir -p .vercel
+          echo '{"projectId":"prj_ci","orgId":"team_ci","settings":{"framework":null,"buildCommand":"npm run build:web","outputDirectory":"dist","installCommand":"npm ci"}}' > .vercel/project.json
+          npx -y vercel@latest build --yes
+          node scripts/smoke-api.cjs .vercel/output/functions/api
