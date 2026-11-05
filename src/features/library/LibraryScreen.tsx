@@ -61,6 +61,9 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
   const [inputFocused, setInputFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const word = keyword.trim();
+  const matchingRecentSearches = recentSearches.filter((item) =>
+    word.toLowerCase().includes(item.keyword.toLowerCase()),
+  );
 
   useEffect(() => {
     let active = true;
@@ -132,12 +135,12 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
             style={{ flex: 1, minHeight: 48, fontSize: 15, color: color.ink, ...fontStyle('regular') }}
           />
         </View>
-        {inputFocused && !word && recentSearches.length > 0 ? (
+        {inputFocused && matchingRecentSearches.length > 0 ? (
           <View style={{ gap: space.xs }}>
             <AppText variant="label" color={color.inkMuted}>
               최근 검색
             </AppText>
-            {recentSearches.map((item) => {
+            {matchingRecentSearches.map((item) => {
               const categoryLabel = SEARCH_CATEGORIES.find((option) => option.value === item.category)?.label;
               return (
                 <Pressable
