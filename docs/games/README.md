@@ -6,7 +6,8 @@
 
 - 참여자 가이드(Docs): https://claude.ai/artifact/1sPNn8pNtnk1esyc4eDXhb
 - 템플릿: `public/games/_template/index.html` → https://unjung-app.vercel.app/games/_template/index.html
-- 제출 마감(1차 반영): 11/8(일) 21:00. 늦게 낸 것은 다음 업데이트 때 넣는다.
+- 제출: 11/8(일) 21:00까지 호원에게 카톡/이메일. 늦게 낸 것은 다음 업데이트 때 넣는다.
+- 호원 결정(11-05 22:38): 새 게임에 별도 토큰 보상 없음 → **기존 게임 보상 체계(game_status 판 수·주간 랭킹)를 그대로 따른다.** 월요일 출시 때 새 게임이 최소 하나는 있다고 가정.
 
 ## 게임 파일 규칙 (참여자에게 안내한 것)
 
@@ -43,7 +44,7 @@
 3. **DB 마이그레이션**
    - `game_runs.game` check 제약을 풀거나 새 표 `html_game_scores`(user, game, score, played_at)와 `html_game_saves`(user, game, data ≤10KB)를 만든다.
    - RPC `submit_html_game(game, score, duration_s)`: 상한·최소 플레이 시간을 검사하고, 수업 시간에는 거부한다.
-   - 주간 랭킹 RPC. 토큰은 점수가 아니라 참여 보상(예: 하루 첫 3판에 +1, 캡). **호원과 확정 필요.**
+   - 주간 랭킹 RPC. 보상은 기존 게임 체계 그대로(판 수 제한·주간 랭킹 보상)를 HTML 게임에 맞춰 옮긴다.
 4. **기존 학습형 게임 3종 제거**: 화면, 오늘의 미션 '무료 게임' 연결, 지갑 설명 문구.
 5. **제출된 게임 검토 순서**
    - 규칙 위반, 외부 요청(fetch/script src), `eval`, 무한 루프를 확인한다.
