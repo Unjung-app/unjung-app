@@ -656,7 +656,7 @@ await sub(B, CB, 'a7');
   await as(S3, C3, `select public.register_enrollment('20612','삼번')`); await as(S3, C3, `select public.set_nickname('열공러')`);
   const g = (await q(`select id, grade from public.study_groups order by grade`)).rows; const G1 = g[0]?.id, G2 = g[1]?.id;
   expect('행사 그룹 2개(1·2학년)', g.length === 2 && g[0].grade === 1 && g[1].grade === 2);
-  expect('행사 그룹 참여 마감 11/9', (await q(`select count(*)::int n from public.study_groups where join_until = '2026-11-09'`)).rows[0]?.n === 2);
+  expect('행사 그룹 참여 마감 11/8', (await q(`select count(*)::int n from public.study_groups where join_until = '2026-11-08'`)).rows[0]?.n === 2);
   // 검사 날짜와 상관없이 돌도록 마감은 따로 시험한다(아래). 여기서는 없앤다
   await q(`update public.study_groups set join_until = null, ends_on = '2099-12-31'`);
   { const r = await as(S3, C3, `select * from public.study_groups`); expect('그룹 원본 표(비밀번호) 직접 읽기 불가', r.ok && r.rows.length === 0); }

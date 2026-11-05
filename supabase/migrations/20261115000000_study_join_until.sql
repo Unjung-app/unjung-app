@@ -1,9 +1,10 @@
 -- 스터디 윗미: 그룹 참여 마감일
--- 포스터 공지 "11/9 월요일 자정 전까지 가입한 사람에 한해 참여 가능"에 맞춰, 11/9(월) 23:59(한국 시간)까지만 참여할 수 있다.
+-- 호원 결정(11-05): 참여 신청은 11/8(일) 23:59(한국 시간)까지. 집계는 11/9(월)부터.
+-- 이 파일은 여러 번 실행해도 안전하다(이미 적용했어도 다시 Run 하면 마감일만 11/8로 맞춰진다).
 -- 교육활동부(관리자)가 앱에서 마감일을 바꿀 수 있다(연장 등).
 
-alter table public.study_groups add column join_until date;
-update public.study_groups set join_until = '2026-11-09' where name in ('1학년 스터디 윗미', '2학년 스터디 윗미');
+alter table public.study_groups add column if not exists join_until date;
+update public.study_groups set join_until = '2026-11-08' where name in ('1학년 스터디 윗미', '2학년 스터디 윗미');
 
 create or replace function public.join_study_group(p_id bigint, p_password text)
 returns void language plpgsql security definer set search_path = public as $$

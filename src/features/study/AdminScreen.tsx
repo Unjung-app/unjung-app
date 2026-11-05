@@ -138,7 +138,7 @@ export function StudyAdminScreen() {
           />
         </View>
         <AppText variant="caption" color={color.inkMuted}>
-          참여 신청 마감: {g.join_until ? `${g.join_until} 밤 12시까지` : '없음(기간 중 언제든)'}
+          참여 신청 마감: {g.join_until ? `${g.join_until} 23:59까지` : '없음(기간 중 언제든)'}
         </AppText>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <TextInput

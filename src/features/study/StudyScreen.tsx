@@ -346,7 +346,7 @@ function JoinCard({ g, onJoined }: { g: GroupInfo; onJoined: () => void }) {
       <AppText variant="caption" color={color.inkMuted}>
         {g.description || '비밀번호를 아는 학생만 들어올 수 있어요.'}
         {'\n'}지금 {g.members}/{g.capacity}명 · 그룹 안에서는 닉네임으로 보여요
-        {g.join_until ? `\n참여 신청 마감: ${g.join_until.slice(5).replace('-', '/')} 밤 12시` : ''}
+        {g.join_until ? `\n참여 신청 마감: ${Number(g.join_until.slice(5, 7))}/${Number(g.join_until.slice(8))} 23:59` : ''}
       </AppText>
       {full ? (
         <AppText variant="label" color={color.danger}>

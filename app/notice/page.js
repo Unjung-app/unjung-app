@@ -2,7 +2,7 @@
 import Icon from "@/components/Icon";
 
 export const metadata = {
-  title: "통합 공지 | 운중고 스마트 캠퍼스",
+  title: "통합 공지 | 운중고 스마트 스쿨",
 };
 
 const grades = [
