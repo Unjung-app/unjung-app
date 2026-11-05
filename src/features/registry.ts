@@ -21,7 +21,7 @@ export const FEATURES: Feature[] = [
   { id: 'tasks', title: '수행평가·숙제', short: '과제', desc: '우리 반 마감을 친구들과 함께 챙겨요', icon: 'task', status: 'live' },
   { id: 'calendar', title: '학사일정', short: '일정', desc: '시험·행사·휴업일과 D-day', icon: 'calendar', status: 'live' },
   { id: 'library', title: '도서관', short: '도서관', desc: '학교 도서관 장서 검색', icon: 'library', status: 'live' },
-  { id: 'study', title: '공부 타이머', short: '공부', desc: '집중 모드로 공부하고 토큰 받기', icon: 'study', status: 'live' },
+  { id: 'study', title: '스터디 윗미', short: '스터디', desc: '과목별 공부 시간 재기 · 친구들과 그룹 순위', icon: 'study', status: 'live' },
   { id: 'games', title: '게임', short: '게임', desc: '영단어·암산·운중 라이프 퀴즈 · 게임 랭킹', icon: 'game', status: 'live' },
   { id: 'ranking', title: '랭킹', short: '랭킹', desc: '반 대항 공부·토큰 랭킹', icon: 'ranking', status: 'live' },
   { id: 'notice', title: '학생 공지', short: '공지', desc: '학생이 올리고 검토위원이 확인한 학교 소식', icon: 'notice', status: 'live' },
@@ -34,7 +34,9 @@ export const FEATURE_BY_ID: Record<string, Feature> = Object.fromEntries(FEATURE
 
 /** 하단 탭: 맨 앞 '오늘'과 맨 뒤 '전체'는 고정, 가운데는 학생이 고르는 칸 */
 export const MAX_CUSTOM_TABS = 3;
-export const DEFAULT_TABS = ['timetable', 'meal', 'tasks'];
+export const DEFAULT_TABS = ['timetable', 'study', 'meal'];
+/** v1.0.0 첫 기본값. 이 값 그대로인 학생(설정을 안 바꾼 학생)은 새 기본값으로 옮긴다 */
+export const OLD_DEFAULT_TABS = ['timetable', 'meal', 'tasks'];
 
 export function sanitizeTabs(ids: unknown): string[] {
   if (!Array.isArray(ids)) return DEFAULT_TABS;
