@@ -617,6 +617,33 @@ await sub(B, CB, 'a7');
   const b0 = await bal(D); await as(A, CA, `select public.admin_update_feedback(${id}, 'done', '고쳤어요')`); expect('의견 반영 +10', (await bal(D)) === b0 + 10); }
 { const r = await q(`select value from public.app_config where key='app_url'`); expect('알림 서버 주소 = 정식 주소', r.rows[0]?.value === 'https://unjung-app.vercel.app'); }
 
+// 개인 시간표: 계정 격리, 선택 검증, 학년 제한, 재설정
+{
+  const U = '99999999-9999-9999-9999-999999999991', mail = 'timetable@unjung.hs.kr';
+  await q(`insert into auth.users values ('${U}','${mail}')`);
+  await q(`insert into public.enrollments(user_id,school_year,student_no,name) values ('${U}',2026,'20140','테스트')`);
+  const groups = (await q(`select groups from public.timetable_configs where school_year=2026 and semester=2 and grade=2`)).rows[0].groups;
+  expect('6개 영역과 8개 반 배치', groups.length === 6 && groups.every(g => Object.keys(g.slots).length === 8));
+  for (let c = 1; c <= 8; c++) {
+    const slots = groups.flatMap(g => g.slots[String(c)].map(s => s.join(':')));
+    expect(`${c}반 선택 과목 시간 충돌 없음`, slots.length === 17 && new Set(slots).size === 17);
+  }
+  const choices = Object.fromEntries(groups.map(g => [g.id,g.subjects[0]]));
+  const save = v => `select public.save_timetable_choices(2026,2,'${JSON.stringify(v)}'::jsonb)`;
+  expect('여섯 과목 저장', (await as(U,mail,save(choices))).ok);
+  expect('다른 계정 선택 비공개', (await as(B,CB,`select * from public.timetable_choices`)).rows.length === 0);
+  expect('목록 외 과목 차단', !(await as(U,mail,save({...choices,A:'없는 과목'}))).ok);
+  const incomplete = {...choices}; delete incomplete.art;
+  expect('미완료 선택 차단', !(await as(U,mail,save(incomplete))).ok);
+  expect('1학년 저장 차단', !(await as(B,CB,save(choices))).ok);
+  expect('외부 계정 저장 차단', !(await as(X,'someone@gmail.com',save(choices))).ok);
+  expect('직접 수정 차단', !(await as(U,mail,`update public.timetable_choices set choices='{}'`)).ok);
+  choices.art = '미술';
+  expect('과목 재설정 저장', (await as(U,mail,save(choices))).ok);
+  const read = await as(U,mail,`select choices from public.timetable_choices`);
+  expect('재접속 시 계정 선택 조회', read.rows.length === 1 && read.rows[0].choices.art === '미술');
+}
+
 // ───── 스터디 윗미(교육활동부 행사) ─────
 { const M = '99999999-9999-9999-9999-999999999901', CM = 'm1@unjung.hs.kr';      // 교육활동부(20507)
   const S1 = '99999999-9999-9999-9999-999999999911', C1 = 's1@unjung.hs.kr';     // 1학년, 닉네임 있음
