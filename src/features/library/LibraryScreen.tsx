@@ -4,16 +4,26 @@ import * as WebBrowser from 'expo-web-browser';
 import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
 import { Button, Card } from '@/components/ui/primitives';
+import { Segmented } from '@/components/ui/Segmented';
 import { Screen } from '@/components/ui/Screen';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 
 // 독서로(read365)의 운중고 장서 검색 결과를 앱 안 브라우저로 연다.
 const BASE_URL = 'https://read365.edunet.net/PureScreen/SchoolSearchResult';
+type SearchCategory = 'all' | 'title' | 'author' | 'publisher';
 
-function searchUrl(keyword: string) {
+const SEARCH_CATEGORIES: { value: SearchCategory; label: string }[] = [
+  { value: 'all', label: '전체' },
+  { value: 'title', label: '제목' },
+  { value: 'author', label: '저자' },
+  { value: 'publisher', label: '발행자' },
+];
+
+function searchUrl(keyword: string, category: SearchCategory) {
   const params = new URLSearchParams({
     searchKeyword: keyword,
+    ...(category === 'all' ? {} : { searchType: category.toUpperCase() }),
     provCode: 'J10',
     neisCode: 'J100005844',
     schoolName: '운중고등학교',
@@ -23,9 +33,10 @@ function searchUrl(keyword: string) {
 
 export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
   const [keyword, setKeyword] = useState('');
+  const [category, setCategory] = useState<SearchCategory>('all');
   const word = keyword.trim();
   const search = () => {
-    if (word) WebBrowser.openBrowserAsync(searchUrl(word)).catch(() => {});
+    if (word) WebBrowser.openBrowserAsync(searchUrl(word, category)).catch(() => {});
   };
 
   return (
@@ -39,6 +50,12 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
         <AppText variant="heading" nativeID="lib-label">
           장서 검색
         </AppText>
+        <Segmented
+          label="검색 범위"
+          value={category}
+          onChange={setCategory}
+          options={SEARCH_CATEGORIES}
+        />
         <View
           style={{
             flexDirection: 'row',
