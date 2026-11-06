@@ -7,6 +7,7 @@ import { Screen } from '@/components/ui/Screen';
 import { AccountCard } from '@/features/auth/AccountCard';
 import { classLabel, useOpenFeature } from '@/features/hooks';
 import { DEV_TEAM, DEV_TEAM_NAME, FEATURES } from '@/features/registry';
+import { TeamCard } from '@/features/launch/Launch';
 import { LAB_FEATURES, labVisible } from '@/lab/registry';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
@@ -145,7 +146,10 @@ export function MoreScreen() {
         </>
       ) : null}
 
-      <View style={{ marginTop: space.xl, gap: 4, alignItems: 'center' }}>
+      <View style={{ marginTop: space.xl }}>
+        <TeamCard />
+      </View>
+      <View style={{ marginTop: space.sm, gap: 4, alignItems: 'center' }}>
         <AppText variant="caption" color={color.inkMuted} align="center">
           {DEV_TEAM_NAME}
         </AppText>

@@ -57,8 +57,22 @@ export function SurveyComposeScreen() {
     else setError(r.message);
   };
 
+  // 안건 투표 빠르게: 질문 하나(찬성/반대), 3일, 투표하면 결과 공개
+  const quickVote = () => {
+    setQuestions([{ ...newQuestion('single'), prompt: title.trim() || '이 안건에 찬성하나요?', options: ['찬성', '반대'] }]);
+    setDays(3);
+    setResults('after_vote');
+  };
+
   return (
     <Screen topInset={false}>
+      <Card tone="muted" style={{ gap: space.sm }}>
+        <AppText variant="label">⚡ 안건 투표를 빠르게 올리려면</AppText>
+        <AppText variant="caption" color={color.inkMuted}>
+          제목에 안건을 적고 아래 버튼을 누르면 찬성/반대 질문 하나, 3일 동안, 투표한 학생에게 결과 공개로 바로 채워져요. 홈 화면에 바로 뜨고, 참여하면 학생에게 토큰이 지급돼요.
+        </AppText>
+        <Button label="찬반 투표로 채우기" variant="soft" onPress={quickVote} />
+      </Card>
       <Card>
         <AppText variant="label">제목</AppText>
         <TextInput accessibilityLabel="설문 제목" value={title} onChangeText={(t) => setTitle(t.slice(0, 60))} placeholder="예) 축제 부스 선호도 조사" placeholderTextColor={color.inkFaint} style={{ ...inputStyle, minHeight: 48 }} />

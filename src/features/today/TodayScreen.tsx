@@ -10,6 +10,7 @@ import { InstallBanner } from '@/features/install/InstallBanner';
 import { WalletStrip } from '@/features/today/WalletStrip';
 import { DailyMissions } from '@/features/today/DailyMissions';
 import { GalleryStrip, QuickGrid, QuoteLine } from '@/features/today/HomeParts';
+import { LaunchBanner, TeamCard } from '@/features/launch/Launch';
 import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
 import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
@@ -103,6 +104,7 @@ export function TodayScreen() {
 
       <QuoteLine today={now.ymd} />
       <WalletStrip />
+      <LaunchBanner />
       <InstallBanner />
       {anySample ? <SampleNotice /> : null}
       <PushPrompt />
@@ -119,6 +121,7 @@ export function TodayScreen() {
             holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
           />
           <QuickGrid />
+          <TeamCard homeOnly />
           <DeadlineCard today={now.ymd} />
           <DailyMissions today={now.ymd} />
           {wide ? <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} /> : null}
