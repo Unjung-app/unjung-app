@@ -8,7 +8,7 @@ import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { focus as F, radius, space } from '@/theme/tokens';
 import { gameUrl } from './catalog';
-import { finishHtmlGame, GAMES, loadGame, saveGame, startGame, useGameStatus, type FinishResult } from './data';
+import { finishHtmlGame, GAMES, loadGame, saveGame, startGame, studyMinutesToday, useGameStatus, type FinishResult } from './data';
 
 type Phase = 'intro' | 'starting' | 'playing' | 'result' | 'class';
 type Msg = { unjung: 1; id?: number; type: string; data?: unknown };
@@ -36,6 +36,9 @@ export function HtmlPlayScreen() {
   const frame = useRef<HTMLIFrameElement | null>(null);
   const run = useRef<{ id: string; cost: number } | null>(null);
   const best = useRef(0);
+  /** 게임이 점수를 hold로 보낸 판: 게임의 결과 화면을 두고, 게임이 'done'을 보내면 앱 결과 화면을 연다 */
+  const held = useRef<{ show: (() => void) | null; done: boolean; busy: boolean }>({ show: null, done: false, busy: false });
+  const lastShow = useRef<(() => void) | null>(null);
 
   const post = useCallback((m: Record<string, unknown>) => frame.current?.contentWindow?.postMessage({ unjung: 1, ...m }, '*'), []);
 
@@ -60,19 +63,42 @@ export function HtmlPlayScreen() {
         reply(true);
       } else if (m.type === 'score') {
         const score = Number((m.data as { score?: number })?.score) || 0;
+        const hold = (m.data as { hold?: boolean })?.hold === true;
         const r = run.current;
         if (!r) return reply({ best: best.current });
         run.current = null;
+        held.current.busy = true;
         const res = await finishHtmlGame(r.id, score);
         if (res) best.current = Math.max(best.current, res.best);
         reply({ best: res?.best ?? Math.max(best.current, score) });
         if (res?.reward) refresh(res.score_reward ? `게임 점수 보상 +${res.score_reward}` : '이번 주 최고 기록 갱신');
         reload();
-        // 게임의 결과 화면을 잠깐 보여 준 뒤 앱 결과 화면으로 덮는다
-        setTimeout(() => {
+        const show = () => {
           setResult(res ? { ...res, cost: r.cost } : { score, best: Math.max(best.current, score), new_best: false, reward: 0, cost: r.cost });
           setPhase((p) => (p === 'playing' ? 'result' : p));
-        }, 1500);
+        };
+        held.current.busy = false;
+        lastShow.current = show;
+        if (hold) {
+          // 게임이 자기 결과 화면을 보여 주는 중 → '계속'(done)을 누르면 앱 결과 화면
+          if (held.current.done) {
+            held.current.done = false;
+            show();
+          } else held.current.show = show;
+        } else {
+          // 게임의 결과 화면을 잠깐 보여 준 뒤 앱 결과 화면으로 덮는다
+          setTimeout(show, 1500);
+        }
+      } else if (m.type === 'done') {
+        reply(true);
+        if (held.current.show) {
+          const f = held.current.show;
+          held.current.show = null;
+          f();
+        } else if (held.current.busy) held.current.done = true; // 점수 기록이 아직 끝나지 않음 → 끝나면 바로 연다
+        else lastShow.current?.(); // 이미 기록한 판이면 그 결과를 연다
+      } else if (m.type === 'study') {
+        reply(await studyMinutesToday());
       } else if (m.type === 'save') {
         reply(await saveGame(id, String(m.data ?? 'null')));
       } else if (m.type === 'load') {
@@ -99,6 +125,8 @@ export function HtmlPlayScreen() {
       return;
     }
     run.current = { id: r.data.id, cost: r.data.cost };
+    held.current = { show: null, done: false, busy: false };
+    lastShow.current = null;
     if (r.data.cost) refresh();
     reload();
     setResult(null);
