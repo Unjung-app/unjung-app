@@ -32,3 +32,52 @@ const exceptional = [{date:'20261102',period:2,subject:'행사',room:null,tags:[
 assert.equal(JSON.stringify(personalize(exceptional,groups,choices,1,2026,2)),JSON.stringify(exceptional));
 assert.equal(personalize([],groups,choices,1,2026,2).length,0);
 console.log('8개 반 배치·원본 보존·특별활동·학기 구분 검사 통과');
+
+// 홈과 시간표가 같은 계정 선택을 공유하고, 저장 성공 후 즉시 갱신되는지 확인한다.
+const effects = [];
+let notifications = 0;
+let failSave = false;
+const stored = new Map([['student-a', choices]]);
+const fakeSupabase = {
+  from(table) {
+    const filters = {};
+    const query = {
+      select() { return query; },
+      eq(k,v) { filters[k]=v; return query; },
+      async maybeSingle() {
+        return { data: table === 'timetable_configs' ? { groups } : stored.has(filters.user_id) ? { choices: stored.get(filters.user_id) } : null, error: null };
+      },
+    };
+    return query;
+  },
+  async rpc(_name,args) {
+    if (failSave) return {error:new Error('offline')};
+    stored.set('student-a',args.p_choices); return {error:null};
+  },
+};
+const {useSubjectSelection} = compile('src/features/timetable/selection.ts', name => {
+  if (name === 'react') return {
+    useCallback(fn) { return fn; },
+    useEffect(effect) { effects.push(effect); },
+    useSyncExternalStore(subscribe,get) { subscribe(()=>notifications++); return get(); },
+  };
+  if (name === '@/lib/supabase') return {supabase:fakeSupabase};
+  if (name === './personal') return {completeChoices};
+  throw Error(name);
+});
+assert.ok(useSubjectSelection('student-a',2026,2).loading);
+const load = effects.shift(); load();
+await new Promise(resolve=>setTimeout(resolve,0));
+const homeSelection = useSubjectSelection('student-a',2026,2);
+assert.equal(JSON.stringify(homeSelection.saved),JSON.stringify(choices));
+const changed = {...choices,art:'미술'};
+await homeSelection.save(changed);
+assert.equal(useSubjectSelection('student-a',2026,2).saved.art,'미술');
+assert.ok(notifications>0);
+assert.equal(useSubjectSelection('student-b',2026,2).saved,null);
+assert.equal(useSubjectSelection(null,2026,2).saved,null);
+assert.equal(useSubjectSelection('student-a',2027,1).saved,null);
+failSave = true;
+await assert.rejects(homeSelection.save({...choices,art:'음악'}));
+assert.equal(useSubjectSelection('student-a',2026,2).saved.art,'미술');
+console.log('홈·시간표 선택 공유, 저장 즉시 반영, 계정·학기 격리, 저장 실패 보존 검사 통과');
