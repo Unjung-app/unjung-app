@@ -756,6 +756,22 @@ await sub(B, CB, 'a7');
   const n = await as(K, CK, `select public.submit_notice('event', '행사 안내', '내일 체육대회가 있어요', null, 'all', public.seoul_today(), 3) id`);
   const st = await q(`select status from public.notices where id = ${n.rows[0]?.id}`);
   expect('소통홍보부 공지는 바로 게시', st.rows[0]?.status === 'approved'); }
+// 스터디 달력 · 과목명
+{ const U = '99999999-9999-9999-9999-999999999911', CU = 's1@unjung.hs.kr';
+  await q(`insert into public.study_daily (user_id, day, school_year, grade, class_no, ranked_seconds, class_seconds, tokens) values ('${U}', '2026-10-05', 2026, 1, 1, 1200, 600, 2) on conflict do nothing`);
+  const r = await as(U, CU, `select public.my_study_month('2026-10-17') r`);
+  expect('스터디 달력: 그 달 날짜별 시간(수업 포함)', r.ok && r.rows[0]?.r?.days?.['2026-10-05'] === 1800 && r.rows[0]?.r?.month === '2026-10-01');
+  const c = await q(`select count(*)::int n from public.timetable_configs where groups::text like '%사회문화탐구%'`);
+  expect('과목명 사회문제탐구로 정정', c.rows[0]?.n === 0); }
+
+// 최종 관리자 · 사용 현황
+{ const r = await as(A, CA, `select public.admin_usage() r`); const u = r.rows[0]?.r;
+  const n = await as(B, CB, `select public.admin_usage()`);
+  expect('사용 현황: 관리자만, 가입·14일 접속·기능별', r.ok && u?.daily?.length === 14 && typeof u?.enrolled === 'number' && typeof u?.features?.game_plays === 'number' && !n.ok);
+  const Z = '99999999-9999-9999-9999-999999999920', CZ = 'z@unjung.hs.kr'; await q(`insert into auth.users values ('${Z}','${CZ}')`);
+  await as(Z, CZ, `select public.register_enrollment('20512','종범')`);
+  const role = await q(`select role from public.profiles where id='${Z}'`);
+  expect('명단 학번(20512)으로 등록하면 자동 관리자', role.rows[0]?.role === 'admin'); }
 
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

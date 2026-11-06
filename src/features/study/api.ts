@@ -31,7 +31,7 @@ export type GroupInfo = {
 export type BoardMember = {
   mine: boolean;
   nickname: string | null;
-  equip: { emoji: string | null; name_color: string | null; badge: string | null };
+  equip: { emoji?: string; name_color?: string; badge?: string };
   live: boolean;
   today_seconds: number;
   period_seconds: number;
@@ -117,6 +117,8 @@ function useRpc<T>(fn: string, args: Record<string, unknown> | undefined, enable
   return { data, error, loading, reload: load };
 }
 
+export type MonthRecord = { month: string; days: Record<string, number>; by_subject: Record<string, Record<string, number>> };
+export const useMonth = (firstIso: string) => useRpc<MonthRecord>('my_study_month', { p_month: firstIso }, true);
 export const useDashboard = (enabled: boolean, pollMs = 0) => useRpc<Dashboard>('my_study_dashboard', undefined, enabled, pollMs);
 export const useGroupList = (enabled: boolean) => useRpc<GroupInfo[]>('study_group_list', undefined, enabled);
 export const useGroupBoard = (id: number, enabled: boolean) => useRpc<Board>('study_group_board', { p_id: id }, enabled && id > 0, 30_000);

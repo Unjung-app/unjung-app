@@ -5,8 +5,10 @@ import { AppText } from '@/components/ui/AppText';
 import { Button, Card } from '@/components/ui/primitives';
 import { Segmented } from '@/components/ui/Segmented';
 import { Screen } from '@/components/ui/Screen';
+import { NameTag } from '@/components/NameTag';
 import { useAuth } from '@/state/auth';
-import { color, nameColor, radius, space } from '@/theme/tokens';
+import { useWallet, type ShopItem } from '@/state/wallet';
+import { color, radius, space } from '@/theme/tokens';
 import { call, hm, hms, useGroupBoard, type BoardMember } from './api';
 
 type Sort = 'today' | 'period';
@@ -17,6 +19,7 @@ export function GroupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const gid = Number(id) || 0;
   const { status } = useAuth();
+  const { itemById } = useWallet();
   const b = useGroupBoard(gid, status === 'ready');
   const [sort, setSort] = useState<Sort>('period');
   const [leaving, setLeaving] = useState(false);
@@ -85,7 +88,7 @@ export function GroupScreen() {
             아직 멤버가 없어요.
           </AppText>
         ) : (
-          rows.map((m, i) => <Row key={i} m={m} rank={i + 1} sort={sort} first={i === 0} />)
+          rows.map((m, i) => <Row key={i} m={m} rank={i + 1} sort={sort} first={i === 0} itemById={itemById} />)
         )}
       </View>
       <AppText variant="caption" color={color.inkFaint}>
@@ -124,7 +127,7 @@ export function GroupScreen() {
   );
 }
 
-function Row({ m, rank, sort, first }: { m: BoardMember; rank: number; sort: Sort; first: boolean }) {
+function Row({ m, rank, sort, first, itemById }: { m: BoardMember; rank: number; sort: Sort; first: boolean; itemById: Record<string, ShopItem> }) {
   const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
   const sec = sort === 'today' ? m.today_seconds : m.period_seconds;
   return (
@@ -137,11 +140,7 @@ function Row({ m, rank, sort, first }: { m: BoardMember; rank: number; sort: Sor
       </AppText>
       <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: m.live ? color.success : color.line }} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <AppText variant="bodyStrong" numberOfLines={1} color={(m.equip?.name_color && nameColor[m.equip.name_color]) || color.ink}>
-          {m.equip?.emoji ? `${m.equip.emoji} ` : ''}
-          {m.nickname ?? '(닉네임 없음)'}
-          {m.mine ? ' (나)' : ''}
-        </AppText>
+        <NameTag nickname={m.nickname} equip={m.equip ?? {}} itemById={itemById} fallback="(닉네임 없음)" />
         <AppText variant="caption" color={m.live ? color.success : color.inkMuted} numberOfLines={1}>
           {m.live ? '공부 중 · ' : ''}참여 {m.days}일{sort === 'period' ? ` · 오늘 ${hm(m.today_seconds)}` : ''}
         </AppText>
