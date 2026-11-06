@@ -892,6 +892,26 @@ await sub(B, CB, 'a7');
   await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
 }
 
+{ // 첫걸음 미션: 실제 기록이 있어야 완료, 한 번만, 이벤트 기간에만
+  const U = '99999999-9999-9999-9999-999999999953', CU = 'first@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
+  await as(U, CU, `select public.register_enrollment('30707','첫걸음')`);
+  const off = await as(U, CU, `select public.claim_first_missions() r`); expect('이벤트 기간 밖에는 미션 보상 거부', !off.ok);
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2099-01-01T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+  const z = await as(U, CU, `select public.claim_first_missions() r`); expect('아무것도 안 했으면 0', z.rows[0]?.r?.tokens === 0);
+  await as(U, CU, `select public.set_nickname('첫걸음러')`);
+  await as(U, CU, `select public.submit_feedback('idea', '첫걸음 미션 좋아요 계속해 주세요', '', '', '')`);
+  const a = await as(U, CU, `select public.claim_first_missions() r`);
+  const b = await as(U, CU, `select public.claim_first_missions() r`);
+  const st = await as(U, CU, `select public.first_missions() r`);
+  const ms = st.rows[0]?.r?.missions ?? [];
+  expect('닉네임·의견 2개 완료 → +10, 두 번째는 0', a.rows[0]?.r?.tokens === 10 && b.rows[0]?.r?.tokens === 0);
+  expect('미션 목록에 받음 표시', ms.length === 9 && ms.filter((m) => m.claimed).length === 2 && st.rows[0]?.r?.active === true);
+  const ledger = await q(`select sum(delta)::int n from public.token_ledger where user_id='${U}' and reason='first_mission'`);
+  expect('미션 보상에는 부스트 없음', ledger.rows[0]?.n === 10);
+  const X2 = await as(X, 'someone@gmail.com', `select public.first_missions() r`); expect('외부 계정은 미션 조회 불가', !X2.ok);
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+}
+
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
 if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');

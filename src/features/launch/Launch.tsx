@@ -65,6 +65,7 @@ export function LaunchBanner() {
     ['🎮 게임 한 판', '1~5', `${m}~${5 * m}`],
     ['🗳️ 설문 참여', `+${REWARD.survey}`, `+${REWARD.survey * m}`],
     ['🛠️ 앱 의견 (하루 첫 의견)', '0', '+5'],
+    ['🚀 첫걸음 미션 9개', '0', '최대 +65'],
     ['✅ 내 의견이 반영되면', `+${REWARD.feedbackDone}`, `+${REWARD.feedbackDone * m}`],
   ];
   return (
