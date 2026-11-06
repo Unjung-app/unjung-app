@@ -358,7 +358,7 @@ const gp = (await sg(D, 'word', TP)).rows[0]?.r;
   const g2 = (await sg(D, 'tower', plusSec(TH, 60))).rows[0]?.r;
   const ok = await q(`select public._finish_html_game('${D}', '${g2.id}', 99999999, '${plusSec(TH, 120)}') r`);
   const again = await q(`select public._finish_html_game('${D}', '${g2.id}', 5, '${plusSec(TH, 130)}') r`);
-  expect('점수 상한 1천만, 두 번 끝내도 첫 점수 유지, 5토큰', ok.rows[0]?.r?.score === 10000000 && again.rows[0]?.r?.score === 10000000 && g2.cost === 5);
+  expect('점수 상한 1천만, 두 번 끝내도 첫 점수 유지, 학생 게임은 무료', ok.rows[0]?.r?.score === 10000000 && again.rows[0]?.r?.score === 10000000 && g2.cost === 0);
   const other = await as(B, CB, `select public.finish_html_game('${g2.id}', 1)`); expect('남의 판은 끝낼 수 없음', !other.ok);
   const quiz = await q(`select public._finish_html_game('${D}', '${gp.id}', 5, now()) r`); expect('퀴즈 게임은 HTML 끝내기 불가', !quiz.ok);
   const rk = await as(B, CB, `select public.game_ranking('tower', '2026-10-19') r`); expect('HTML 게임 랭킹', rk.rows[0]?.r?.top?.[0]?.score === 10000000);
@@ -725,6 +725,37 @@ await sub(B, CB, 'a7');
   { const r = await as(A, CA, `select is_study_manager from public.admin_find_user('20507')`); const s = await as(A, CA, `select public.admin_set_study_manager('${S3}', true)`);
     const ok = await as(S3, C3, `select public.is_study_manager() a`); expect('관리자: 스터디 관리자 지정', r.rows[0]?.is_study_manager === false && s.ok && ok.rows[0]?.a === true); }
 }
+
+// 게임 점수 보상(주간 상위 비율, 하루 30)
+{ const W = '2026-12-07T09:00:00Z'; // 월 18:00 KST
+  const g1 = (await sg(D, 'patrol', W)).rows[0]?.r; expect('학생 제작 게임은 무료', g1?.cost === 0);
+  const f1 = (await q(`select public._finish_html_game('${D}', '${g1.id}', 100, '${plusSec(W, 30)}') r`)).rows[0]?.r;
+  expect('기록이 적을 때 2토큰', f1?.score_reward === 2);
+  // 다른 사람 기록 6판(낮은 점수)을 깔고 높은 점수 → 5토큰
+  for (let k = 0; k < 6; k++) { const id = (await q(`insert into public.game_runs (user_id, game, grade, class_no, started_at, finished_at, duration_s, questions, score) values ('${B}', 'patrol', 1, 3, '${W}', '${W}', 3600, '[]', ${10 + k}) returning id`)).rows[0].id; }
+  const g2 = (await sg(D, 'patrol', plusSec(W, 60))).rows[0]?.r;
+  const f2 = (await q(`select public._finish_html_game('${D}', '${g2.id}', 999, '${plusSec(W, 120)}') r`)).rows[0]?.r;
+  const g3 = (await sg(D, 'patrol', plusSec(W, 130))).rows[0]?.r;
+  const f3 = (await q(`select public._finish_html_game('${D}', '${g3.id}', 1, '${plusSec(W, 200)}') r`)).rows[0]?.r;
+  expect('상위면 5토큰, 하위면 1토큰', f2?.score_reward === 5 && f3?.score_reward === 1);
+  const sum = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${D}' and reason='game_score' and ref_id in ('${g1.id}','${g2.id}','${g3.id}')`)).rows[0]?.n;
+  expect('게임 점수 보상 기록', sum === 8); }
+
+// 행사 사진(소통홍보부)
+{ const K = '99999999-9999-9999-9999-999999999930', CK = 'k@unjung.hs.kr'; await q(`insert into auth.users values ('${K}','${CK}')`);
+  await as(K, CK, `select public.register_enrollment('20504','유담')`);
+  const no = await as(B, CB, `select public.post_gallery('체육대회', '', '2026-10-10', array['${B}/a.jpg'], null)`);
+  expect('행사 사진: 소통홍보부가 아니면 못 올림', !no.ok);
+  const bad = await as(K, CK, `select public.post_gallery('체육대회', '', '2026-10-10', array['${B}/a.jpg'], null)`);
+  expect('남의 폴더 사진 경로 거부', !bad.ok);
+  const ok = await as(K, CK, `select public.post_gallery('체육대회 사진', '즐거웠어요', '2026-10-10', array['${K}/1.jpg','${K}/2.jpg'], 'https://youtu.be/dQw4w9WgXcQ?t=3') id`);
+  const row = await q(`select youtube, cardinality(photos) n from public.gallery_posts where id = ${ok.rows[0]?.id}`);
+  expect('행사 사진 올리기(유튜브 주소 → id)', ok.ok && row.rows[0]?.youtube === 'dQw4w9WgXcQ' && row.rows[0]?.n === 2);
+  const see = await as(B, CB, `select count(*)::int n from public.gallery_posts`); expect('학생은 행사 사진을 봄', see.rows[0]?.n === 1);
+  const del = await as(B, CB, `select public.delete_gallery(${ok.rows[0]?.id})`); expect('남의 글은 못 지움', !del.ok);
+  const n = await as(K, CK, `select public.submit_notice('event', '행사 안내', '내일 체육대회가 있어요', null, 'all', public.seoul_today(), 3) id`);
+  const st = await q(`select status from public.notices where id = ${n.rows[0]?.id}`);
+  expect('소통홍보부 공지는 바로 게시', st.rows[0]?.status === 'approved'); }
 
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

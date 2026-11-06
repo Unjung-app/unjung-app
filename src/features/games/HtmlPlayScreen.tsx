@@ -66,7 +66,7 @@ export function HtmlPlayScreen() {
         const res = await finishHtmlGame(r.id, score);
         if (res) best.current = Math.max(best.current, res.best);
         reply({ best: res?.best ?? Math.max(best.current, score) });
-        if (res?.reward) refresh('이번 주 최고 기록 갱신');
+        if (res?.reward) refresh(res.score_reward ? `게임 점수 보상 +${res.score_reward}` : '이번 주 최고 기록 갱신');
         reload();
         // 게임의 결과 화면을 잠깐 보여 준 뒤 앱 결과 화면으로 덮는다
         setTimeout(() => {
@@ -121,7 +121,7 @@ export function HtmlPlayScreen() {
     );
   }
 
-  const costLabel = !status ? '' : status.next_cost === null ? '오늘 10판을 다 했어요' : status.next_cost === 0 ? '오늘 첫 판 무료!' : `한 판 ${status.next_cost}토큰 · 내 토큰 🪙 ${wallet?.balance ?? 0}`;
+  const costLabel = !status ? '' : status.next_cost === null ? '오늘 10판을 다 했어요' : `무료 · 점수에 따라 1~5토큰 · 오늘 ${status.plays_today}/${status.max_plays}판`;
   const showFrame = phase === 'playing' || phase === 'result' || phase === 'class';
 
   return (
@@ -226,7 +226,7 @@ export function HtmlPlayScreen() {
                 +{result.reward} 토큰
               </AppText>
             ) : null}
-            <Big label={status?.next_cost === null ? '오늘 10판을 다 했어요' : `한 판 더 (${status?.next_cost ? `${status.next_cost}토큰` : '무료'})`} disabled={status?.next_cost === null} onPress={start} />
+            <Big label={status?.next_cost === null ? '오늘 10판을 다 했어요' : '한 판 더'} disabled={status?.next_cost === null} onPress={start} />
             <Big label="나가기" secondary onPress={exit} />
           </Overlay>
         ) : null}

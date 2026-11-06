@@ -16,6 +16,12 @@ const PATHS: Record<string, ReactNode> = {
       <Path d="M3 10h18M8 3v4M16 3v4M8 14h3M8 17.5h6" />
     </>
   ),
+  camera: (
+    <>
+      <Path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" />
+      <Circle cx={12} cy={13.5} r={3.5} />
+    </>
+  ),
   meal: <Path d="M6 3v8a2 2 0 0 0 4 0V3M8 13v8M17 3c-1.5 1.5-2 3.5-2 5.5S15.5 12 17 12.5V21" />,
   calendar: (
     <>

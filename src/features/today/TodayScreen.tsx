@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { REWARD } from '@/lib/rewards';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
@@ -9,6 +9,7 @@ import { Screen } from '@/components/ui/Screen';
 import { InstallBanner } from '@/features/install/InstallBanner';
 import { WalletStrip } from '@/features/today/WalletStrip';
 import { DailyMissions } from '@/features/today/DailyMissions';
+import { GalleryStrip, QuickGrid, QuoteLine } from '@/features/today/HomeParts';
 import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
 import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
@@ -54,6 +55,8 @@ export function TodayScreen() {
   const meals = useWeekMeals(schoolWeekDay);
   const schedule = useUpcomingSchedule(now.ymd);
 
+  const { width } = useWindowDimensions();
+  const wide = width >= 900;
   const refreshing = timetable.refreshing || meals.refreshing || schedule.refreshing;
   const anySample =
     meals.source === 'sample' || schedule.source === 'sample' || (!!myClass && timetable.source === 'sample');
@@ -98,27 +101,38 @@ export function TodayScreen() {
         </Pressable>
       </View>
 
+      <QuoteLine today={now.ymd} />
       <WalletStrip />
       <InstallBanner />
       {anySample ? <SampleNotice /> : null}
-
-      <NowCard
-        myClass={myClass}
-        today={now.ymd}
-        minutes={now.minutes}
-        lessons={personalLessons}
-        loading={timetable.source === 'loading' || (personal && selection.loading)}
-        holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
-      />
-      <DeadlineCard today={now.ymd} />
-      <DailyMissions today={now.ymd} />
-      <NoticeStrip />
-      <SurveyStrip />
       <PushPrompt />
-      <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
-      <View style={{ flexDirection: 'row', gap: space.md }}>
-        <StudyCard />
-        <EventCard today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} />
+
+      {/* 넓은 화면(태블릿·폴드 펼침)에서는 두 줄로 */}
+      <View style={wide ? { flexDirection: 'row', gap: space.lg, alignItems: 'flex-start' } : { gap: space.md }}>
+        <View style={{ flex: wide ? 1 : undefined, gap: space.md, minWidth: 0 }}>
+          <NowCard
+            myClass={myClass}
+            today={now.ymd}
+            minutes={now.minutes}
+            lessons={personalLessons}
+            loading={timetable.source === 'loading' || (personal && selection.loading)}
+            holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
+          />
+          <QuickGrid />
+          <DeadlineCard today={now.ymd} />
+          <DailyMissions today={now.ymd} />
+          {wide ? <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} /> : null}
+        </View>
+        <View style={{ flex: wide ? 1 : undefined, gap: space.md, minWidth: 0 }}>
+          <NoticeStrip />
+          <SurveyStrip />
+          <GalleryStrip />
+          {!wide ? <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} /> : null}
+          <View style={{ flexDirection: 'row', gap: space.md }}>
+            <StudyCard />
+            <EventCard today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} />
+          </View>
+        </View>
       </View>
     </Screen>
   );

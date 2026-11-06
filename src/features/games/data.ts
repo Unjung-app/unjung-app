@@ -12,11 +12,12 @@ export type GameStatus = {
   max_plays: number;
   next_cost: number | null;
   in_class: boolean;
+  score_tokens_today?: number;
   best: Partial<Record<GameId, number>> | null;
 };
 
 export type StartResult = { id: string; game: GameId; duration_s: number; cost: number; plays_today: number };
-export type FinishResult = { score: number; best: number; new_best: boolean; reward: number };
+export type FinishResult = { score: number; best: number; new_best: boolean; reward: number; score_reward?: number };
 export type GameRanking = {
   top: { rank: number; score: number; grade: number; mine: boolean; nickname: string | null; hidden: boolean; equip: Partial<Equip> | null }[];
   me: { score: number; rank: number } | null;

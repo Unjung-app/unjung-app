@@ -7,7 +7,7 @@
 - 참여자 가이드(Docs): https://claude.ai/artifact/1sPNn8pNtnk1esyc4eDXhb
 - 템플릿: `public/games/_template/index.html` → https://unjung-app.vercel.app/games/_template/index.html
 - 제출: 11/8(일) 22:00까지 호원에게 카톡/이메일. 늦게 낸 것은 다음 업데이트 때 넣는다.
-- 호원 결정(11-05 22:38): 새 게임에 별도 토큰 보상 없음 → **기존 게임 보상 체계(game_status 판 수·주간 랭킹)를 그대로 따른다.** 월요일 출시 때 새 게임이 최소 하나는 있다고 가정.
+- 보상(11-06 변경, `20261119_game_score_rewards.sql`): 학생 게임은 무료·하루 10판, 판마다 그 게임 이번 주 기록 대비 상위 비율로 1~5토큰(기록 5판 미만이면 2), 게임 점수 보상 하루 최대 30, 주간 최고 +2·주간 1~3위 보상은 유지.
 
 ## 게임 파일 규칙 (참여자에게 안내한 것)
 

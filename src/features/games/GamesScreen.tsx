@@ -64,7 +64,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
   }
 
   const left = status ? status.max_plays - status.plays_today : null;
-  const costLabel = !status ? '' : status.next_cost === null ? '오늘은 끝' : status.next_cost === 0 ? '오늘 첫 판 무료!' : `한 판 ${status.next_cost}토큰`;
+  const costLabel = !status ? '' : status.next_cost === null ? '오늘 10판을 다 했어요' : '무료! 잘할수록 토큰을 더 받아요';
 
   return (
     <Screen topInset={!inStack} onRefresh={() => (reload(), ranking.reload())}>
@@ -88,7 +88,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
           <View style={{ flex: 1, gap: 2 }}>
             <AppText variant="bodyStrong">{costLabel}</AppText>
             <AppText variant="caption" color={color.inkMuted}>
-              오늘 {status?.plays_today ?? 0}/{status?.max_plays ?? 10}판 · 남은 판 {left ?? '-'} · 내 토큰 🪙 {wallet?.balance ?? 0}
+              오늘 {status?.plays_today ?? 0}/{status?.max_plays ?? 10}판 · 오늘 게임으로 받은 토큰 {status?.score_tokens_today ?? 0}/30 · 내 토큰 🪙 {wallet?.balance ?? 0}
             </AppText>
           </View>
         </View>
@@ -193,7 +193,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
       <Card tone="muted" style={{ gap: 4 }}>
         <AppText variant="label">게임 규칙</AppText>
         <AppText variant="caption" color={color.inkMuted}>
-          • 하루 첫 판은 무료, 이후 한 판 5토큰 · 하루 10판까지{'\n'}• 수업 시간(우리 반 시간표)에는 게임이 잠겨요{'\n'}• 이번 주 내 최고 기록을 넘기면 +2 토큰 (게임별 하루 1번){'\n'}• 매주 월요일, 게임별 학교 1~3위에게 +30/+20/+10 토큰, 1위는 '주간 게임왕 👑' 배지
+          • 모든 게임 무료 · 하루 10판까지{'\n'}• 판마다 점수에 따라 1~5토큰: 그 게임의 이번 주 기록 중 상위일수록 많이 받아요 (게임 점수 보상은 하루 30토큰까지){'\n'}• 수업 시간(우리 반 시간표)에는 게임이 잠겨요{'\n'}• 이번 주 내 최고 기록을 넘기면 +2 토큰 (게임별 하루 1번){'\n'}• 매주 월요일, 게임별 학교 1~3위에게 +30/+20/+10 토큰, 1위는 '주간 게임왕 👑' 배지
         </AppText>
       </Card>
     </Screen>
