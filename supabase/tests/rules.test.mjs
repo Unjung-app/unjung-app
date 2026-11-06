@@ -348,6 +348,24 @@ const gp = (await sg(D, 'word', TP)).rows[0]?.r;
   const badge = await q(`select count(*)::int n from public.inventory where user_id='${D}' and item_id='b_gameking'`);
   expect('주간 정산: 1위 +30·배지, 두 번 불러도 한 번만', r.rows[0]?.r?.paid === 1 && r2.rows[0]?.r?.paid === 0 && t.rows[0]?.n === 1 && badge.rows[0]?.n === 1); }
 { const r = await as(A, CA, `select public.settle_game_week(public.seoul_today()) r`); expect('이번 주는 아직 정산 안 함', r.rows[0]?.r?.settled === false); }
+// HTML 게임(학생 제작)
+{ const TH = '2026-10-21T09:00:00Z'; // 수 18:00 KST
+  const bad = await sg(D, 'Bad-Id!', TH); expect('HTML 게임: 이상한 id 거부', !bad.ok);
+  const cls = await sg(D, 'tower', '2026-10-21 10:00+09'); expect('HTML 게임: 수업 시간 시작 불가', !cls.ok && /수업 시간/.test(cls.err ?? ''));
+  const g = (await sg(D, 'tower', TH)).rows[0]?.r; expect('HTML 게임 시작(첫 판 무료, 문제 없음)', g?.cost === 0 && Array.isArray(g?.questions) && g.questions.length === 0 && g.duration_s === 3600);
+  const fast = await q(`select public._finish_html_game('${D}', '${g.id}', 999, '${plusSec(TH, 1)}') r`);
+  expect('3초 안에 끝낸 판은 0점', fast.rows[0]?.r?.score === 0);
+  const g2 = (await sg(D, 'tower', plusSec(TH, 60))).rows[0]?.r;
+  const ok = await q(`select public._finish_html_game('${D}', '${g2.id}', 99999999, '${plusSec(TH, 120)}') r`);
+  const again = await q(`select public._finish_html_game('${D}', '${g2.id}', 5, '${plusSec(TH, 130)}') r`);
+  expect('점수 상한 1천만, 두 번 끝내도 첫 점수 유지, 5토큰', ok.rows[0]?.r?.score === 10000000 && again.rows[0]?.r?.score === 10000000 && g2.cost === 5);
+  const other = await as(B, CB, `select public.finish_html_game('${g2.id}', 1)`); expect('남의 판은 끝낼 수 없음', !other.ok);
+  const quiz = await q(`select public._finish_html_game('${D}', '${gp.id}', 5, now()) r`); expect('퀴즈 게임은 HTML 끝내기 불가', !quiz.ok);
+  const rk = await as(B, CB, `select public.game_ranking('tower', '2026-10-19') r`); expect('HTML 게임 랭킹', rk.rows[0]?.r?.top?.[0]?.score === 10000000);
+  const st = await as(A, CA, `select public.settle_game_week('2026-10-19') r`); expect('HTML 게임도 주간 정산', st.rows[0]?.r?.paid >= 1);
+  const sv = await as(D, CD, `select public.save_game('tower', '{"lv":3}')`); const ld = await as(D, CD, `select public.load_game('tower') r`); const ld2 = await as(B, CB, `select public.load_game('tower') r`);
+  const big = await as(D, CD, `select public.save_game('tower', repeat('x', 10001))`);
+  expect('이어하기 저장: 내 것만, 10KB 제한', sv.ok && ld.rows[0]?.r === '{"lv":3}' && ld2.rows[0]?.r == null && !big.ok); }
 { const r = await as(D, CD, `select public.buy_item('b_gameking')`); expect('게임왕 배지는 살 수 없음', !r.ok); }
 { const r = await as(D, CD, `select public.equip_item('badge', 'b_gameking') w`); expect('받은 게임왕 배지는 장착 가능', r.ok && r.rows[0]?.w?.equip?.badge === 'b_gameking'); }
 

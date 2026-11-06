@@ -6,7 +6,7 @@
 
 - 참여자 가이드(Docs): https://claude.ai/artifact/1sPNn8pNtnk1esyc4eDXhb
 - 템플릿: `public/games/_template/index.html` → https://unjung-app.vercel.app/games/_template/index.html
-- 제출: 11/8(일) 21:00까지 호원에게 카톡/이메일. 늦게 낸 것은 다음 업데이트 때 넣는다.
+- 제출: 11/8(일) 22:00까지 호원에게 카톡/이메일. 늦게 낸 것은 다음 업데이트 때 넣는다.
 - 호원 결정(11-05 22:38): 새 게임에 별도 토큰 보상 없음 → **기존 게임 보상 체계(game_status 판 수·주간 랭킹)를 그대로 따른다.** 월요일 출시 때 새 게임이 최소 하나는 있다고 가정.
 
 ## 게임 파일 규칙 (참여자에게 안내한 것)
@@ -31,7 +31,22 @@
   - 앱이 먼저 보내는 것: `{ unjung: 1, type: 'player', data: { nickname, grade } }`, `{ unjung: 1, type: 'pause' }`
 - 앱 밖(브라우저·AI 미리보기)에서는 같은 함수가 localStorage로 흉내 낸다(연습 모드).
 
-## 남은 일 (다음 세션에서 이어서)
+## 앱 쪽 구현 (11-06 완료)
+
+- 게임 목록: `src/features/games/catalog.ts` (id → 제목·이모지·소개·장르·만든 사람·조작법)
+- 게임 화면: `src/features/games/HtmlPlayScreen.tsx` — `/game/<id>`
+  - 시작을 누르면 서버 `start_game`(수업 시간·하루 10판·토큰) → iframe(sandbox=allow-scripts, 앱 저장소 접근 불가)
+  - 게임이 점수를 보내면 `finish_html_game` → 앱 결과 화면(한 판 더 / 나가기)이 게임을 덮는다
+  - 수업이 시작되면 pause를 보내고 막는다(game_status 60초 폴링)
+- DB: `20261116000000_html_games.sql` — 게임 id 형식만 검사(새 게임마다 SQL 불필요), 3초 미만·1시간 초과 판은 0점, 점수 상한 1천만, 이어하기 저장 `save_game`/`load_game`
+
+## 새 게임 넣는 순서
+
+1. 받은 파일 검토: 외부 요청(script src·fetch·CDN), 앱 연결 코드가 템플릿과 같은지, `submitScore`·`onPause`, 부적절한 내용
+2. `public/games/<id>/index.html`로 복사(연결 코드가 다르면 템플릿 블록으로 바꿔 넣기)
+3. `catalog.ts`에 등록 → Playwright로 390×844에서 시작~게임 오버, 콘솔 오류 확인 → PR → 합치기
+
+## 처음 세운 계획 (1~4는 11-06에 완료)
 
 1. **앱 쪽 게임 호스트 화면**
    - `src/app/game/[id].tsx`를 HTML 게임용으로 바꾼다.

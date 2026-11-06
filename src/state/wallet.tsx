@@ -1,3 +1,4 @@
+import { GAMES } from '@/features/games/catalog';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -230,7 +231,7 @@ function rewardHaptic() {
   }
 }
 
-const GAME_NAME: Record<string, string> = { word: '영단어 러시', math: '암산 챌린지', life: '운중 라이프 퀴즈' };
+const GAME_NAME: Record<string, string> = { word: '영단어 러시', math: '암산 챌린지', life: '운중 라이프 퀴즈', ...Object.fromEntries(Object.entries(GAMES).map(([k, v]) => [k, v.title])) };
 
 /** 토큰 기록의 사람이 읽는 이름 */
 export function ledgerLabel(row: Pick<LedgerRow, 'reason' | 'note'>) {

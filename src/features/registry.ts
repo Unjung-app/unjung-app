@@ -22,7 +22,7 @@ export const FEATURES: Feature[] = [
   { id: 'calendar', title: '학사일정', short: '일정', desc: '시험·행사·휴업일과 D-day', icon: 'calendar', status: 'live' },
   { id: 'library', title: '도서관', short: '도서관', desc: '학교 도서관 장서 검색', icon: 'library', status: 'live' },
   { id: 'study', title: '스터디 윗미', short: '스터디', desc: '과목별 공부 시간 재기 · 친구들과 그룹 순위', icon: 'study', status: 'live' },
-  { id: 'games', title: '게임', short: '게임', desc: '영단어·암산·운중 라이프 퀴즈 · 게임 랭킹', icon: 'game', status: 'live' },
+  { id: 'games', title: '게임', short: '게임', desc: '운중고 학생들이 만든 게임 · 게임별 주간 랭킹', icon: 'game', status: 'live' },
   { id: 'ranking', title: '랭킹', short: '랭킹', desc: '반 대항 공부·토큰 랭킹', icon: 'ranking', status: 'live' },
   { id: 'notice', title: '학생 공지', short: '공지', desc: '학생이 올리고 검토위원이 확인한 학교 소식', icon: 'notice', status: 'live' },
   { id: 'lost', title: '분실물', short: '분실물', desc: '잃어버린 물건·주운 물건 찾기', icon: 'search', status: 'live' },

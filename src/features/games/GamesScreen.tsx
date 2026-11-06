@@ -13,14 +13,14 @@ import { GAME_IDS, GAMES, settleLastWeek, useGameRanking, useGameStatus, type Ga
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
-/** 게임 모음: 3가지 게임 + 게임 영역 전용 주간 랭킹 */
+/** 게임 모음: 학생이 만든 게임 목록 + 게임별 주간 랭킹 */
 export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
   const { status: auth } = useAuth();
   const { wallet, itemById, refresh } = useWallet();
   const ready = auth === 'ready';
   const { status, reload } = useGameStatus(ready);
-  const [board, setBoard] = useState<GameId>('word');
+  const [board, setBoard] = useState<GameId>(GAME_IDS[0]);
   const ranking = useGameRanking(board, ready);
   const settled = useRef(false);
 
@@ -123,6 +123,11 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
               <AppText variant="caption" color={color.inkMuted}>
                 {m.desc}
               </AppText>
+              {m.by ? (
+                <AppText variant="caption" color={color.inkFaint}>
+                  만든 사람 {m.by}
+                </AppText>
+              ) : null}
               <AppText variant="caption" weight="semibold" color={color.navy}>
                 이번 주 내 최고 {best ?? 0}점
               </AppText>
@@ -134,7 +139,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
       <AppText variant="heading" style={{ marginTop: space.md }}>
         이번 주 게임 랭킹
       </AppText>
-      <Segmented label="게임 선택" value={board} onChange={setBoard} options={GAME_IDS.map((g) => ({ value: g, label: GAMES[g].title.replace('운중 ', '') }))} />
+      <Segmented label="게임 선택" value={board} onChange={setBoard} options={GAME_IDS.map((g) => ({ value: g, label: GAMES[g].title.replace('운중고 ', '') }))} />
       {ranking.data?.me ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
           <AppText variant="label" weight="regular" color={color.inkMuted} style={{ flex: 1 }}>

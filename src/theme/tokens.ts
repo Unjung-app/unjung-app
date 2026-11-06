@@ -80,6 +80,7 @@ export const focus = {
   accent: '#F5A524',
   onAccent: '#0B1B33',
   danger: '#FF8A80',
+  scrim: 'rgba(5,8,15,0.92)',
 } as const;
 
 export const space ={ xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
