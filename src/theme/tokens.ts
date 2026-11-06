@@ -30,6 +30,8 @@ export const color = {
   shadow: '#000000',
   danger: '#B42318',
   dangerSoft: '#FDECEA',
+  /** 가운데 창 뒤 배경 */
+  backdrop: 'rgba(11,27,51,0.55)',
 } as const;
 
 /** 꾸미기 상점: 닉네임 색 (흰 배경 대비 4.5:1 이상) — 키는 DB shop_items.value */
