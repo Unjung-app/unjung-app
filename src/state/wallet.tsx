@@ -238,6 +238,8 @@ export function ledgerLabel(row: Pick<LedgerRow, 'reason' | 'note'>) {
   switch (row.reason) {
     case 'check_in':
       return '출석';
+    case 'game_score':
+      return '게임 점수 보상';
     case 'streak_7':
       return '연속 출석 7일 보너스';
     case 'streak_30':
