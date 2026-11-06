@@ -4,6 +4,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { parseStudentNo } from '@/lib/student';
+import { EnrollmentAdmin } from './EnrollmentAdmin';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { fontStyle } from '@/theme/fonts';
@@ -31,7 +32,8 @@ const friendly = (m?: string) => (m && /[가-힣]/.test(m) ? m : '처리하지 �
 
 /**
  * 관리자: 학생 관리.
- *  · 학번·닉네임·이메일로 찾기
+ *  · 학적 정정 요청 처리 · 직책 명단 확인 · 학적 변경 기록 (EnrollmentAdmin)
+ *  · 학번·이름·닉네임·이메일로 찾기
  *  · 직책: 검토위원·기획행정부 지정/해제 (관리자 지정은 보안상 SQL로만)
  *  · 학적 정정(잘못 입력한 학번·이름), 학적 지우기(남의 학번을 등록한 계정), 닉네임 지우기, 토큰 보정
  */
@@ -86,15 +88,16 @@ export function StaffScreen() {
       <AppText variant="body" color={color.inkMuted}>
         학생을 찾아 직책을 정하거나 학적·닉네임·토큰을 바로잡아요. 검토위원은 공지·신고·분실물 사진을, 기획행정부는 운중 보이스 설문과 건의 확인을 맡아요.
       </AppText>
+      <EnrollmentAdmin />
       <Card>
-        <AppText variant="label">학번 · 닉네임 · 이메일로 찾기</AppText>
+        <AppText variant="label">학번 · 이름 · 닉네임 · 이메일로 찾기</AppText>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <TextInput
-            accessibilityLabel="학번, 닉네임 또는 이메일"
+            accessibilityLabel="학번, 이름, 닉네임 또는 이메일"
             value={query}
             onChangeText={(t) => setQuery(t.slice(0, 60))}
             onSubmitEditing={search}
-            placeholder="예) 20818 · 구름위"
+            placeholder="예) 20818 · 홍길동 · 구름위"
             placeholderTextColor={color.inkFaint}
             autoCapitalize="none"
             style={{ ...input, flex: 1, minWidth: 0, minHeight: 48, fontSize: 17, ...fontStyle('semibold') }}
@@ -103,7 +106,7 @@ export function StaffScreen() {
         </View>
         {found !== null && found.length === 0 ? (
           <AppText variant="caption" color={color.inkMuted}>
-            찾는 학생이 없어요. 학번은 5자리, 닉네임·이메일은 정확히 입력해 주세요.
+            찾는 학생이 없어요. 학번은 5자리, 이름·닉네임·이메일은 정확히 입력해 주세요.
           </AppText>
         ) : null}
         {(found ?? []).map((f) => (

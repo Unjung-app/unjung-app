@@ -84,7 +84,7 @@ export function MoreScreen() {
               <Divider />
               <ListRow icon="ranking" title="앱 사용 현황" subtitle="가입·매일 접속·기능별 사용 (관리자)" onPress={() => router.push('/admin/usage')} />
               <Divider />
-              <ListRow icon="user" title="학생 관리" subtitle="직책 지정·학적 정정·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />
+              <ListRow icon="user" title="학생 관리" subtitle="학적 정정 요청·직책·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />
               <Divider />
               <ListRow icon="settings" title="의견 관리" subtitle="관리자 전용" onPress={() => router.push('/admin/feedback')} />
             </>

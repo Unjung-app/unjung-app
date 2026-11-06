@@ -33,6 +33,8 @@ type AuthState = {
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   register: (studentNo: string, name: string) => Promise<{ ok: true } | { ok: false; message: string }>;
+  /** 학적·역할을 서버에서 다시 읽는다(학번 정정 뒤 등) */
+  reload: () => Promise<void>;
   clearNotice: () => void;
 };
 
@@ -199,6 +201,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadProfile, session],
   );
 
+  const reload = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    await loadProfile(data.session);
+  }, [loadProfile]);
+
   const value = useMemo<AuthState>(
     () => ({
       status: loading ? 'loading' : !session ? 'signedOut' : !profileKnown ? 'loading' : enrollment ? 'ready' : 'needsEnrollment',
@@ -211,9 +218,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       register,
+      reload,
       clearNotice: () => setNotice(null),
     }),
-    [loading, session, profileKnown, role, planner, enrollment, notice, signIn, signOut, register],
+    [loading, session, profileKnown, role, planner, enrollment, notice, signIn, signOut, register, reload],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

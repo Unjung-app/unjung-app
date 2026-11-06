@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Button, Divider, ListRow } from '@/components/ui/primitives';
 import { Logo } from '@/components/Logo';
-import { CONTACT_EMAIL } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { color, radius, space } from '@/theme/tokens';
 
@@ -52,15 +51,14 @@ export function AccountCard() {
           <ListRow icon="pin" title="학번·이름 등록하기" onPress={() => router.push('/onboarding')} />
         </>
       ) : null}
+      {enrollment ? (
+        <>
+          <Divider />
+          <ListRow icon="pin" title="학번·이름 고치기" subtitle="잘못 입력했다면 여기서" onPress={() => router.push('/settings/enrollment')} />
+        </>
+      ) : null}
       <Divider />
       <ListRow icon="close" title="로그아웃" onPress={signOut} right={<View />} />
-      {enrollment ? (
-        <View style={{ paddingHorizontal: space.lg, paddingBottom: space.md }}>
-          <AppText variant="caption" color={color.inkFaint}>
-            학번·이름이 틀렸다면 {CONTACT_EMAIL} 으로 연락해 주세요.
-          </AppText>
-        </View>
-      ) : null}
     </View>
   );
 }
