@@ -20,6 +20,8 @@ const dir = process.argv[2] ?? 'supabase/migrations';
 for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
   try { await db.exec(fs.readFileSync(path.join(dir, f), 'utf8')); } catch (e) { console.log('MIGRATION ERROR', f, e.message); process.exit(1); }
 }
+// 검사 날짜와 상관없이 같은 결과가 나오도록 출시 이벤트(보상 2배)는 꺼 둔다. 이벤트 자체는 아래에서 따로 시험한다
+await db.exec(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`).catch(() => {});
 await db.exec(`grant select on all tables in schema public to authenticated;`);
 console.log('--- migration applied');
 const A = '11111111-1111-1111-1111-111111111111', B = '22222222-2222-2222-2222-222222222222', X = '33333333-3333-3333-3333-333333333333';
@@ -773,5 +775,29 @@ await sub(B, CB, 'a7');
   const role = await q(`select role from public.profiles where id='${Z}'`);
   expect('명단 학번(20512)으로 등록하면 자동 관리자', role.rows[0]?.role === 'admin'); }
 
+// 출시 이벤트 · 기획행정부 명단
+{ await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2099-01-01T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+  const before = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${B}'`)).rows[0].n;
+  await q(`select public.award_tokens('${B}', 3, 'meal_review', 'launch-test')`);
+  await q(`select public.award_tokens('${B}', 7, 'admin_adjust', 'launch-test2')`);
+  const after = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${B}'`)).rows[0].n;
+  expect('출시 부스트: 보상 2배, 다른 사유는 그대로', after - before === 13);
+  const ev = await as(B, CB, `select public.launch_event() r`); const g1 = await as(B, CB, `select public.claim_launch_gift() r`); const g2 = await as(B, CB, `select public.claim_launch_gift() r`);
+  expect('웰컴 토큰 50은 한 번만', ev.rows[0]?.r?.active === true && g1.rows[0]?.r?.got === 50 && g2.rows[0]?.r?.got === 0);
+  const ev2 = await as(B, CB, `select public.launch_event() r`); expect('받은 뒤에는 받음 표시', ev2.rows[0]?.r?.gift_claimed === true);
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+  const b0 = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${B}'`)).rows[0].n;
+  await q(`select public.award_tokens('${B}', 3, 'meal_review', 'launch-test3')`);
+  const b1 = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${B}'`)).rows[0].n;
+  expect('이벤트가 끝나면 원래대로', b1 - b0 === 3);
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr'; await q(`insert into auth.users values ('${P}','${CP}')`);
+  await as(P, CP, `select public.register_enrollment('20218','석주')`);
+  const pl = await q(`select is_planner from public.profiles where id='${P}'`);
+  const n = await as(P, CP, `select public.submit_notice('council', '안건 투표 안내', '체육복 등교 안건 투표가 열렸어요', null, 'all', public.seoul_today(), 3) id`);
+  const st = await q(`select status from public.notices where id = ${n.rows[0]?.id}`);
+  expect('기획행정부 학번은 자동 지정, 공지 바로 게시', pl.rows[0]?.is_planner === true && st.rows[0]?.status === 'approved'); }
+
+// 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
+if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

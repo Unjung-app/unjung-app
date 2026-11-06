@@ -5,6 +5,7 @@ import { AppText } from '@/components/ui/AppText';
 import { useOpenFeature } from '@/features/hooks';
 import { ymdToIso, type Ymd } from '@/lib/date';
 import { REWARD } from '@/lib/rewards';
+import { useLaunchEvent } from '@/features/launch/Launch';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
@@ -22,6 +23,7 @@ export function DailyMissions({ today }: { today: Ymd }) {
   const openFeature = useOpenFeature();
   const router = useRouter();
   const ready = status === 'ready';
+  const { mult } = useLaunchEvent();
   const [reasons, setReasons] = useState<Set<string> | null>(null);
   const [played, setPlayed] = useState(false);
 
@@ -43,9 +45,9 @@ export function DailyMissions({ today }: { today: Ymd }) {
   if (!ready || !reasons) return null;
 
   const missions: Mission[] = [
-    { key: 'check', emoji: '📅', label: '출석', reward: `+${REWARD.checkIn}`, done: reasons.has('check_in'), feature: 'wallet' },
-    { key: 'meal', emoji: '🍱', label: '한줄평', reward: `+${REWARD.mealReview}`, done: reasons.has('meal_review'), feature: 'meal' },
-    { key: 'study', emoji: '⏱️', label: '공부 10분', reward: '+1~', done: reasons.has('study'), feature: 'study' },
+    { key: 'check', emoji: '📅', label: '출석', reward: `+${REWARD.checkIn * mult}`, done: reasons.has('check_in'), feature: 'wallet' },
+    { key: 'meal', emoji: '🍱', label: '한줄평', reward: `+${REWARD.mealReview * mult}`, done: reasons.has('meal_review'), feature: 'meal' },
+    { key: 'study', emoji: '⏱️', label: '공부 10분', reward: `+${mult}~`, done: reasons.has('study'), feature: 'study' },
     { key: 'game', emoji: '🎮', label: '무료 게임', reward: '무료', done: played, feature: 'games' },
   ];
   const doneCount = missions.filter((m) => m.done).length;
@@ -54,7 +56,7 @@ export function DailyMissions({ today }: { today: Ymd }) {
     <View style={{ backgroundColor: color.surface, borderRadius: radius.card, padding: space.lg, gap: space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <AppText variant="bodyStrong" style={{ flex: 1 }}>
-          오늘의 미션
+          오늘의 미션{mult > 1 ? ` · 🎉 ×${mult}` : ''}
         </AppText>
         <AppText variant="label" color={doneCount === missions.length ? color.success : color.inkMuted}>
           {doneCount === missions.length ? '모두 완료! 🎉' : `${doneCount}/${missions.length}`}
