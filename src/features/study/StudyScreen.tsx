@@ -14,6 +14,7 @@ import { usePrefs } from '@/state/prefs';
 import { color, radius, space, subjectColor } from '@/theme/tokens';
 import { call, hm, hms, isoDayToYmd, useDashboard, useGroupList, type GroupInfo, type Subject } from './api';
 import { useStudyLive } from './session';
+import { StudyCalendar } from './StudyCalendar';
 
 const COLORS = Object.keys(subjectColor);
 
@@ -199,10 +200,13 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
         )}
       </View>
 
+      <SectionTitle title="기록 달력" />
+      <StudyCalendar today={now.ymd} subjects={subjects} />
+
       <Card tone="muted" style={{ gap: 6 }}>
         <AppText variant="label">시간 재기 규칙</AppText>
         <AppText variant="caption" color={color.inkMuted}>
-          • 집중 화면을 켜 둔 동안만 시간이 올라가요. 화면은 꺼지지 않아요.{'\n'}• 다른 앱으로 가면 바로 멈추고, 60초 안에 돌아오면 이어져요.{'\n'}• 30분마다 '아직 공부 중인가요?'를 물어요. 5분 안에 누르지 않으면 끝나요.
+          • 집중 화면을 켜 둔 동안만 시간이 올라가요. 그동안 폰 화면은 저절로 꺼지지 않아요(잠금 버튼을 누르면 멈춰요).{'\n'}• 다른 앱으로 가면 바로 멈추고, 60초 안에 돌아오면 이어져요.
           {'\n'}• 수업 시간에 잰 시간도 오늘 기록·그룹 순위에 들어가요. 토큰과 반 랭킹에서만 빠져요.{'\n'}• 토큰: 처음 2시간은 10분마다, 그 뒤 15분마다 +1 (하루 최대 {REWARD.studyDailyCap}).
         </AppText>
       </Card>

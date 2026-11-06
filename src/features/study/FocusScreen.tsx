@@ -1,16 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { noSleepOff, noSleepOn, noSleepResume } from '@/lib/noSleep';
 import { AppText } from '@/components/ui/AppText';
 import { useWallet } from '@/state/wallet';
 import { focus as F, radius, space, subjectColor } from '@/theme/tokens';
 import { hm, hms, useDashboard } from './api';
 import { useStudySession } from './session';
-
-/** 30분마다 '아직 공부 중인가요?'(진동), 5분 안에 답이 없으면 끝(화면만 켜 두고 자리 비우기 방지) */
-const CHECK_EVERY_S = 30 * 60;
-const CHECK_WAIT_S = 300;
 
 /**
  * 열품타식 집중 화면: 검은 바탕에 이 과목 오늘 시간이 크게 올라간다.
@@ -25,8 +22,6 @@ export function FocusScreen() {
   const { refresh: refreshWallet } = useWallet();
   const s = useStudySession(true);
   const dash = useDashboard(true, 60_000);
-  const [asking, setAsking] = useState(false);
-  const confirmedAt = useRef(0);
   const started = useRef(false);
   const base = useRef<{ subject: number; total: number } | null>(null);
 
@@ -52,23 +47,16 @@ export function FocusScreen() {
     seenTokens.current = t;
   }, [s.today?.tokens, refreshWallet]);
 
-  // 자리 비움 확인
+  // 집중 화면에 있는 동안 폰이 저절로 꺼지지 않게(호원 결정 11-06: 30분 확인은 없앰)
   useEffect(() => {
-    if (s.phase !== 'running') return;
-    if (!asking && s.elapsed - confirmedAt.current >= CHECK_EVERY_S) {
-      setAsking(true);
-      try {
-        (globalThis.navigator as Navigator | undefined)?.vibrate?.([200, 100, 200]);
-      } catch {
-        // 진동이 안 되는 기기
-      }
-    }
-    if (asking && s.elapsed - confirmedAt.current >= CHECK_EVERY_S + CHECK_WAIT_S) {
-      setAsking(false);
-      s.end('5분 동안 확인이 없어서 끝냈어요. 그 전까지는 기록됐어요.').then(() => refreshWallet());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.elapsed, s.phase, asking]);
+    noSleepOn();
+    const vis = () => !document.hidden && noSleepResume();
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', vis);
+    return () => {
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', vis);
+      noSleepOff();
+    };
+  }, []);
 
   // 다른 탭·화면으로 가면 일시정지, 돌아오면 이어서
   useFocusEffect(
@@ -133,23 +121,6 @@ export function FocusScreen() {
                     : ''}
           </AppText>
 
-          {asking && s.phase === 'running' ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="네, 계속 공부할게요"
-              onPress={() => {
-                confirmedAt.current = s.elapsed;
-                setAsking(false);
-              }}
-              style={{ marginTop: space.lg, alignSelf: 'stretch', backgroundColor: F.accent, borderRadius: radius.card, padding: space.lg, gap: 4, alignItems: 'center' }}>
-              <AppText variant="heading" color={F.onAccent}>
-                아직 공부 중인가요? ✍️
-              </AppText>
-              <AppText variant="caption" color={F.onAccent}>
-                5분 안에 눌러 주세요
-              </AppText>
-            </Pressable>
-          ) : null}
           {s.notice || s.error ? (
             <AppText variant="label" weight="regular" color={s.error ? F.danger : F.accent} align="center">
               {s.error ?? s.notice}

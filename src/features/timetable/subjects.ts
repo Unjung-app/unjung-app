@@ -3,7 +3,7 @@
 
 const SHORT: Record<string, string> = {
   '인공지능기초': '인공기',
-  '사회문화탐구': '사문탐',
+  '사회문화탐구': '사회탐구', // NEIS 표기 오류: 실제 과목은 사회문제탐구
   '지구시스템과학': '지시과',
   '생명과학': '생명',
   '중국어회화': '중회화',
@@ -47,7 +47,13 @@ export function splitTags(raw: string) {
     tags.push(t.trim());
     return '';
   });
-  return { name: name.trim(), tags };
+  return { name: fixName(name.trim()), tags };
+}
+
+/** 나이스 등에 잘못 적힌 과목명을 바로잡는다 (호원 확인 11-06) */
+const NAME_FIX: Record<string, string> = { 사회문화탐구: '사회문제탐구' };
+export function fixName(name: string) {
+  return NAME_FIX[name.replace(/\s+/g, '')] ?? name;
 }
 
 /** 주간 표의 좁은 칸에 맞춘 이름. 규칙이 없으면 공백만 뺀다. */
