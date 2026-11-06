@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>운중고 딴짓 단속반</title>
+<!-- 운중고 스마트 스쿨 게임 · 운중고 딴짓 단속반 (파일 하나 / 외부 리소스 없음) -->
+<style>
+  html, body { margin: 0; height: 100%; background: #17172b; overflow: hidden; touch-action: none; color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, "Apple SD Gothic Neo", "Noto Sans KR", monospace; user-select: none; -webkit-user-select: none; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  #wrap { position: relative; width: 100%; max-width: 430px; height: 100%; margin: 0 auto; background: #242442; box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none; }
+  .screen { position: absolute; inset: 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px 22px; background: rgba(22,22,43,.96); }
+  .screen h1 { margin: 0; font-size: clamp(26px, 7vw, 34px); color: #ffe7a3; text-shadow: 3px 3px #9a547b; letter-spacing: -1px; }
+  .screen p { margin: 0; color: #e4e2ff; font-size: 15px; line-height: 1.65; }
+  .big { font-size: 34px; font-weight: 800; color: #fffaf0; text-shadow: 3px 3px #34365d; }
+  button { font: inherit; font-weight: 700; font-size: 17px; min-height: 52px; min-width: 190px; padding: 12px 26px; border: 3px solid #fff0bd; border-radius: 5px; background: #ffbd59; color: #392b4e; box-shadow: 0 5px 0 #a45b57; }
+  button:active { transform: translateY(3px); box-shadow: 0 2px 0 #a45b57; }
+  button.sub { background: #9be8d2; box-shadow: 0 5px 0 #4a8a7e; }
+  .kicker { color: #9be8d2; font-size: 14px; letter-spacing: 2px; }
+  .note { color: #ffe7a3; font-size: 14px; line-height: 1.6; border: 2px dashed #887bb7; padding: 10px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="430" height="859"></canvas>
+  <div id="start" class="screen">
+    <div class="kicker">UNJUNG HIGH SCHOOL · ARCADE</div>
+    <h1>🏫 운중고<br>딴짓 단속반</h1>
+    <p>국어 선생님이 되어 가운데 통로를 오가며 순찰하세요.<br>📱 폰 · 🍪 간식 중인 학생을 발견하면 바로 터치!</p>
+    <p>놓치거나 공부 중인 학생을 누르면 ♥가 줄어요.<br>교시가 바뀌면 ♥가 3개로 회복돼요!<br>실수한 직후엔 잠깐 무적이에요.<br>🌟 황금 학생은 큰 보너스!</p>
+    <div class="note">1교시부터 6교시까지 · 이후 무한 모드</div>
+    <p id="hello"></p>
+    <button id="go" type="button">수업 시작 ▶</button>
+  </div>
+  <div id="over" class="screen hidden">
+    <div class="kicker">CLASS FINISHED</div>
+    <h1>📚 단속 종료!</h1>
+    <div class="big" id="rscore"></div>
+    <p id="rbest"></p>
+    <p id="rinfo"></p>
+    <button id="again" type="button">다시 하기 ↻</button>
+    <button id="home" type="button" class="sub">처음으로 ⌂</button>
+  </div>
+  <div id="pause" class="screen hidden">
+    <div class="kicker">PAUSED</div>
+    <h1>⏸ 잠깐 멈춤</h1>
+    <p>수업이 잠시 중단됐어요.<br>준비되면 다시 단속을 시작하세요.</p>
+    <button id="resume" type="button">계속하기 ▶</button>
+  </div>
+</div>
+
+<script>
+/* ===================== 앱 연결 코드 (고치지 마세요) =====================
+   앱 안에서 열리면 진짜 앱과 연결되고, 그냥 브라우저·AI 미리보기에서 열면
+   가짜(연습용)로 동작합니다. 그래서 앱 없이도 게임을 끝까지 만들어 볼 수 있어요.
+
+   UnjungGame.player            → { nickname: '닉네임', grade: 2 }  (연습용에선 '테스트')
+   UnjungGame.submitScore(n)    → 게임이 끝날 때 점수(정수)를 보냄. 결과: Promise<{ best }>
+   UnjungGame.save(obj)         → 이어하기용 저장(작은 데이터, 10KB까지). Promise
+   UnjungGame.load()            → 저장한 것 불러오기. Promise<obj | null>
+   UnjungGame.onPause(fn)       → 앱이 게임을 멈출 때(수업 시작 등) 부름
+   UnjungGame.exit()            → 앱으로 돌아가기
+========================================================================== */
+(function () {
+  const inApp = window.parent !== window && /[?&]unjung=1/.test(location.search);
+  const listeners = { pause: [] };
+  let seq = 0; const waiting = {};
+  function ask(type, data) {
+    if (!inApp) return Promise.resolve(null);
+    return new Promise((resolve) => { const id = ++seq; waiting[id] = resolve; window.parent.postMessage({ unjung: 1, id, type, data }, '*'); setTimeout(() => { if (waiting[id]) { delete waiting[id]; resolve(null); } }, 8000); });
+  }
+  window.addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.unjung !== 1) return;
+    if (m.reply && waiting[m.reply]) { waiting[m.reply](m.data); delete waiting[m.reply]; }
+    if (m.type === 'player') Object.assign(api.player, m.data || {});
+    if (m.type === 'pause') listeners.pause.forEach((f) => f());
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) listeners.pause.forEach((f) => f()); });
+  const KEY = 'unjung-game-practice';
+  const api = {
+    inApp,
+    player: { nickname: inApp ? '' : '테스트', grade: 2 },
+    submitScore(n) {
+      n = Math.max(0, Math.floor(Number(n) || 0));
+      if (inApp) return ask('score', { score: n }).then((r) => r || { best: n });
+      const best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best);
+      return Promise.resolve({ best });
+    },
+    save(obj) { const s = JSON.stringify(obj ?? null); if (s.length > 10000) return Promise.reject(new Error('저장 데이터가 너무 커요(10KB까지)'));
+      if (inApp) return ask('save', s); localStorage.setItem(KEY + ':save', s); return Promise.resolve(true); },
+    load() { if (inApp) return ask('load').then((s) => (s ? JSON.parse(s) : null)); try { return Promise.resolve(JSON.parse(localStorage.getItem(KEY + ':save'))); } catch { return Promise.resolve(null); } },
+    onPause(fn) { listeners.pause.push(fn); },
+    exit() { if (inApp) ask('exit'); },
+  };
+  window.UnjungGame = api;
+  ask('ready');
+})();
+/* ======================= 앱 연결 코드 끝 ======================= */
+
+
+/* ======================= 여기부터 게임 (자유롭게 바꾸세요) ======================= */
+/* 화면(HTML)은 위에서 이미 만들어져 있으므로, 요소 조회 → 이벤트 연결 순서가 항상 안전합니다. */
+const $ = (id) => document.getElementById(id);
+const cv = $('c'), ctx = cv.getContext('2d', { alpha: false });
+const startScreen = $('start'), overScreen = $('over'), pauseScreen = $('pause');
+const goButton = $('go'), againButton = $('again'), resumeButton = $('resume');
+
+const BW = 360, BH = 780, N = 20, ROWS = 5, GY = 200, PY = 96, CW = 60, XS = [12, 76, 224, 288]; // 20석: 좌2열 | 통로 | 우2열
+const INK = '#252443';
+const PAL = [
+  { wall: '#f5dca8', floor: '#d8aa7d', t1: '#f7dfb7', t2: '#f3d2a6', sky: '#83c9db' },
+  { wall: '#cfe8d5', floor: '#c9b58a', t1: '#e6f2dc', t2: '#d8e8cc', sky: '#9ad7ee' },
+  { wall: '#f2c9d2', floor: '#cfa38a', t1: '#f9dfe0', t2: '#f1d0d3', sky: '#ffcf9a' },
+  { wall: '#cdd7f2', floor: '#b9a58f', t1: '#e3e8f8', t2: '#d4dcf0', sky: '#7fb2ea' },
+  { wall: '#f7e3a1', floor: '#c99a6b', t1: '#fbefc6', t2: '#f5e3a8', sky: '#a6dde0' },
+  { wall: '#e0cdf0', floor: '#bfa0a0', t1: '#efe3f7', t2: '#e2d2ee', sky: '#c9b8f5' }
+];
+const HAIR = ['#3b2f4a', '#5b3c36', '#2c3a5a', '#8a5a44', '#c9833a', '#7a3b5e'];
+const SHIRT = ['#82c7dc', '#e98ca7', '#9c91d7', '#8fc49a', '#f2b66d', '#e2e2ea'];
+const SKIN = ['#ffd3ad', '#f3bb90', '#d99b73'];
+
+let W = BW, H = BH, dpr = 1, scale = 1, offX = 0, offY = 0;
+let state = 'title', rafId = 0, last = 0, gameId = 0, overTimer = 0, bestScore = 0, roomNo = 0;
+let score = 0, life = 3, stage = 1, stageTime = 0, endTime = 0, endless = false;
+let spawnIn = 0, goldCd = 0, act = [], room = null, popups = [], rings = [];
+let invuln = 0, shake = 0, flash = 0, flashColor = '255,235,150', trans = null, clock = 0;
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const randInt = (n) => Math.floor(Math.random() * n);
+const pick = (arr) => arr[randInt(arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+function T(str, x, y, size, color, align = 'center', stroke = INK) {
+  ctx.font = `bold ${size}px ui-monospace, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", monospace`;
+  ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  if (stroke) { ctx.lineWidth = 4; ctx.strokeStyle = stroke; ctx.strokeText(str, x, y); }
+  ctx.fillStyle = color; ctx.fillText(str, x, y);
+}
+const ctr = (i) => ({ x: XS[i % 4] + CW / 2, y: GY + Math.floor(i / 4) * PY });
+let teacher = { x: 180, y: 260, pose: null };
+const SAY = { point: '딱 걸렸다!', smack: '딴짓 금지!', stop: '압수!' };
+
+/* ---------- 교실/학생 생성 (교시마다 새 반, 한 교시 안에서는 고정) ---------- */
+function makeRoom() {
+  const off = new Set(); const n = 1 + randInt(2);
+  while (off.size < n) off.add(randInt(24));
+  const seats = [];
+  for (let i = 0; i < N; i++) seats.push({
+    off: off.has(i), hair: pick(HAIR), shirt: pick(SHIRT), skin: pick(SKIN),
+    style: randInt(4), glass: Math.random() < .22
+  });
+  return { cls: `${1 + randInt(3)}학년 ${1 + randInt(9)}반`, pal: PAL[roomNo++ % PAL.length], seats };
+}
+
+/* ---------- 난이도 ---------- */
+const level = () => endless ? 6 + endTime / 30 : (stage - 1) + stageTime / 30;
+const stayTime = () => Math.max(.8, 2.2 * Math.pow(.9, level()) * (1 + .25 * clamp((3 - level()) / 3, 0, 1)));
+const spawnGap = () => { const f = Math.pow(.93, level()); return rand(Math.max(.15, .2 * f), Math.max(.35, .8 * f)); };
+const maxActive = () => endless ? 4 : (stage === 1 ? (stageTime < 10 ? 1 : 2) : [2, 2, 3, 3, 4, 4][stage - 1]);
+
+function spawn() {
+  const free = [];
+  for (let i = 0; i < N; i++) if (!room.seats[i].off && !act[i]) free.push(i);
+  if (!free.length) return;
+  const gold = goldCd <= 0 && !act.some((a) => a && a.gold) && Math.random() < .035;
+  if (gold) goldCd = 15;
+  const slot = pick(free);
+  act[slot] = { gold, kind: gold ? 'gold' : (Math.random() < .5 ? 'phone' : 'snack'), age: 0, dur: stayTime() * rand(.92, 1.08) * (gold ? 1.15 : 1), caught: false, st: 0, seed: Math.random() * 6 };
+}
+
+function loseLife(x, y, msg) {
+  if (state !== 'playing' || invuln > 0) return;   // 실수 직후 1.2초 무적
+  invuln = 1.2; life--; shake = .22; flash = .18; flashColor = '232,80,100';
+  popups.push({ x, y: y - 10, t: 0, life: .8, text: msg, color: '#ff8da8' });
+  if (life <= 0) finishGame();
+}
+function catchStudent(i) {
+  const a = act[i], c = ctr(i);
+  a.caught = true; a.st = .28;
+  score += a.gold ? 500 : 100;
+  popups.push({ x: c.x, y: c.y + 10, t: 0, life: .75, text: a.gold ? '+500 GOLD!' : '+100', color: a.gold ? '#ffe36e' : '#9be8d2' });
+  rings.push({ x: c.x, y: c.y + 36, t: 0, gold: a.gold });
+  const col = i % 4, far = col === 0 || col === 3;
+  const type = far || a.gold ? 'point' : pick(a.kind === 'phone' ? ['stop', 'point'] : ['point', 'stop']);
+  teacher.pose = { t: 0, dir: col < 2 ? -1 : 1, type, y: c.y + 4, tx: c.x, say: a.gold ? '참 잘했어요!' : SAY[type] };
+  if (a.gold) { flash = .14; flashColor = '255,235,150'; }
+  shake = a.gold ? .12 : .05;
+}
+
+/* ---------- 입력 ---------- */
+cv.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  if (state !== 'playing' || trans) return;
+  const r = cv.getBoundingClientRect();
+  const px = (e.clientX - r.left - offX) / scale, py = (e.clientY - r.top - offY) / scale;
+  let col = -1;
+  if (px >= 10 && px < 138) col = Math.floor((px - 10) / 64); else if (px >= 222 && px < 350) col = 2 + Math.floor((px - 222) / 64);
+  const row = Math.floor((py - GY) / PY);
+  if (col < 0 || row < 0 || row >= ROWS) return;      // 가운데 통로는 무반응
+  const i = row * 4 + col;
+  if (room.seats[i].off) return;              // 빈 좌석: 아무 효과 없음
+  const a = act[i];
+  if (a && a.caught) return;                  // 이미 단속한 학생(놀란 중)은 무시
+  if (a) catchStudent(i);
+  else { const c = ctr(i); loseLife(c.x, c.y + 10, '공부 중!'); }
+});
+
+/* ---------- 진행 ---------- */
+function fx(dt) {
+  for (const p of popups) p.t += dt; popups = popups.filter((p) => p.t < p.life);
+  for (const g of rings) g.t += dt; rings = rings.filter((g) => g.t < .4);
+  invuln = Math.max(0, invuln - dt); shake = Math.max(0, shake - dt); flash = Math.max(0, flash - dt);
+  moveTeacher(dt);
+}
+function update(dt) {
+  clock += dt;
+  if (trans) {
+    trans.t += dt;
+    if (!trans.sw && trans.t >= trans.d / 2) { trans.sw = true; room = trans.next; act = new Array(N).fill(null); }
+    if (trans.t >= trans.d) { trans = null; spawnIn = .4; }
+    fx(dt); return;
+  }
+  if (endless) endTime += dt; else stageTime += dt;
+  goldCd -= dt; spawnIn -= dt;
+  if (spawnIn <= 0) {
+    const n = act.filter((a) => a && !a.caught).length;
+    if (n < maxActive()) { spawn(); spawnIn = spawnGap(); } else spawnIn = .1;
+  }
+  for (let i = 0; i < N; i++) {
+    const a = act[i]; if (!a) continue;
+    a.age += dt;
+    if (a.caught) { a.st -= dt; if (a.st <= 0) act[i] = null; }
+    else if (a.age >= a.dur) {
+      act[i] = null;
+      if (!a.gold) { const c = ctr(i); loseLife(c.x, c.y + 10, '놓쳤다!'); if (state !== 'playing') return; }
+    }
+  }
+  fx(dt);
+  if (!endless && stageTime >= 30) {
+    if (stage < 6) stage++; else endless = true;
+    const heal = life < 3; life = 3;            // 교시가 바뀌면 ♥ 3개로 회복
+    stageTime = 0; startTrans(false); trans.heal = heal;
+  }
+}
+function startTrans(entering) {
+  const next = makeRoom();
+  trans = { t: entering ? .65 : 0, d: 1.3, sw: !!entering, next };
+  if (entering) { room = next; }
+}
+
+function loop(now) {
+  if (state !== 'playing') return;
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  update(dt); draw();
+  if (state === 'playing') rafId = requestAnimationFrame(loop);
+}
+function resetGame() {
+  cancelAnimationFrame(rafId); clearTimeout(overTimer);
+  score = 0; life = 3; stage = 1; stageTime = 0; endTime = 0; endless = false;
+  spawnIn = rand(.2, .8); goldCd = 8; act = new Array(N).fill(null);
+  teacher = { x: 180, y: 260, pose: null }; invuln = 0; popups = []; rings = []; shake = 0; flash = 0; trans = null; roomNo = Math.floor(Math.random() * PAL.length);
+}
+function startGame() {
+  if (state === 'playing') return;
+  resetGame(); gameId++;
+  startTrans(true);
+  state = 'playing';
+  startScreen.classList.add('hidden'); overScreen.classList.add('hidden'); pauseScreen.classList.add('hidden');
+  last = performance.now(); rafId = requestAnimationFrame(loop);
+}
+function pauseGame() {
+  if (state !== 'playing') return;
+  state = 'paused'; cancelAnimationFrame(rafId); draw();
+  pauseScreen.classList.remove('hidden');
+}
+function resumeGame() {
+  if (state !== 'paused') return;
+  state = 'playing'; pauseScreen.classList.add('hidden');
+  last = performance.now(); rafId = requestAnimationFrame(loop);
+}
+function finishGame() {
+  if (state !== 'playing') return;           // 점수 제출은 한 판에 단 한 번
+  state = 'over'; cancelAnimationFrame(rafId);
+  const final = Math.max(0, Math.floor(score)), id = gameId;
+  const reached = endless ? '무제한 도전' : `${stage}교시`;
+  $('rscore').textContent = `${final.toLocaleString()}점`;
+  $('rbest').textContent = `최고 기록 ${Math.max(bestScore, final).toLocaleString()}점`;
+  $('rinfo').textContent = `${reached} 도달`;
+  draw();
+  overTimer = setTimeout(() => { overScreen.classList.remove('hidden'); }, 800);
+  UnjungGame.submitScore(final).then((r) => {
+    const best = r && Number.isFinite(Number(r.best)) ? Number(r.best) : final;
+    bestScore = Math.max(bestScore, best, final);
+    if (id === gameId) $('rbest').textContent = `최고 기록 ${bestScore.toLocaleString()}점`;
+  }).catch(() => {});
+}
+
+/* ---------- 그리기 ---------- */
+function drawStudent(i, s, a, cx, top) {
+  const mode = !a ? 'study' : a.caught ? 'startled' : 'distract';
+  const bob = mode === 'distract' ? Math.round(Math.sin(clock * 9 + a.seed) * 2) : 0;
+  const ox = Math.round(cx) + (mode === 'startled' ? Math.round(Math.sin(clock * 70) * 2) : 0), oy = top + 14 + bob;
+  const gold = a && a.gold;
+  const hair = gold ? '#ffe36e' : s.hair, shirt = gold ? '#ffd84a' : s.shirt;
+  const P = (x, y, w, h, c) => R(ox + x * 3, oy + y * 3, w * 3, h * 3, c);
+  if (gold) { R(cx - 30, top + 8, CW, 60, 'rgba(255,225,90,.32)'); P(-3, -3, 6, 2, '#ffd84a'); P(-3, -4, 1, 1, '#ffd84a'); P(0, -4, 1, 1, '#ffd84a'); P(2, -4, 1, 1, '#ffd84a'); }
+  P(-6, 10, 12, 7, shirt); P(-8, 11, 2, 5, shirt); P(6, 11, 2, 5, shirt); P(-1, 10, 2, 2, '#fffaf0');
+  P(-5, 2, 10, 8, s.skin); P(-6, 5, 1, 2, s.skin); P(5, 5, 1, 2, s.skin);
+  if (s.style === 0) { P(-5, 0, 10, 3, hair); P(-6, 1, 1, 4, hair); P(5, 1, 1, 4, hair); }
+  else if (s.style === 1) { P(-5, 0, 10, 3, hair); P(-6, 1, 2, 10, hair); P(4, 1, 2, 10, hair); }
+  else if (s.style === 2) { P(-5, 1, 10, 2, hair); P(-5, -1, 2, 2, hair); P(-1, -2, 2, 3, hair); P(3, -1, 2, 2, hair); }
+  else { P(-5, 0, 10, 3, hair); P(-2, -3, 4, 3, hair); P(-6, 1, 1, 3, hair); P(5, 1, 1, 3, hair); }
+  if (mode === 'startled') { P(-4, 4, 3, 3, '#fff'); P(1, 4, 3, 3, '#fff'); P(-3, 5, 1, 2, INK); P(2, 5, 1, 2, INK); P(-1, 8, 2, 2, '#9b4d65'); }
+  else { P(-3, 5, 2, 2, INK); P(1, 5, 2, 2, INK); if (mode === 'distract') { P(-1, 8, 3, 1, '#9b4d65'); P(-4, 7, 2, 1, '#f58ba8'); P(3, 7, 2, 1, '#f58ba8'); } else P(-1, 8, 2, 1, '#9b4d65'); }
+  if (s.glass) { P(-4, 4, 4, 1, INK); P(0, 4, 4, 1, INK); P(-4, 7, 4, 1, INK); P(0, 7, 4, 1, INK); }
+  if (mode === 'distract' && !gold) {
+    if (a.kind === 'phone') { P(3, 9, 5, 8, '#3a4366'); P(4, 10, 3, 6, '#8ff0e0'); P(5, 16, 1, 1, '#fff'); }
+    else { P(3, 10, 6, 6, '#d8894d'); P(4, 9, 4, 1, '#ffe08b'); P(4, 12, 1, 1, '#fff1c9'); P(6, 13, 1, 1, '#fff1c9'); }
+    T('!', cx + 24, top + 16, 20, '#ff5a6e');
+  }
+  if (gold && Math.sin(clock * 14) > 0) { T('✦', cx - 20, top + 10, 18, '#fff3a0', 'center', '#b8861b'); T('✦', cx + 20, top + 26, 14, '#fff3a0', 'center', '#b8861b'); }
+  if (mode === 'startled') T('!?', cx, top + 8, 15, '#fff');
+}
+function moveTeacher(dt) {
+  const t = teacher; let tx = 180, ty;
+  if (t.pose) { t.pose.t += dt; if (t.pose.t >= .5) t.pose = null; }
+  if (t.pose) { ty = t.pose.y; tx = 180 + t.pose.dir * 22; } else ty = 205 + (Math.sin(clock * .5) + 1) / 2 * 330;
+  const k = Math.min(1, dt * (t.pose ? 16 : 2.5));
+  t.y += (ty - t.y) * k; t.x += (tx - t.x) * k;
+}
+function drawTeacher() {
+  const t = teacher, p = t.pose, ox = Math.round(t.x), walk = Math.floor(clock * 6) % 2;
+  const oy = Math.round(t.y) + (p ? 0 : Math.round(Math.sin(clock * 12)));
+  const P = (x, y, w, h, c) => R(ox + x * 3, oy + y * 3, w * 3, h * 3, c);
+  const HR = '#5a4650', SK = '#ffd9b8', CD = '#4e9fa0';
+  R(ox - 22, oy + 80, 44, 5, 'rgba(0,0,0,.2)');
+  P(-3, 23, 2, 3, SK); P(1, 23, 2, 3, SK); P(-4 + walk, 26, 3, 1, INK); P(1 - walk, 26, 3, 1, INK);
+  P(-6, 17, 12, 6, '#5a4b7a'); P(-6, 22, 12, 1, '#7b6aa0');
+  P(-6, 10, 12, 8, CD); P(-1, 10, 2, 4, '#fffaf0');
+  P(-8, 11, 2, 7, CD); P(6, 11, 2, 7, CD); P(-8, 18, 2, 1, SK); P(6, 18, 2, 1, SK);
+  P(-7, -1, 14, 5, HR); P(-8, 1, 2, 8, HR); P(6, 1, 2, 8, HR); P(-4, -1, 2, 1, '#a79a9c'); P(2, 0, 2, 1, '#a79a9c');
+  P(-5, 2, 10, 8, SK);
+  for (const gx of [-5, 1]) { P(gx + 1, 4, 2, 3, '#dff3fb'); P(gx, 3, 4, 1, INK); P(gx, 7, 4, 1, INK); P(gx, 3, 1, 5, INK); P(gx + 3, 3, 1, 5, INK); P(gx + 1, 5, 2, 2, INK); }
+  P(-1, 5, 2, 1, INK); P(-5, 8, 1, 1, '#f58ba8'); P(4, 8, 1, 1, '#f58ba8');
+  if (p) P(-1, 9, 2, 1, '#c0505f'); else P(-1, 9, 3, 1, '#c0505f');
+  if (!p) return;
+  const d = p.dir, e = Math.sin(Math.min(1, p.t / .5) * Math.PI), sx = ox + d * 18, sy = oy + 36;
+  const H = (x1, x2, y, h, c) => R(Math.min(x1, x2), y, Math.abs(x2 - x1), h, c);
+  if (p.type === 'point') {
+    const hx = sx + d * 20 * e, tip = sx + d * Math.abs(p.tx - sx) * e;
+    H(sx, hx, sy, 6, CD); R(hx - 3, sy, 6, 6, SK); H(hx, tip, sy + 1, 3, '#8a5a2b'); R(tip - 3, sy, 6, 5, '#e86e75');
+  } else if (p.type === 'smack') {
+    const hx = sx + d * 38 * e, bx = d > 0 ? hx : hx - 16;
+    H(sx, hx, sy, 6, CD); R(bx, sy - 12, 16, 22, '#e86e75'); R(bx + (d > 0 ? 12 : 0), sy - 10, 4, 18, '#fffaf0');
+    if (e > .7) T('✦', hx + d * 18, sy - 4, 24, '#ffe36e', 'center', '#b8861b');
+  } else {
+    const hx = sx + d * 16 * e, pxl = d > 0 ? hx : hx - 12;
+    H(sx, hx, sy, 6, CD); R(pxl, sy - 26, 12, 22, SK); for (let f = 0; f < 3; f++) R(pxl + 2 + f * 4, sy - 26, 2, 8, '#d9a98a');
+  }
+  if (p.t < .45) T(p.say, ox, oy - 16, 14, '#fff');
+}
+function drawDesk(cx, top, s, a) {
+  const x = Math.round(cx - CW / 2);
+  R(x, top + 54, CW, 32, '#c98f5e'); R(x, top + 54, CW, 3, '#e3b07c'); R(x, top + 80, CW, 6, '#7a4d55');
+  R(x + 4, top + 86, 5, 5, '#754b52'); R(x + CW - 9, top + 86, 5, 5, '#754b52');
+  if (s.off) { R(x + 10, top + 26, 40, 24, '#a8774f'); T('빈자리', cx, top + 68, 13, '#fff1c9', 'center', '#7a4d55'); return; }
+  if (!a || a.caught) { R(cx - 12, top + 60, 24, 12, '#fff6dc'); R(cx - 1, top + 60, 2, 12, '#7db8e8'); R(cx - 9, top + 64, 6, 1, '#b8a98a'); R(cx + 3, top + 64, 6, 1, '#b8a98a'); }
+}
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#17172b'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(offX, offY); ctx.scale(scale, scale);
+  if (shake > 0) ctx.translate(rand(-3, 3), rand(-2, 2));
+  const rm = room || { cls: '', pal: PAL[0], seats: [] }, pal = rm.pal;
+  R(0, 0, BW, BH, pal.wall); R(0, 0, BW, 10, '#8e6c82');
+  // 창문 + 칠판
+  for (const wx of [18, 288]) { R(wx, 80, 54, 74, '#fff1c9'); R(wx + 3, 83, 48, 68, pal.sky); R(wx + 25, 83, 4, 68, '#fff1c9'); R(wx + 3, 114, 48, 4, '#fff1c9'); }
+  R(86, 76, 188, 100, '#8a6a4a'); R(90, 80, 180, 92, '#4b6d69'); R(96, 86, 168, 3, '#83a79a');
+  T('운중고 국어 수업', 180, 112, 16, '#fff1c9', 'center', null);
+  T(`${endless ? '무제한' : stage + '교시'} · ${rm.cls}`, 180, 140, 14, '#ffe7a3', 'center', null);
+  T('딴짓 단속 중!', 180, 160, 12, '#9be8d2', 'center', null);
+  // HUD
+  R(8, 8, 344, 62, '#34365d'); R(8, 8, 344, 3, '#5b5f9a'); R(8, 67, 344, 3, '#1f2044');
+  T(endless ? '무제한' : `${stage}교시`, 20, 26, 17, '#ffe7a3', 'left');
+  T(score.toLocaleString(), 180, 26, 22, '#fffaf0');
+  for (let h = 0; h < 3; h++) T('♥', 296 + h * 18, 26, 20, h < life ? '#ff6f8f' : '#55496e', 'center', h < life ? INK : null);
+  const left = Math.max(0, Math.ceil(30 - stageTime));
+  T(endless ? `${Math.floor(endTime)}초 생존` : `남은 ${left}초`, 20, 54, 14, '#9be8d2', 'left', null);
+  R(130, 49, 212, 9, '#1f2044'); R(131, 50, endless ? 210 : 210 * clamp(1 - stageTime / 30, 0, 1), 7, endless ? '#ffbd59' : (left <= 5 ? '#e86e75' : '#78c99f'));
+  // 바닥 + 좌석
+  R(0, 190, BW, BH - 190, pal.floor);
+  for (let y = 196; y < BH; y += 18) R(0, y, BW, 1, 'rgba(0,0,0,.08)');
+  R(136, 194, 88, 488, 'rgba(110,70,90,.22)'); for (let y = 204; y < 680; y += 24) R(178, y, 4, 12, 'rgba(255,240,200,.35)');
+  for (let i = 0; i < N; i++) {
+    const c = ctr(i), top = c.y, s = rm.seats[i]; if (!s) continue;
+    R(c.x - CW / 2, top, CW, PY - 2, (i + Math.floor(i / 4)) % 2 ? pal.t1 : pal.t2);
+    const a = act[i];
+    if (!s.off) drawStudent(i, s, a, c.x, top);
+    drawDesk(c.x, top, s, a);
+    if (a && !a.caught) {
+      const rem = clamp(1 - a.age / a.dur, 0, 1);
+      R(c.x - 24, top + 90, 48, 4, '#775c67'); R(c.x - 24, top + 90, 48 * rem, 4, a.gold ? '#ffd84a' : rem > .45 ? '#78c99f' : '#e86e75');
+    }
+  }
+  if (invuln > 0 && Math.floor(clock * 14) % 2) ctx.globalAlpha = .45;
+  drawTeacher(); ctx.globalAlpha = 1;
+  R(0, 682, BW, 98, '#5b3c4c'); R(0, 682, BW, 4, '#8a5a66');
+  T('📱 폰 · 🍪 간식 중인 학생을 터치!', 180, 712, 14, '#ffe7a3');
+  T('공부 중인 학생을 누르면 ♥가 줄어요', 180, 738, 13, '#e4e2ff', 'center', null);
+  for (const g of rings) { ctx.strokeStyle = g.gold ? '#ffe36e' : '#fff'; ctx.lineWidth = 3; ctx.globalAlpha = 1 - g.t / .4; ctx.beginPath(); ctx.arc(g.x, g.y, 10 + g.t * 90, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+  for (const p of popups) { ctx.globalAlpha = 1 - p.t / p.life; T(p.text, p.x, p.y - p.t * 36, 17, p.color); ctx.globalAlpha = 1; }
+  if (flash > 0) { ctx.fillStyle = `rgba(${flashColor},${Math.min(.5, flash * 2)})`; ctx.fillRect(0, 0, BW, BH); }
+  if (trans) drawTrans();
+  if (state === 'over') { ctx.fillStyle = 'rgba(23,23,43,.6)'; ctx.fillRect(0, 0, BW, BH); T('GAME OVER', 180, 390, 32, '#ffe7a3'); }
+  ctx.restore();
+}
+function drawTrans() {
+  const p = clamp(trans.t / trans.d, 0, 1), q = p < .5 ? p * 2 : (p - .5) * 2, B = 40;
+  for (let i = 0; i < 9; i++) for (let j = 0; j < 20; j++) {
+    const v = (i + j) / 28, vis = p < .5 ? v < q * 1.1 : v >= q * 1.1;
+    if (vis) R(i * B, j * B, B, B, (i + j) % 2 ? '#34365d' : '#4a4d86');
+  }
+  if (p > .25 && p < .8) {
+    T('🚪', 180, 350, 40, '#fff', 'center', null);
+    T(`${endless ? '무제한 도전' : stage + '교시'} · ${trans.next.cls}`, 180, 405, 20, '#ffe7a3');
+    T('교실 이동 중...', 180, 438, 14, '#9be8d2');
+    if (trans.heal) T('♥ 목숨 회복!', 180, 472, 17, '#ff8da8');
+  }
+}
+
+/* ---------- 화면 크기 / 시작 ---------- */
+function resize() {
+  const r = cv.getBoundingClientRect();
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
+  W = r.width; H = r.height; scale = Math.min(W / BW, H / BH);
+  offX = (W - BW * scale) / 2; offY = (H - BH * scale) / 2;
+  ctx.imageSmoothingEnabled = false; draw();
+}
+window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(cv);
+
+UnjungGame.onPause(() => pauseGame());
+$('hello').textContent = UnjungGame.player.nickname ? `${UnjungGame.player.nickname} 선생님, 오늘도 단속 시작!` : '오늘의 단속을 시작해 볼까요?';
+document.addEventListener('contextmenu', (e) => e.preventDefault());   // 길게 눌러도 메뉴 안 뜸
+goButton.addEventListener('click', startGame);
+againButton.addEventListener('click', startGame);
+resumeButton.addEventListener('click', resumeGame);
+$('home').addEventListener('click', () => {      // 게임오버 → 시작 화면
+  if (state !== 'over') return;
+  resetGame(); state = 'title'; room = makeRoom(); act = new Array(N).fill(null);
+  overScreen.classList.add('hidden'); startScreen.classList.remove('hidden'); draw();
+});
+
+room = makeRoom(); act = new Array(N).fill(null);
+resize();
+
+</script>
+</body></html>
