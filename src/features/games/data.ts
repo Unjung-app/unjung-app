@@ -80,6 +80,14 @@ export async function saveGame(game: GameId, data: string): Promise<boolean> {
   return !error;
 }
 
+/** 오늘 스터디 윗미 공부 시간(분) — 게임이 공부 보상에 쓴다(UnjungGame.getStudyMinutes) */
+export async function studyMinutesToday(): Promise<number> {
+  const { data, error } = await supabase.rpc('my_study_dashboard');
+  if (error) return 0;
+  const sec = Number((data as { today?: { total_seconds?: number } } | null)?.today?.total_seconds) || 0;
+  return Math.floor(sec / 60);
+}
+
 export async function loadGame(game: GameId): Promise<string | null> {
   const { data, error } = await supabase.rpc('load_game', { p_game: game });
   return error ? null : ((data as string | null) ?? null);

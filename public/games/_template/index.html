@@ -55,6 +55,11 @@
 
    UnjungGame.player            → { nickname: '닉네임', grade: 2 }  (연습용에선 '테스트')
    UnjungGame.submitScore(n)    → 게임이 끝날 때 점수(정수)를 보냄. 결과: Promise<{ best }>
+                                  앱은 1.5초 뒤 결과 화면(한 판 더 / 나가기)으로 게임을 덮어요.
+   UnjungGame.submitScore(n, { hold: true }) → 점수만 기록하고, 게임의 결과 화면을 계속 보여 줘요.
+                                  그 화면의 '계속' 버튼에서 UnjungGame.done() 을 부르면 앱 결과 화면이 떠요.
+   UnjungGame.done()            → (hold로 보낸 뒤) 앱 결과 화면 열기
+   UnjungGame.getStudyMinutes() → 오늘 스터디 윗미 공부 시간(분). Promise<number> (연습용에선 0)
    UnjungGame.save(obj)         → 이어하기용 저장(작은 데이터, 10KB까지). Promise
    UnjungGame.load()            → 저장한 것 불러오기. Promise<obj | null>
    UnjungGame.onPause(fn)       → 앱이 게임을 멈출 때(수업 시작 등) 부름
@@ -79,9 +84,9 @@
   const api = {
     inApp,
     player: { nickname: inApp ? '' : '테스트', grade: 2 },
-    submitScore(n) {
+    submitScore(n, opts) {
       n = Math.max(0, Math.floor(Number(n) || 0));
-      if (inApp) return ask('score', { score: n }).then((r) => r || { best: n });
+      if (inApp) return ask('score', { score: n, hold: !!(opts && opts.hold) }).then((r) => r || { best: n });
       let best = n; try { best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best); } catch (e) {}
       return Promise.resolve({ best });
     },
@@ -90,6 +95,8 @@
     load() { if (inApp) return ask('load').then((s) => (s ? JSON.parse(s) : null)); try { return Promise.resolve(JSON.parse(localStorage.getItem(KEY + ':save'))); } catch { return Promise.resolve(null); } },
     onPause(fn) { listeners.pause.push(fn); },
     exit() { if (inApp) ask('exit'); },
+    done() { if (inApp) ask('done'); },
+    getStudyMinutes() { return inApp ? ask('study').then((m) => Math.max(0, Math.floor(Number(m) || 0))) : Promise.resolve(0); },
   };
   window.UnjungGame = api;
   ask('ready');

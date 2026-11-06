@@ -23,13 +23,17 @@
 - 게임은 `<iframe src="/games/<id>/index.html?unjung=1">` 안에서 열린다.
 - 게임 → 앱: `postMessage({ unjung: 1, id, type, data })`
   - `ready`: 로드 완료
-  - `score {score}`: 점수 제출
+  - `score {score, hold?}`: 점수 제출. 기본은 1.5초 뒤 앱 결과 화면이 게임을 덮는다. `hold: true`면 기록만 하고 게임의 결과 화면을 둔다
+  - `done`: (hold로 보낸 뒤) 게임의 '계속' 버튼 → 앱 결과 화면을 연다 (11-06, 운중 디펜스부터)
+  - `study`: 오늘 스터디 윗미 공부 시간(분)을 돌려준다(`UnjungGame.getStudyMinutes()`) — 게임 안 보상용
   - `save <string>`: 이어하기 저장(10KB까지)
   - `load`: 저장 불러오기
   - `exit`: 앱으로 돌아가기
 - 앱 → 게임: `{ unjung: 1, reply: id, data }`로 요청에 답한다.
   - 앱이 먼저 보내는 것: `{ unjung: 1, type: 'player', data: { nickname, grade } }`, `{ unjung: 1, type: 'pause' }`
 - 앱 밖(브라우저·AI 미리보기)에서는 같은 함수가 localStorage로 흉내 낸다(연습 모드).
+- 앱 안의 게임은 sandbox(allow-scripts)라 **localStorage가 막힌다.** 진행(레벨·코인 등)이 있는 게임은 `UnjungGame.save/load`로 저장해야 다음 판에 이어진다(운중 디펜스 참고).
+- 게임 안 화폐는 앱 토큰(🪙)과 다른 기호를 쓴다(운중 디펜스는 💎).
 
 ## 앱 쪽 구현 (11-06 완료)
 

@@ -35,6 +35,14 @@ export const GAMES: Record<GameId, GameInfo> = {
     by: '송현우',
     how: '20초 안에 선택지를 눌러요. 엔딩을 모아 도감을 채워 보세요',
   },
+  defense: {
+    title: '운중 디펜스',
+    emoji: '🛡️',
+    desc: '몰려오는 시험 괴물을 막고 100점을 지켜라',
+    tag: '디펜스',
+    by: '김도윤',
+    how: '아래 카드를 길옆 칸으로 끌어다 놓아요. 💎로 카드를 강화하면 점점 세져요',
+  },
   tower: {
     title: '운중고 타워 쌓기',
     emoji: '🏫',
