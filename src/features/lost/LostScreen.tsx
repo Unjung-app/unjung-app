@@ -19,7 +19,7 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
   const { refresh } = useWallet();
   const ready = status === 'ready' || status === 'needsEnrollment';
   const feed = useLostFeed(ready);
-  const [tab, setTab] = useState<'found' | 'lost' | 'mine'>('found');
+  const [tab, setTab] = useState<'all' | 'found' | 'lost' | 'mine'>('all');
 
   useFocusEffect(
     useCallback(() => {
@@ -47,7 +47,7 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
   }
 
   const all = feed.items ?? [];
-  const list = tab === 'mine' ? all.filter((x) => x.mine || x.i_responded) : all.filter((x) => x.type === tab);
+  const list = tab === 'mine' ? all.filter((x) => x.mine || x.i_responded) : tab === 'all' ? all : all.filter((x) => x.type === tab);
 
   return (
     <Screen topInset={!inStack} onRefresh={feed.reload}>
@@ -56,31 +56,31 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
           분실물
         </AppText>
       ) : null}
-      <View style={{ flexDirection: 'row', gap: space.sm }}>
-        <Button label="📦 주웠어요" style={{ flex: 1 }} onPress={() => router.push('/lost/new?type=found')} />
-        <Button label="🔍 잃어버렸어요" variant="soft" style={{ flex: 1 }} onPress={() => router.push('/lost/new?type=lost')} />
-      </View>
-      <AppText variant="caption" color={color.inkMuted} align="center">
-        주인을 찾아 주면 +{REWARD.lostFound} 토큰 · 연락처 대신 학생회실 같은 전달 장소로 주고받아요
-      </AppText>
       <Segmented
         label="보기"
         value={tab}
         onChange={setTab}
         options={[
+          { value: 'all', label: '전체' },
           { value: 'found', label: `주운 물건 ${all.filter((x) => x.type === 'found' && x.status === 'open').length}` },
           { value: 'lost', label: `찾는 물건 ${all.filter((x) => x.type === 'lost' && x.status === 'open').length}` },
           { value: 'mine', label: '내 글' },
         ]}
       />
-      {feed.items === null ? (
+      {feed.error ? (
+        <Card>
+          <AppText variant="body" color={color.danger} accessibilityRole="alert">{feed.error}</AppText>
+          <Button label="다시 불러오기" accessibilityLabel="분실물 게시물 다시 불러오기" variant="soft" onPress={feed.reload} />
+        </Card>
+      ) : null}
+      {feed.items === null ? (feed.error ? null : (
         <AppText variant="body" color={color.inkMuted}>
           불러오는 중…
         </AppText>
-      ) : list.length === 0 ? (
+      )) : list.length === 0 ? (
         <Card>
           <AppText variant="body" color={color.inkMuted}>
-            {tab === 'found' ? '최근 30일 동안 올라온 주운 물건이 없어요.' : tab === 'lost' ? '찾는 물건이 없어요.' : '내가 올리거나 응답한 글이 없어요.'}
+            {tab === 'all' ? '최근 30일 동안 올라온 게시물이 없어요.' : tab === 'found' ? '최근 30일 동안 올라온 주운 물건이 없어요.' : tab === 'lost' ? '찾는 물건이 없어요.' : '내가 올리거나 응답한 글이 없어요.'}
           </AppText>
         </Card>
       ) : (
@@ -98,6 +98,10 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
           />
         ))
       )}
+      <Button label="게시물 올리기" accessibilityLabel="분실물 게시물 올리기" onPress={() => router.push('/lost/new')} />
+      <AppText variant="caption" color={color.inkMuted} align="center">
+        주인을 찾아 주면 +{REWARD.lostFound} 토큰 · 연락처 대신 학생회실 같은 전달 장소로 주고받아요
+      </AppText>
     </Screen>
   );
 }
