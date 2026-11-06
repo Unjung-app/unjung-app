@@ -19,9 +19,11 @@ import { MEAL_CODE, useTopReview } from '@/features/meal/reviews';
 import { Logo } from '@/components/Logo';
 import { givenName, useAuth } from '@/state/auth';
 import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/data';
+import { useSubjectSelection } from '@/features/timetable/selection';
+import { personalize } from '@/features/timetable/personal';
 import { classLabel, useNow, useOpenFeature } from '@/features/hooks';
 import { bellFor, lunchOver, phaseAt, type DayPhase } from '@/features/timetable/bell';
-import { addDays, dDayLabel, isWeekend, longLabel, mondayOf, shortLabel, weekdayLabel } from '@/lib/date';
+import { addDays, dDayLabel, isWeekend, longLabel, mondayOf, shortLabel, schoolTerm, weekdayLabel } from '@/lib/date';
 import { groupEvents, isForGrade, isMajorEvent, type Meal, type SchoolEvent } from '@/lib/school';
 import type { ClassLesson as Lesson } from '@/features/data';
 import { usePrefs, type MyClass } from '@/state/prefs';
@@ -36,12 +38,19 @@ function greeting(minutes: number) {
 export function TodayScreen() {
   const now = useNow();
   const router = useRouter();
-  const { myClass } = usePrefs();
-  const { enrollment } = useAuth();
+  const { myClass: preferredClass } = usePrefs();
+  const { enrollment, status, session } = useAuth();
+  const personal = status === 'ready' && enrollment?.grade === 2 && !!session;
+  const myClass = personal ? { grade: enrollment.grade, classNo: enrollment.class_no } : preferredClass;
+  const term = schoolTerm(now.ymd);
+  const selection = useSubjectSelection(personal ? session.user.id : null, term.year, term.semester);
   const nick = givenName(enrollment?.name);
   // 주말에는 다음 주 데이터를 불러와 '다음 수업일'을 보여 준다
   const schoolWeekDay = isWeekend(now.ymd) ? addDays(mondayOf(now.ymd), 7) : now.ymd;
   const timetable = useWeekTimetable(schoolWeekDay, myClass);
+  const personalLessons = personal && selection.saved && myClass
+    ? personalize(timetable.items, selection.groups, selection.saved, myClass.classNo, term.year, term.semester)
+    : timetable.items;
   const meals = useWeekMeals(schoolWeekDay);
   const schedule = useUpcomingSchedule(now.ymd);
 
@@ -54,6 +63,7 @@ export function TodayScreen() {
       refreshing={refreshing}
       onRefresh={() => {
         timetable.refresh();
+        if (personal) void selection.reload();
         meals.refresh();
         schedule.refresh();
       }}>
@@ -96,8 +106,8 @@ export function TodayScreen() {
         myClass={myClass}
         today={now.ymd}
         minutes={now.minutes}
-        lessons={timetable.items}
-        loading={timetable.source === 'loading'}
+        lessons={personalLessons}
+        loading={timetable.source === 'loading' || (personal && selection.loading)}
         holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
       />
       <DeadlineCard today={now.ymd} />

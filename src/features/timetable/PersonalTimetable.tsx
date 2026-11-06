@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Button, Card } from '@/components/ui/primitives';
-import { supabase } from '@/lib/supabase';
+import { useSubjectSelection } from './selection';
 import { color, radius, space } from '@/theme/tokens';
 import type { ClassLesson } from '@/features/data';
-import { completeChoices, personalize, type Choices, type SubjectGroup } from './personal';
+import { completeChoices, personalize, type Choices } from './personal';
 
 type Props = {
   uid: string; year: number; semester: number; classNo: number;
@@ -14,47 +14,19 @@ type Props = {
 
 /** 부모의 key가 계정·학기·반을 구분하므로 다른 계정의 선택이 화면에 남지 않는다. */
 export function PersonalTimetable({ uid, year, semester, classNo, lessons, children }: Props) {
-  const [groups, setGroups] = useState<SubjectGroup[]>([]);
-  const [saved, setSaved] = useState<Choices | null>(null);
-  const [draft, setDraft] = useState<Choices>({});
-  const [loading, setLoading] = useState(true);
+  const { groups, saved, loading, error: loadError, reload, save: saveSelection } = useSubjectSelection(uid, year, semester);
+  const [changed, setDraft] = useState<Choices | null>(null);
+  const draft = changed ?? saved ?? {};
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const [config, selection] = await Promise.all([
-          supabase.from('timetable_configs').select('groups').eq('school_year', year).eq('semester', semester).eq('grade', 2).maybeSingle(),
-          supabase.from('timetable_choices').select('choices').eq('user_id', uid).eq('school_year', year).eq('semester', semester).maybeSingle(),
-        ]);
-        if (!alive) return;
-        if (config.error || selection.error) throw new Error('과목 설정을 불러오지 못했어요. 인터넷 연결 또는 과목 데이터 등록 상태를 확인해 주세요.');
-        const list = (config.data?.groups ?? []) as SubjectGroup[];
-        setGroups(list);
-        const choice = selection.data?.choices as Choices | undefined;
-        setSaved(choice && completeChoices(list, choice) ? choice : null);
-        setDraft(choice ?? {});
-      } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : '과목 설정을 불러오지 못했어요.');
-      } finally {
-        if (alive) setLoading(false);
-      }
-    };
-    void load();
-    return () => { alive = false; };
-  }, [uid, year, semester, retry]);
-
   const save = async () => {
     if (saving || !completeChoices(groups, draft)) return;
     setSaving(true);
     setError('');
     try {
-      const { error: failure } = await supabase.rpc('save_timetable_choices', { p_year: year, p_semester: semester, p_choices: draft });
-      if (failure) throw failure;
-      setSaved({ ...draft });
+      await saveSelection(draft);
+      setDraft(null);
       setEditing(false);
     } catch {
       setError('저장하지 못했어요. 선택은 유지되어 있으니 연결을 확인하고 다시 저장해 주세요.');
@@ -66,8 +38,8 @@ export function PersonalTimetable({ uid, year, semester, classNo, lessons, child
   if (!groups.length || !groups.every((g) => g.slots[String(classNo)]?.length)) return (
     <Card>
       <AppText variant="heading">과목 정보를 확인해 주세요</AppText>
-      <AppText color={color.inkMuted}>{error || '이 학기 또는 반의 과목 배치가 아직 등록되지 않았어요.'}</AppText>
-      <Button label="다시 불러오기" accessibilityLabel="과목 설정 다시 불러오기" onPress={() => { setLoading(true); setError(''); setRetry((v) => v + 1); }} />
+      <AppText color={color.inkMuted}>{error || loadError || '이 학기 또는 반의 과목 배치가 아직 등록되지 않았어요.'}</AppText>
+      <Button label="다시 불러오기" accessibilityLabel="과목 설정 다시 불러오기" onPress={() => { setError(''); void reload(); }} />
       {children(lessons)}
     </Card>
   );
@@ -83,7 +55,7 @@ export function PersonalTimetable({ uid, year, semester, classNo, lessons, child
               const selected = draft[g.id] === subject;
               return (
                 <Pressable key={subject} accessibilityRole="radio" accessibilityLabel={`${g.label} ${subject}`} accessibilityState={{ checked: selected, disabled: saving }} disabled={saving}
-                  onPress={() => setDraft((v) => ({ ...v, [g.id]: subject }))}
+                  onPress={() => setDraft({ ...draft, [g.id]: subject })}
                   style={{ minHeight: 44, minWidth: 44, justifyContent: 'center', padding: space.md, borderRadius: radius.control, backgroundColor: selected ? color.navy : color.surfaceMuted }}>
                   <AppText color={selected ? color.onNavy : color.ink}>{subject}</AppText>
                 </Pressable>
