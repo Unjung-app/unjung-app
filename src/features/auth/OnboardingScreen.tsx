@@ -5,13 +5,13 @@ import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
 import { Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
-import { CONTACT_EMAIL } from '@/lib/supabase';
+import { RequestCard, useFixState } from '@/features/settings/EnrollmentFixScreen';
 import { parseStudentNo } from '@/lib/student';
 import { useAuth } from '@/state/auth';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 
-/** 첫 로그인: 올해 학번·이름 한 번 입력. 저장 후에는 학생이 고칠 수 없다. */
+/** 첫 로그인: 올해 학번·이름 입력. 저장 후 24시간 안 1번은 직접 고칠 수 있고, 그 뒤엔 정정 요청. */
 export function OnboardingScreen() {
   const router = useRouter();
   const { status, email, register, signOut } = useAuth();
@@ -20,6 +20,9 @@ export function OnboardingScreen() {
   const [step, setStep] = useState<'input' | 'confirm'>('input');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 내 학번을 다른 계정이 먼저 등록했을 때 → 정정 요청 */
+  const [taken, setTaken] = useState(false);
+  const { state: fix, load: loadFix } = useFixState();
 
   useEffect(() => {
     if (status === 'ready') router.replace('/');
@@ -56,6 +59,7 @@ export function OnboardingScreen() {
     setSaving(false);
     if (!r.ok) {
       setError(r.message);
+      setTaken(r.message.includes('다른 계정'));
       setStep('input');
     }
   };
@@ -129,13 +133,17 @@ export function OnboardingScreen() {
           <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' }}>
             <Icon name="info" size={18} color={color.accentInk} />
             <AppText variant="caption" color={color.accentInk} style={{ flex: 1 }}>
-              저장하면 직접 바꿀 수 없어요. 잘못 입력했다면 {CONTACT_EMAIL} 으로 학번·이름과 함께 연락해 주세요.
+              저장한 뒤 24시간 안에 한 번은 설정에서 직접 고칠 수 있어요. 그 뒤에는 앱 안에서 정정 요청을 보내야 해요.
             </AppText>
           </View>
           <Button label={saving ? '저장하는 중…' : '맞아요, 저장할게요'} disabled={saving} onPress={save} />
           <Button label="다시 입력하기" variant="ghost" disabled={saving} onPress={() => setStep('input')} />
         </Card>
       )}
+
+      {taken || fix?.request?.status === 'pending' ? (
+        <RequestCard request={fix?.request ?? null} onChanged={loadFix} initialNo={studentNo} initialName={name.trim()} />
+      ) : null}
 
       <Button label="다른 계정으로 로그인" variant="ghost" onPress={signOut} />
       <AppText variant="caption" color={color.inkFaint} align="center">

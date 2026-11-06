@@ -82,6 +82,7 @@ function Root() {
         <Stack.Screen name="settings/install" options={{ title: '홈 화면에 추가' }} />
         <Stack.Screen name="settings/nickname" options={{ title: '닉네임' }} />
         <Stack.Screen name="settings/notifications" options={{ title: '알림' }} />
+        <Stack.Screen name="settings/enrollment" options={{ title: '내 학번·이름' }} />
         <Stack.Screen name="wallet" options={{ title: '토큰·출석' }} />
         <Stack.Screen name="shop" options={{ title: '꾸미기 상점' }} />
         <Stack.Screen name="feedback" options={{ title: '의견 보내기' }} />
