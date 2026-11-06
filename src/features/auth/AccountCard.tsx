@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -13,6 +14,7 @@ const ROLE_LABEL = { student: '학생', reviewer: '검토위원', admin: '관리
 export function AccountCard() {
   const router = useRouter();
   const { status, email, enrollment, role, signOut } = useAuth();
+  const [confirmOut, setConfirmOut] = useState(false);
 
   if (status === 'signedOut' || status === 'loading') {
     return (
@@ -53,7 +55,13 @@ export function AccountCard() {
         </>
       ) : null}
       <Divider />
-      <ListRow icon="close" title="로그아웃" onPress={signOut} right={<View />} />
+      <ListRow
+        icon="close"
+        title={confirmOut ? '한 번 더 누르면 로그아웃돼요' : '로그아웃'}
+        subtitle={confirmOut ? '다시 들어오려면 학교 구글 계정으로 로그인해야 해요' : undefined}
+        onPress={() => (confirmOut ? signOut() : setConfirmOut(true))}
+        right={<View />}
+      />
       {enrollment ? (
         <View style={{ paddingHorizontal: space.lg, paddingBottom: space.md }}>
           <AppText variant="caption" color={color.inkFaint}>
