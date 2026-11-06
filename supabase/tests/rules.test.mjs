@@ -812,9 +812,9 @@ await sub(B, CB, 'a7');
   expect('명단 확인 후 기획행정부, 공지 바로 게시', pl.rows[0]?.is_planner === true && st.rows[0]?.status === 'approved'); }
 
 // ───────── 학번·이름 정정 ─────────
-{ const S1 = '99999999-9999-9999-9999-999999999951', C1 = 'fix1@unjung.hs.kr';
-  const S2 = '99999999-9999-9999-9999-999999999952', C2 = 'fix2@unjung.hs.kr';
-  const S3 = '99999999-9999-9999-9999-999999999953', C3 = 'fix3@unjung.hs.kr';
+{ const S1 = '99999999-9999-9999-9999-999999999971', C1 = 'fix1@unjung.hs.kr';
+  const S2 = '99999999-9999-9999-9999-999999999972', C2 = 'fix2@unjung.hs.kr';
+  const S3 = '99999999-9999-9999-9999-999999999973', C3 = 'fix3@unjung.hs.kr';
   await q(`insert into auth.users values ('${S1}','${C1}'),('${S2}','${C2}'),('${S3}','${C3}')`);
   await as(S1, C1, `select public.register_enrollment('20731','임하지')`);
   const st0 = await as(S1, C1, `select public.my_enrollment_fix() r`);
