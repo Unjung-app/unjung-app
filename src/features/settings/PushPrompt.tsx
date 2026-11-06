@@ -16,7 +16,7 @@ const ASKED_KEY = 'unjung.push.asked.v1';
  * '오늘' 홈: 알림을 아직 켜지 않은 학생에게 한 번 권한다('나중에'를 누르면 7일 뒤 다시).
  * 이미 켠 기기라면 열 때마다 구독을 지금 계정으로 다시 저장한다.
  */
-export function PushPrompt() {
+export function PushPrompt({ hold = false }: { hold?: boolean }) {
   const { status } = useAuth();
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -54,6 +54,8 @@ export function PushPrompt() {
       closeFirst();
     } else setErr(r.message);
   };
+
+  if (hold) return null;
 
   if (first) {
     return (

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { REWARD } from '@/lib/rewards';
 import { useRouter } from 'expo-router';
@@ -6,27 +7,74 @@ import { Badge, Divider, ListRow } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { AccountCard } from '@/features/auth/AccountCard';
 import { classLabel, useOpenFeature } from '@/features/hooks';
-import { DEV_TEAM, DEV_TEAM_NAME, FEATURES } from '@/features/registry';
-import { TeamCard } from '@/features/launch/Launch';
+import { DEV_TEAM, DEV_TEAM_NAME, FEATURE_BY_ID, FEATURES } from '@/features/registry';
+import { TeamCard, useLaunchEvent } from '@/features/launch/Launch';
+import { supabase } from '@/lib/supabase';
 import { LAB_FEATURES, labVisible } from '@/lab/registry';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
 
+/** '전체'의 묶음 (registry id) */
+const COUNCIL = ['notice', 'voice', 'gallery'];
+const SCHOOL = ['timetable', 'meal', 'tasks', 'calendar', 'library', 'lost'];
+const FUN = ['study', 'games', 'ranking'];
+
+/** 부서 권한(소통홍보부·교육활동부). 서버 함수가 없거나 실패하면 false */
+function useDeptFlags(enabled: boolean) {
+  const [flags, setFlags] = useState({ comm: false, study: false });
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    Promise.all([supabase.rpc('is_comm'), supabase.rpc('is_study_manager')]).then(([c, m]) => {
+      if (alive) setFlags({ comm: c.data === true, study: m.data === true });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [enabled]);
+  return flags;
+}
+
 export function MoreScreen() {
   const router = useRouter();
   const openFeature = useOpenFeature();
   const { myClass } = usePrefs();
-  const { status, role } = useAuth();
+  const { status, role, planner } = useAuth();
   const { wallet } = useWallet();
+  const { mult } = useLaunchEvent();
   const signedIn = status === 'ready' || status === 'needsEnrollment';
-  const live = FEATURES.filter((f) => f.status === 'live');
+  const dept = useDeptFlags(status === 'ready');
   const soon = FEATURES.filter((f) => f.status === 'soon');
+  const isAdmin = role === 'admin';
+  const reviewer = signedIn && role !== 'student';
+  const hasTools = status === 'ready' && (isAdmin || reviewer || planner || dept.comm || dept.study);
 
   const group = (children: React.ReactNode) => (
     <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>{children}</View>
   );
+  const heading = (t: string) => (
+    <AppText variant="heading" style={{ marginTop: space.sm }}>
+      {t}
+    </AppText>
+  );
+  /** 행 목록을 구분선과 함께 그린다(null은 건너뜀) */
+  const rows = (items: (React.ReactElement | null | false)[]) =>
+    group(
+      items
+        .filter((x): x is React.ReactElement => !!x)
+        .map((el, i) => (
+          <View key={i}>
+            {i > 0 ? <Divider /> : null}
+            {el}
+          </View>
+        )),
+    );
+  const feature = (id: string) => {
+    const f = FEATURE_BY_ID[id];
+    return f && f.status === 'live' ? <ListRow icon={f.icon} title={f.title} subtitle={f.desc} onPress={() => openFeature(f.id)} /> : null;
+  };
 
   return (
     <Screen>
@@ -36,73 +84,61 @@ export function MoreScreen() {
 
       <AccountCard />
 
-      {signedIn
-        ? group(
-            <>
-              <ListRow
-                icon="coin"
-                title="토큰·출석"
-                subtitle={wallet ? `🪙 ${wallet.balance} · 🔥 ${wallet.streak}일 연속` : '불러오는 중'}
-                onPress={() => router.push('/wallet')}
-              />
-              <Divider />
-              <ListRow icon="bag" title="꾸미기 상점" subtitle="이모지·닉네임 색·프로필 테마" onPress={() => router.push('/shop')} />
-              <Divider />
-              <ListRow
-                icon="user"
-                title="닉네임"
-                subtitle={wallet?.nickname ?? '아직 없어요 · 랭킹에 쓰일 이름'}
-                onPress={() => router.push('/settings/nickname')}
-              />
-            </>,
-          )
-        : null}
-
-      {group(
+      {hasTools ? (
         <>
-          <ListRow icon="pin" title={classLabel(myClass)} subtitle="내 반 설정" onPress={() => router.push('/settings/class')} />
-          <Divider />
-          <ListRow icon="notice" title="알림 설정" subtitle="마감 전날·아침 급식·내 글 소식" onPress={() => router.push('/settings/notifications')} />
-          <Divider />
-          <ListRow icon="settings" title="하단 탭 설정" subtitle="자주 쓰는 기능을 아래 탭에 고정해요" onPress={() => router.push('/settings/tabs')} />
-          <Divider />
-          <ListRow icon="plus" title="홈 화면에 추가" subtitle="앱처럼 바로 열고 알림 받기" onPress={() => router.push('/settings/install')} />
-        </>,
-      )}
+          {heading('🛠️ 내 부서 도구')}
+          {rows([
+            dept.comm && <ListRow icon="camera" title="행사 사진 올리기" subtitle="소통홍보부 · 홈에 바로 보여요" onPress={() => router.push('/gallery/new')} />,
+            (dept.comm || planner) && <ListRow icon="notice" title="공지 올리기" subtitle="검토 없이 바로 게시돼요" onPress={() => router.push('/notice/new')} />,
+            planner && <ListRow icon="voice" title="설문·찬반 투표 만들기" subtitle="기획행정부 · 참여한 학생은 토큰을 받아요" onPress={() => router.push('/voice/survey/new')} />,
+            planner && <ListRow icon="check" title="익명 건의 확인" subtitle="기획행정부 · 확인 표시·숨기기" onPress={() => openFeature('voice')} />,
+            dept.study && <ListRow icon="study" title="스터디 윗미 관리" subtitle="교육활동부 · 그룹 → 관리자 보기" onPress={() => openFeature('study')} />,
+            reviewer && <ListRow icon="check" title="검토하기" subtitle="공지 승인·신고 처리·분실물 사진 (검토위원)" onPress={() => router.push('/review')} />,
+            isAdmin && <ListRow icon="ranking" title="앱 사용 현황" subtitle="가입·매일 접속·기능별 사용 (관리자)" onPress={() => router.push('/admin/usage')} />,
+            isAdmin && <ListRow icon="user" title="학생 관리" subtitle="직책 지정·학적 정정·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />,
+            isAdmin && <ListRow icon="settings" title="의견 관리" subtitle="학생이 보낸 앱 의견 (관리자)" onPress={() => router.push('/admin/feedback')} />,
+          ])}
+        </>
+      ) : null}
 
-      {group(
-        <>
-          <ListRow icon="voice" title="의견 보내기" subtitle={`버그 제보·개선 요청 · 반영되면 +${REWARD.feedbackDone} 토큰`} onPress={() => router.push('/feedback?from=전체')} />
-          {role !== 'student' && signedIn ? (
-            <>
-              <Divider />
-              <ListRow icon="check" title="검토하기" subtitle="공지 승인·신고 처리·분실물 사진 (검토위원)" onPress={() => router.push('/review')} />
-            </>
-          ) : null}
-          {role === 'admin' ? (
-            <>
-              <Divider />
-              <ListRow icon="ranking" title="앱 사용 현황" subtitle="가입·매일 접속·기능별 사용 (관리자)" onPress={() => router.push('/admin/usage')} />
-              <Divider />
-              <ListRow icon="user" title="학생 관리" subtitle="직책 지정·학적 정정·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />
-              <Divider />
-              <ListRow icon="settings" title="의견 관리" subtitle="관리자 전용" onPress={() => router.push('/admin/feedback')} />
-            </>
-          ) : null}
-        </>,
-      )}
+      {heading('🏫 학생회')}
+      {rows([
+        ...COUNCIL.map(feature),
+        <ListRow icon="voice" title="앱 의견 보내기" subtitle={`버그 제보·개선 요청 · 반영되면 +${REWARD.feedbackDone * mult} 토큰`} onPress={() => router.push('/feedback?from=전체')} />,
+      ])}
 
-      <AppText variant="heading" style={{ marginTop: space.sm }}>
-        기능
-      </AppText>
-      {group(
-        live.map((f, i) => (
-          <View key={f.id}>
-            {i > 0 ? <Divider /> : null}
-            <ListRow icon={f.icon} title={f.title} subtitle={f.desc} onPress={() => openFeature(f.id)} />
-          </View>
-        )),
-      )}
+      {heading('📚 학교생활')}
+      {rows(SCHOOL.map(feature))}
+
+      {heading('🎮 공부·놀이')}
+      {rows([
+        ...FUN.map(feature),
+        signedIn && (
+          <ListRow
+            icon="coin"
+            title="토큰·출석"
+            subtitle={wallet ? `🪙 ${wallet.balance} · 🔥 ${wallet.streak}일 연속` : '불러오는 중'}
+            onPress={() => router.push('/wallet')}
+          />
+        ),
+        signedIn && <ListRow icon="bag" title="꾸미기 상점" subtitle="이모지·닉네임 색·프로필 테마" onPress={() => router.push('/shop')} />,
+      ])}
+
+      {heading('⚙️ 내 설정')}
+      {rows([
+        signedIn && (
+          <ListRow
+            icon="user"
+            title="닉네임"
+            subtitle={wallet?.nickname ?? '아직 없어요 · 랭킹·스터디 그룹에 쓰일 이름'}
+            onPress={() => router.push('/settings/nickname')}
+          />
+        ),
+        <ListRow icon="pin" title={classLabel(myClass)} subtitle="내 반 설정" onPress={() => router.push('/settings/class')} />,
+        <ListRow icon="notice" title="알림 설정" subtitle="마감 전날·아침 급식·내 글 소식" onPress={() => router.push('/settings/notifications')} />,
+        <ListRow icon="settings" title="하단 탭 설정" subtitle="자주 쓰는 기능을 아래 탭에 고정해요" onPress={() => router.push('/settings/tabs')} />,
+        <ListRow icon="plus" title="홈 화면에 추가" subtitle="앱처럼 바로 열고 알림 받기" onPress={() => router.push('/settings/install')} />,
+      ])}
 
       <AppText variant="heading" style={{ marginTop: space.sm }}>
         준비 중

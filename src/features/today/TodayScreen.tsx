@@ -9,13 +9,13 @@ import { Screen } from '@/components/ui/Screen';
 import { InstallBanner } from '@/features/install/InstallBanner';
 import { WalletStrip } from '@/features/today/WalletStrip';
 import { DailyMissions } from '@/features/today/DailyMissions';
-import { GalleryStrip, QuickGrid, QuoteLine } from '@/features/today/HomeParts';
-import { LaunchBanner, TeamCard } from '@/features/launch/Launch';
+import { CouncilSection, QuickGrid, QuoteLine } from '@/features/today/HomeParts';
+import { NicknamePrompt } from '@/features/settings/NicknamePrompt';
+import { useWallet } from '@/state/wallet';
+import { LaunchBanner, TeamCard, useLaunchEvent } from '@/features/launch/Launch';
 import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
 import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
-import { NoticeStrip } from '@/features/notice/NoticeStrip';
-import { SurveyStrip } from '@/features/voice/SurveyStrip';
 import { PushPrompt } from '@/features/settings/PushPrompt';
 import { MEAL_CODE, useTopReview } from '@/features/meal/reviews';
 import { Logo } from '@/components/Logo';
@@ -56,6 +56,8 @@ export function TodayScreen() {
   const meals = useWeekMeals(schoolWeekDay);
   const schedule = useUpcomingSchedule(now.ymd);
 
+  const { wallet } = useWallet();
+  const [nickDone, setNickDone] = useState(false);
   const { width } = useWindowDimensions();
   const wide = width >= 900;
   const refreshing = timetable.refreshing || meals.refreshing || schedule.refreshing;
@@ -104,14 +106,15 @@ export function TodayScreen() {
 
       <QuoteLine today={now.ymd} />
       <WalletStrip />
-      <LaunchBanner />
       <InstallBanner />
       {anySample ? <SampleNotice /> : null}
-      <PushPrompt />
+      <NicknamePrompt onDone={() => setNickDone(true)} />
+      <PushPrompt hold={!nickDone && status === 'ready' && !!wallet && !wallet.nickname} />
 
-      {/* 넓은 화면(태블릿·폴드 펼침)에서는 두 줄로 */}
+      {/* 넓은 화면(태블릿·폴드 펼침)에서는 두 줄로. 좁은 화면은 왼쪽 → 오른쪽 순서로 이어진다 */}
       <View style={wide ? { flexDirection: 'row', gap: space.lg, alignItems: 'flex-start' } : { gap: space.md }}>
         <View style={{ flex: wide ? 1 : undefined, gap: space.md, minWidth: 0 }}>
+          {/* 1. 매일 보는 것: 지금 수업 → 바로 가기 → 마감 → 급식 */}
           <NowCard
             myClass={myClass}
             today={now.ymd}
@@ -121,20 +124,18 @@ export function TodayScreen() {
             holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
           />
           <QuickGrid />
-          <TeamCard homeOnly />
           <DeadlineCard today={now.ymd} />
-          <DailyMissions today={now.ymd} />
-          {wide ? <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} /> : null}
+          <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
+          {wide ? <StudyEventRow today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} /> : null}
         </View>
         <View style={{ flex: wide ? 1 : undefined, gap: space.md, minWidth: 0 }}>
-          <NoticeStrip />
-          <SurveyStrip />
-          <GalleryStrip />
-          {!wide ? <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} /> : null}
-          <View style={{ flexDirection: 'row', gap: space.md }}>
-            <StudyCard />
-            <EventCard today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} />
-          </View>
+          {/* 2. 학생회: 공지 · 설문 · 건의 · 행사 사진 · 앱 의견 */}
+          <CouncilSection />
+          {/* 3. 출시 이벤트 · 공부 · 일정 · 미션 */}
+          <LaunchBanner />
+          {!wide ? <StudyEventRow today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} /> : null}
+          <DailyMissions today={now.ymd} />
+          <TeamCard homeOnly />
         </View>
       </View>
     </Screen>
@@ -347,11 +348,21 @@ function MealCard({ today, minutes, meals, grade }: { today: string; minutes: nu
 
 /* ---------- 아래 두 칸 ---------- */
 
+function StudyEventRow({ today, events, grade }: { today: string; events: SchoolEvent[]; grade: number | null }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: space.md }}>
+      <StudyCard />
+      <EventCard today={today} events={events} grade={grade} />
+    </View>
+  );
+}
+
 function StudyCard() {
   const openFeature = useOpenFeature();
   const { status } = useAuth();
   const ready = status === 'ready';
   const live = useStudyLive(ready);
+  const { mult } = useLaunchEvent();
   const [today, setToday] = useState<StudyToday | null>(null);
   useEffect(() => {
     if (!ready) return;
@@ -370,7 +381,7 @@ function StudyCard() {
         {ready ? durationLabel((today?.ranked_seconds ?? 0) + (today?.class_seconds ?? 0)) : '스터디 윗미'}
       </AppText>
       <AppText variant="caption" color={color.onNavySub}>
-        {ready ? `토큰 ${today?.tokens ?? 0}/${REWARD.studyDailyCap} · 10분마다 +1` : '로그인하면 공부 시간이 반 랭킹이 돼요'}
+        {ready ? `토큰 ${today?.tokens ?? 0} · 10분마다 +${mult}` : '로그인하면 공부 시간이 반 랭킹이 돼요'}
       </AppText>
       <View style={{ marginTop: 'auto', paddingTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: live?.all ? color.liveOnNavy : color.navyDone }} />

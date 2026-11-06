@@ -12,6 +12,12 @@ await db.exec(`
   create role anon nologin; create role authenticated nologin; create role service_role nologin;
   create schema auth;
   create table auth.users (id uuid primary key, email text);
+  -- 실제 Supabase처럼 로그인 수단(신원) 표. 테스트 계정은 기본으로 '구글' 신원을 갖는다(이메일이 fake-로 시작하면 이메일 가입 계정)
+  create table auth.identities (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users on delete cascade, provider text, identity_data jsonb);
+  create function auth._test_identity() returns trigger language plpgsql as $$ begin
+    insert into auth.identities (user_id, provider, identity_data) values (new.id, case when new.email like 'fake-%' then 'email' else 'google' end, jsonb_build_object('email', new.email));
+    return new; end $$;
+  create trigger users_identity after insert on auth.users for each row execute function auth._test_identity();
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
   create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('test.jwt', true), ''), '{}')::jsonb $$;
   grant usage on schema auth to anon, authenticated; grant usage on schema public to anon, authenticated;
@@ -633,7 +639,7 @@ await sub(B, CB, 'a7');
   const re = await as(U2, C2, `select public.register_enrollment('30106','본인')`);
   expect('잘못 등록한 학적 지우기 → 학생이 다시 등록', r.ok && again.rows[0]?.n === 0 && re.ok); }
 // 의견 반영 +10
-{ const fb = (await as(D, CD, `select public.submit_feedback('bug', '시간표가 가끔 비어 보여요', '/timetable', '1.0.0', 'test') id`)); const id = fb.rows[0]?.id ?? (await q(`select max(id) id from public.feedback`)).rows[0]?.id;
+{ const fb = (await as(D, CD, `select (public.submit_feedback('bug', '시간표가 가끔 비어 보여요', '/timetable', '1.0.0', 'test'))->>'id' id`)); const id = fb.rows[0]?.id ?? (await q(`select max(id) id from public.feedback`)).rows[0]?.id;
   const b0 = await bal(D); await as(A, CA, `select public.admin_update_feedback(${id}, 'done', '고쳤어요')`); expect('의견 반영 +10', (await bal(D)) === b0 + 10); }
 { const r = await q(`select value from public.app_config where key='app_url'`); expect('알림 서버 주소 = 정식 주소', r.rows[0]?.value === 'https://unjung-app.vercel.app'); }
 
@@ -796,6 +802,37 @@ await sub(B, CB, 'a7');
   const n = await as(P, CP, `select public.submit_notice('council', '안건 투표 안내', '체육복 등교 안건 투표가 열렸어요', null, 'all', public.seoul_today(), 3) id`);
   const st = await q(`select status from public.notices where id = ${n.rows[0]?.id}`);
   expect('기획행정부 학번은 자동 지정, 공지 바로 게시', pl.rows[0]?.is_planner === true && st.rows[0]?.status === 'approved'); }
+
+// ───────── 11-06 출시 직전 보안 ─────────
+{ const F = '99999999-9999-9999-9999-999999999950', CF = 'fake-hacker@unjung.hs.kr';
+  await q(`insert into auth.users values ('${F}','${CF}')`);
+  const r1 = await as(F, CF, `select public.is_school_user() ok`); expect('이메일 가입 가짜 학교 계정 → 학생 아님', r1.ok && r1.rows[0]?.ok === false);
+  const r2 = await as(F, CF, `select public.register_enrollment('20999','가짜')`); expect('가짜 계정 학번 등록 거부', !r2.ok);
+  const r3 = await as(F, CF, `select count(*)::int n from public.meals_cache`); expect('가짜 계정 급식 표도 0', r3.ok && r3.rows[0]?.n === 0);
+  // 구글 개인 계정이 토큰 이메일만 학교 주소로 바꾼 경우(신원 이메일은 gmail)
+  const G = '99999999-9999-9999-9999-999999999951'; await q(`insert into auth.users values ('${G}','someone2@gmail.com')`);
+  const r4 = await as(G, 'changed@unjung.hs.kr', `select public.is_school_user() ok`); expect('토큰 이메일만 바꾼 계정 → 학생 아님', r4.rows[0]?.ok === false);
+  const r5 = await as(B, CB, `select public.is_school_user() ok`); expect('진짜 구글 학교 계정은 학생', r5.rows[0]?.ok === true);
+  await db.exec(`grant select on public.meals_cache to anon; reset role; select set_config('test.uid','',false), set_config('test.jwt','{}',false); set role anon;`);
+  const r6 = await q(`select count(*)::int n from public.meals_cache`); await db.exec('reset role');
+  expect('비로그인은 오류 없이 0행', r6.ok && r6.rows[0]?.n === 0);
+  const r7 = await as(B, CB, `select public.push_on_feedback()`); expect('트리거 함수 직접 호출 차단', !r7.ok && /permission/.test(r7.err ?? ''));
+}
+{ // 공지 하루 10개(자동 승인되는 기획행정부도)
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr';
+  let last; for (let i = 0; i < 11; i++) last = await as(P, CP, `select public.submit_notice('council', '안내 ${i}번', '안내 내용입니다 ${i}', null, 'all', public.seoul_today(), 3)`);
+  expect('공지 하루 10개 넘으면 거부', !last.ok && /하루에 10개/.test(last.err ?? ''));
+}
+{ // 출시 기간 의견 보너스: 하루 한 번 +5
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2099-01-01T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+  const U = '99999999-9999-9999-9999-999999999952', CU = 'fb@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
+  await as(U, CU, `select public.register_enrollment('30808','의견')`);
+  const a = await as(U, CU, `select public.submit_feedback('idea', '시간표에 교실 위치도 보였으면 좋겠어요', '', '', '') r`);
+  const b = await as(U, CU, `select public.submit_feedback('idea', '급식 사진도 올릴 수 있으면 좋겠어요', '', '', '') r`);
+  const s = await as(U, CU, `select public.feedback_stats() r`);
+  expect('출시 의견 보너스 하루 한 번 +5', a.rows[0]?.r?.bonus === 5 && b.rows[0]?.r?.bonus === 0 && s.rows[0]?.r?.bonus_today === true && s.rows[0]?.r?.mine === 2);
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+}
 
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
 if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }

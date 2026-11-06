@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Button, Card } from '@/components/ui/primitives';
 import { DEV_TEAM } from '@/features/registry';
@@ -36,16 +36,36 @@ export function LaunchBanner() {
   const { refresh } = useWallet();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   if (!ev?.from || !ev.until) return null;
   const ended = !ev.active && ev.started;
   if (ended) return null;
   const m = ev.mult ?? 2;
+  // 웰컴 토큰을 받은 뒤에는 한 줄로 접어 둔다(눌러서 펼치기)
+  if (ev.active && ev.gift_claimed && !open) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`출시 기념 토큰 부스트 ${m}배, ${md(ev.until)}까지. 펼치기`}
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 52, backgroundColor: pressed ? color.navyRaised : color.navy, borderRadius: radius.card, paddingHorizontal: space.lg })}>
+        <AppText variant="bodyStrong" color={color.onNavy} style={{ flex: 1 }}>
+          🎉 출시 기념 토큰 ×{m}
+        </AppText>
+        <AppText variant="label" color={color.accent}>
+          {md(ev.until)}까지 ›
+        </AppText>
+      </Pressable>
+    );
+  }
   const rows: [string, string, string][] = [
     ['📅 출석', `+${REWARD.checkIn}`, `+${REWARD.checkIn * m}`],
     ['🍱 급식 한줄평', `+${REWARD.mealReview}`, `+${REWARD.mealReview * m}`],
     ['⏱️ 공부 10분', '+1', `+${m}`],
     ['🎮 게임 한 판', '1~5', `${m}~${5 * m}`],
     ['🗳️ 설문 참여', `+${REWARD.survey}`, `+${REWARD.survey * m}`],
+    ['🛠️ 앱 의견 (하루 첫 의견)', '0', '+5'],
+    ['✅ 내 의견이 반영되면', `+${REWARD.feedbackDone}`, `+${REWARD.feedbackDone * m}`],
   ];
   return (
     <Card tone="navy" style={{ gap: space.md, borderWidth: 2, borderColor: color.accent }}>

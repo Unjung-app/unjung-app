@@ -82,11 +82,11 @@
     submitScore(n) {
       n = Math.max(0, Math.floor(Number(n) || 0));
       if (inApp) return ask('score', { score: n }).then((r) => r || { best: n });
-      const best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best);
+      let best = n; try { best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best); } catch (e) {}
       return Promise.resolve({ best });
     },
     save(obj) { const s = JSON.stringify(obj ?? null); if (s.length > 10000) return Promise.reject(new Error('저장 데이터가 너무 커요(10KB까지)'));
-      if (inApp) return ask('save', s); localStorage.setItem(KEY + ':save', s); return Promise.resolve(true); },
+      if (inApp) return ask('save', s); try { localStorage.setItem(KEY + ':save', s); } catch (e) { return Promise.resolve(false); } return Promise.resolve(true); },
     load() { if (inApp) return ask('load').then((s) => (s ? JSON.parse(s) : null)); try { return Promise.resolve(JSON.parse(localStorage.getItem(KEY + ':save'))); } catch { return Promise.resolve(null); } },
     onPause(fn) { listeners.pause.push(fn); },
     exit() { if (inApp) ask('exit'); },
