@@ -11,6 +11,7 @@ import { WalletStrip } from '@/features/today/WalletStrip';
 import { DailyMissions } from '@/features/today/DailyMissions';
 import { CouncilSection, QuickGrid, QuoteLine } from '@/features/today/HomeParts';
 import { NicknamePrompt } from '@/features/settings/NicknamePrompt';
+import { FirstMissions } from '@/features/launch/FirstMissions';
 import { useWallet } from '@/state/wallet';
 import { LaunchBanner, TeamCard, useLaunchEvent } from '@/features/launch/Launch';
 import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
@@ -124,6 +125,7 @@ export function TodayScreen() {
             holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
           />
           <QuickGrid />
+          <FirstMissions />
           <DeadlineCard today={now.ymd} />
           <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
           {wide ? <StudyEventRow today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} /> : null}
