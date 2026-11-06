@@ -7,7 +7,6 @@ import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { usePrefs, type MyClass } from '@/state/prefs';
 import { useAuth } from '@/state/auth';
-import { CONTACT_EMAIL } from '@/lib/supabase';
 import { color, radius, space } from '@/theme/tokens';
 
 // 운중고는 모든 학년이 8반까지 있다
@@ -28,8 +27,9 @@ export function ClassSettingsScreen() {
             {enrollment.grade}학년 {enrollment.class_no}반
           </AppText>
           <AppText variant="body" color={color.inkMuted}>
-            학번({enrollment.student_no})으로 자동 설정됐어요. 틀렸다면 {CONTACT_EMAIL} 으로 연락해 주세요.
+            학번({enrollment.student_no})으로 자동 설정됐어요.
           </AppText>
+          <Button label="학번·이름이 틀렸어요" variant="soft" onPress={() => router.push('/settings/enrollment')} />
         </View>
       </Screen>
     );

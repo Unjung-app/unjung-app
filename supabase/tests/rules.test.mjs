@@ -779,7 +779,12 @@ await sub(B, CB, 'a7');
   const Z = '99999999-9999-9999-9999-999999999920', CZ = 'z@unjung.hs.kr'; await q(`insert into auth.users values ('${Z}','${CZ}')`);
   await as(Z, CZ, `select public.register_enrollment('20512','종범')`);
   const role = await q(`select role from public.profiles where id='${Z}'`);
-  expect('명단 학번(20512)으로 등록하면 자동 관리자', role.rows[0]?.role === 'admin'); }
+  expect('명단 학번(20512)으로 등록해도 자동 관리자 아님(학번은 아무나 칠 수 있음)', role.rows[0]?.role === 'student');
+  const pend = await as(A, CA, `select want from public.admin_listed_pending() where user_id='${Z}'`);
+  const nz = await as(Z, CZ, `select public.admin_confirm_listed('${Z}')`);
+  const cf = await as(A, CA, `select public.admin_confirm_listed('${Z}') r`);
+  const role2 = await q(`select role from public.profiles where id='${Z}'`);
+  expect('명단 확인: 관리자가 이름 보고 확인해야 관리자', pend.rows[0]?.want === 'admin' && !nz.ok && cf.rows[0]?.r === 'admin' && role2.rows[0]?.role === 'admin'); }
 
 // 출시 이벤트 · 기획행정부 명단
 { await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2099-01-01T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
@@ -798,10 +803,63 @@ await sub(B, CB, 'a7');
   expect('이벤트가 끝나면 원래대로', b1 - b0 === 3);
   const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr'; await q(`insert into auth.users values ('${P}','${CP}')`);
   await as(P, CP, `select public.register_enrollment('20218','석주')`);
+  const pl0 = await q(`select is_planner from public.profiles where id='${P}'`);
+  expect('기획행정부 학번도 자동 지정 안 됨', pl0.rows[0]?.is_planner === false);
+  await as(A, CA, `select public.admin_confirm_listed('${P}')`);
   const pl = await q(`select is_planner from public.profiles where id='${P}'`);
   const n = await as(P, CP, `select public.submit_notice('council', '안건 투표 안내', '체육복 등교 안건 투표가 열렸어요', null, 'all', public.seoul_today(), 3) id`);
   const st = await q(`select status from public.notices where id = ${n.rows[0]?.id}`);
-  expect('기획행정부 학번은 자동 지정, 공지 바로 게시', pl.rows[0]?.is_planner === true && st.rows[0]?.status === 'approved'); }
+  expect('명단 확인 후 기획행정부, 공지 바로 게시', pl.rows[0]?.is_planner === true && st.rows[0]?.status === 'approved'); }
+
+// ───────── 학번·이름 정정 ─────────
+{ const S1 = '99999999-9999-9999-9999-999999999971', C1 = 'fix1@unjung.hs.kr';
+  const S2 = '99999999-9999-9999-9999-999999999972', C2 = 'fix2@unjung.hs.kr';
+  const S3 = '99999999-9999-9999-9999-999999999973', C3 = 'fix3@unjung.hs.kr';
+  await q(`insert into auth.users values ('${S1}','${C1}'),('${S2}','${C2}'),('${S3}','${C3}')`);
+  await as(S1, C1, `select public.register_enrollment('20731','임하지')`);
+  const st0 = await as(S1, C1, `select public.my_enrollment_fix() r`);
+  expect('정정: 등록 직후엔 직접 고치기 가능', st0.rows[0]?.r?.can_self_fix === true);
+  const lst = await as(S1, C1, `select public.self_fix_enrollment('20218','임하진')`);
+  expect('정정: 직책 명단 학번으로는 직접 못 바꿈', !lst.ok);
+  await as(S2, C2, `select public.register_enrollment('20301','다른사람')`);
+  const taken = await as(S1, C1, `select public.self_fix_enrollment('20301','임하진')`);
+  expect('정정: 남이 쓰는 학번으로는 직접 못 바꿈', !taken.ok);
+  const ok1 = await as(S1, C1, `select (public.self_fix_enrollment('20714','임하진')).student_no r`);
+  expect('정정: 첫 직접 고치기 성공', ok1.ok && ok1.rows[0]?.r === '20714');
+  const again = await as(S1, C1, `select public.self_fix_enrollment('20715','임하진')`);
+  const st1 = await as(S1, C1, `select public.my_enrollment_fix() r`);
+  expect('정정: 두 번째 직접 고치기는 막힘', !again.ok && st1.rows[0]?.r?.can_self_fix === false);
+  await as(S2, C2, `select public.register_enrollment('20302','늦은사람')`).catch(() => {});
+  await q(`update public.enrollments set created_at = now() - interval '25 hours' where user_id='${S2}'`);
+  const late = await as(S2, C2, `select public.self_fix_enrollment('20303','다른사람')`);
+  expect('정정: 24시간 지나면 직접 못 고침', !late.ok);
+  // S3: 내 학번(20301)을 S2가 먼저 등록 → 등록 못 함 → 요청
+  const blocked = await as(S3, C3, `select public.register_enrollment('20301','진짜주인')`);
+  const rq = await as(S3, C3, `select public.request_enrollment_fix('20301','진짜주인','다른 사람이 제 학번을 등록했어요') id`);
+  expect('정정 요청: 등록 전이어도 보낼 수 있음', !blocked.ok && rq.ok);
+  const nl = await as(S3, C3, `select * from public.admin_enrollment_requests()`);
+  const list = await as(A, CA, `select * from public.admin_enrollment_requests() where user_id='${S3}'`);
+  expect('정정 요청 목록: 관리자만, 학번 쓰는 계정 표시', !nl.ok && list.rows[0]?.holder_id === S2);
+  const nd = await as(S3, C3, `select public.admin_decide_enrollment_request(${rq.rows[0]?.id}, true, null)`);
+  const d = await as(A, CA, `select public.admin_decide_enrollment_request(${rq.rows[0]?.id}, true, null)`);
+  const e3 = await q(`select student_no from public.enrollments where user_id='${S3}'`);
+  const e2 = await q(`select count(*)::int n from public.enrollments where user_id='${S2}'`);
+  expect('정정 승인: 요청자 등록, 차지했던 계정은 학적 해제', !nd.ok && d.ok && e3.rows[0]?.student_no === '20301' && e2.rows[0]?.n === 0);
+  const d2 = await as(A, CA, `select public.admin_decide_enrollment_request(${rq.rows[0]?.id}, false, null)`);
+  expect('정정: 처리된 요청은 다시 처리 못 함', !d2.ok);
+  const rq2 = await as(S1, C1, `select public.request_enrollment_fix('20716','임하진', null) id`);
+  await as(A, CA, `select public.admin_decide_enrollment_request(${rq2.rows[0]?.id}, false, '확인이 안 돼요')`);
+  const st2 = await as(S1, C1, `select public.my_enrollment_fix() r`);
+  const e1 = await q(`select student_no from public.enrollments where user_id='${S1}'`);
+  expect('정정 반려: 학적 그대로, 상태 반려', st2.rows[0]?.r?.request?.status === 'rejected' && e1.rows[0]?.student_no === '20714');
+  const log = await as(A, CA, `select kind from public.admin_enrollment_log(50)`);
+  const kinds = new Set(log.rows.map((x) => x.kind));
+  const nlog = await as(S1, C1, `select * from public.admin_enrollment_log(5)`);
+  expect('변경 기록: 직접·요청·해제가 남고 관리자만 봄', kinds.has('self') && kinds.has('request') && kinds.has('release') && !nlog.ok);
+  const nm = await as(A, CA, `select student_no from public.admin_find_user('임하진')`);
+  expect('관리자 찾기: 이름으로도', nm.rows[0]?.student_no === '20714');
+  const direct = await as(S1, C1, `select count(*)::int n from public.enrollment_requests`);
+  expect('정정 요청 표는 직접 못 읽음', !direct.ok || direct.rows[0]?.n === 0); }
 
 // ───────── 11-06 출시 직전 보안 ─────────
 { const F = '99999999-9999-9999-9999-999999999950', CF = 'fake-hacker@unjung.hs.kr';

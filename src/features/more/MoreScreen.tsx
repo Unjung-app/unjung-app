@@ -95,7 +95,7 @@ export function MoreScreen() {
             dept.study && <ListRow icon="study" title="스터디 윗미 관리" subtitle="교육활동부 · 그룹 → 관리자 보기" onPress={() => openFeature('study')} />,
             reviewer && <ListRow icon="check" title="검토하기" subtitle="공지 승인·신고 처리·분실물 사진 (검토위원)" onPress={() => router.push('/review')} />,
             isAdmin && <ListRow icon="ranking" title="앱 사용 현황" subtitle="가입·매일 접속·기능별 사용 (관리자)" onPress={() => router.push('/admin/usage')} />,
-            isAdmin && <ListRow icon="user" title="학생 관리" subtitle="직책 지정·학적 정정·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />,
+            isAdmin && <ListRow icon="user" title="학생 관리" subtitle="학적 정정 요청·직책·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />,
             isAdmin && <ListRow icon="settings" title="의견 관리" subtitle="학생이 보낸 앱 의견 (관리자)" onPress={() => router.push('/admin/feedback')} />,
           ])}
         </>
