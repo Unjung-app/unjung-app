@@ -214,10 +214,20 @@
     }
 
     let W, H, dpr;
+    // [11-08] 앱 안(iframe)에서는 처음 실행될 때 화면 크기가 0으로 읽히는 휴대폰이 있다
+    // → 캔버스가 0×0이 되어 화면이 비는 문제. 실제 크기를 여러 방법으로 읽고, 바뀌면 다시 맞춘다.
+    function viewSize() {
+      const r = document.documentElement.getBoundingClientRect();
+      return {
+        w: Math.round(window.innerWidth || document.documentElement.clientWidth || r.width || 0),
+        h: Math.round(window.innerHeight || document.documentElement.clientHeight || r.height || 0),
+      };
+    }
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
-      W = window.innerWidth;
-      H = window.innerHeight;
+      const v = viewSize();
+      W = v.w;
+      H = v.h;
       canvas.width = W * dpr;
       canvas.height = H * dpr;
       canvas.style.width = W + 'px';
@@ -226,6 +236,7 @@
       if (!baseY) baseY = H - 80;
     }
     window.addEventListener('resize', resize);
+    if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(document.documentElement);
 
     // Game state
     let score = 0;
@@ -272,6 +283,7 @@
       hintEl.style.opacity = '1';
       hintEl.textContent = '화면을 탭해서 떨어뜨리세요';
 
+      resize();
       baseY = H - 80;
       blocks = [];
       // Base platform (school ground)
@@ -783,6 +795,12 @@
     }
 
     function loop() {
+      const v = viewSize();
+      if (v.w > 0 && v.h > 0 && (v.w !== W || v.h !== H)) {
+        resize();
+        if (!gameRunning && !zoomingOut) baseY = H - 80;
+        else if (gameRunning && blocks.length === 1 && score === 0) initGame(); // 시작하자마자 크기가 바뀌면 바닥부터 다시 놓기
+      }
       ctx.clearRect(0, 0, W, H);
 
       // 줌아웃 연출 (게임 종료 후 2초)

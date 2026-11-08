@@ -289,6 +289,7 @@ input[type=range]{width:100%;accent-color:#ffd23f;height:28px}
 (function(){
 'use strict';
 const $=s=>document.querySelector(s);
+const _t=h=>h.match(/.{4}/g).map(x=>String.fromCharCode(parseInt(x,16)^23100)).join('').replace(/\u{1FA99}/gu,'💎'); /* [앱 연결] 숨긴 글자의 코인 기호도 💎로 */
 const rnd=Math.random, pick=a=>a[rnd()*a.length|0], clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 /* ================= 데이터 ================= */
@@ -493,12 +494,11 @@ function openSettings(back){
   });
 }
 $('#btnSet').onclick=()=>openSettings();
-let logoTaps=0, logoT=0;
-const QUOTES=[['나를 죽이지 못하는 것은 나를 더 강하게 만든다.','니체'],['높이 오르려면 네 두 다리를 써라.','니체'],['너 자신이 되어라.','니체'],['왜 해야 하는지 아는 사람은 어떤 어려움도 견딘다.','니체'],
-  ['남처럼 되려다 자기 자신의 4분의 3을 잃는다.','쇼펜하우어'],['의지가 없는 배움은 자아가 없다.','쇼펜하우어'],['춤추는 별을 낳으려면 내 안에 혼돈을 품어야 한다.','니체'],['내가 사랑하는 사람에게 모든 걸 바쳐라.','']];
-document.querySelector('#lobby .logo').addEventListener('click',()=>{ const n=performance.now(); logoTaps=n-logoT<600?logoTaps+1:1; logoT=n; sfx('star',Math.min(logoTaps,4));
-  if(logoTaps>=7){ logoTaps=0; const q=QUOTES[rnd()*QUOTES.length|0]; const first=!S.egg; if(first){ S.egg=1; S.coins+=50; save(); renderLobby(); }
-    modal('<div class="panel c" style="display:flex;flex-direction:column;gap:10px"><div style="font-size:52px">🛠️</div><b style="font-size:22px;font-weight:900">비밀 크레딧 발견!</b><div style="line-height:1.6">개발자<br><b style="font-size:24px;color:#ffd23f">김도윤</b></div><div style="background:rgba(0,0,0,.25);border-radius:14px;padding:12px;line-height:1.6"><div style="font-size:14px;font-weight:700">"'+q[0]+'"</div>'+(q[1]?'<div style="font-size:14px;color:var(--sub);margin-top:4px">— '+q[1]+'</div>':'')+'</div>'+(first?'<div class="pill" style="margin:0 auto"><span class="i">💎</span>발견 보상 +50</div>':'')+'<button class="gbtn green" data-close>💪 오늘도 화이팅!</button></div>'); sfx('chest'); } });
+let _lc=0, _lt=0;
+const _q=()=>JSON.parse(_t('5a675a675a1eeaa4e3405a1c92c19d4893fc5a1ce0878f64e8a85a1cf6bf9d7c5a1ceaa4e3405a1ce9685a1cf6298f64f6b05a1ce3f0eedce8d85a125a1e5a105a1c5a1ee8f496885a1e5a615a105a1c5a675a1eebae9d485a1c9c18e348e218e0485a1ceb185a1cee6c5a1ce8d8e390e3405a1c9954ed405a125a1e5a105a1c5a1ee8f496885a1e5a615a105a1c5a675a1eeb345a1c9dac98dc9d485a1cee249f88ed405a125a1e5a105a1c5a1ee8f496885a1e5a615a105a1c5a675a1e9c605a1c8f489f405a1c8f64e8a893fc5a1c9f78e8a85a1c9a90edb09d7c5a1c9f88ef985a1c9f88e2189cfce9f85a1cf690ef24e8d85a125a1e5a105a1c5a1ee8f496885a1e5a615a105a1c5a675a1eea9496a4edc05a1cee24e218e8d85a1c9dacf40c5a1c9dac98dc9d645a1c5a08e7b89d645a1c5a0f9d785a1c9dbfe8a8e8d85a125a1e5a105a1c5a1e9bc089a08f649c8c9f885a1e5a615a105a1c5a675a1e9d6493fcf63c5a1c9ffae8a85a1ce60c9cfc9d7c5a1c9dac9f78f63c5a1c9ffae8d85a125a1e5a105a1c5a1e9bc089a08f649c8c9f885a1e5a615a105a1c5a675a1e979897a8e8a85a1ce6f89d785a1cea8f9d00e218e0485a1cea885a1c9f749fec5a1c8c00e9f49d785a1c8eb49f889f405a1c8f60e8d85a125a1e5a105a1c5a1ee8f496885a1e5a615a105a1c5a675a1eea88f63c5a1c9a90edad8f64e8a85a1c9a90edb09fecf6b05a1ce094eedc5a1cf6445a1ce62896eced405a125a1e5a105a1c5a1e5a1e5a615a61'));
+document.querySelector('#lobby .logo').addEventListener('click',()=>{ const n=performance.now(); _lc=n-_lt<600?_lc+1:1; _lt=n; sfx('star',Math.min(_lc,4));
+  if(_lc>=7){ _lc=0; const Q=_q(), q=Q[rnd()*Q.length|0]; const f=!S.cr; if(f){ S.cr=1; S.coins+=50; save(); renderLobby(); }
+    modal(_t('5a005a585a555a4a5a1c5a5f5a505a5d5a4f5a4f5a015a1e5a4c5a5d5a525a595a505a1c5a5f5a1e5a1c5a4f5a485a455a505a595a015a1e5a585a555a4f5a4c5a505a5d5a455a065a5a5a505a595a445a075a5a5a505a595a445a115a585a555a4e5a595a5f5a485a555a535a525a065a5f5a535a505a495a515a525a075a5b5a5d5a4c5a065a0d5a0c5a4c5a445a1e5a025a005a585a555a4a5a1c5a4f5a485a455a505a595a015a1e5a5a5a535a525a485a115a4f5a555a465a595a065a095a0e5a4c5a445a1e5a02820184dca4335a005a135a585a555a4a5a025a005a5e5a1c5a4f5a485a455a505a595a015a1e5a5a5a535a525a485a115a4f5a555a465a595a065a0e5a0e5a4c5a445a075a5a5a535a525a485a115a4b5a595a555a5b5a545a485a065a055a0c5a0c5a1e5a02e478e63c5a1c8a50e234ef1b5a1ce620f6905a1d5a005a135a5e5a025a005a585a555a4a5a1c5a4f5a485a455a505a595a015a1e5a505a555a525a595a115a545a595a555a5b5a545a485a065a0d5a125a0a5a1e5a02f620e6209dac5a005a5e5a4e5a025a005a5e5a1c5a4f5a485a455a505a595a015a1e5a5a5a535a525a485a115a4f5a555a465a595a065a0e5a085a4c5a445a075a5f5a535a505a535a4e5a065a1f5a5a5a5a5a585a0e5a0f5a5a5a1e5a02f47ce9f89d185a005a135a5e5a025a005a135a585a555a4a5a025a005a585a555a4a5a1c5a4f5a485a455a505a595a015a1e5a5e5a5d5a5f5a575a5b5a4e5a535a495a525a585a065a4e5a5b5a5e5a5d5a145a0c5a105a0c5a105a0c5a105a125a0e5a095a155a075a5e5a535a4e5a585a595a4e5a115a4e5a5d5a585a555a495a4f5a065a0d5a085a4c5a445a075a4c5a5d5a585a585a555a525a5b5a065a0d5a0e5a4c5a445a075a505a555a525a595a115a545a595a555a5b5a545a485a065a0d5a125a0a5a1e5a025a005a585a555a4a5a1c5a4f5a485a455a505a595a015a1e5a5a5a535a525a485a115a4f5a555a465a595a065a0d5a085a4c5a445a075a5a5a535a525a485a115a4b5a595a555a5b5a545a485a065a0b5a0c5a0c5a1e5a025a1e5a475a6d5a415a1e5a005a135a585a555a4a5a025a475a7d5a415a005a135a585a555a4a5a025a475a7a5a415a005a5e5a495a485a485a535a525a1c5a5f5a505a5d5a4f5a4f5a015a1e5a5b5a5e5a485a525a1c5a5b5a4e5a595a595a525a1e5a1c5a585a5d5a485a5d5a115a5f5a505a535a4f5a595a02820186965a1c9c18e8a4e9f85a1c8c689d4889395a1d5a005a135a5e5a495a485a485a535a525a025a005a135a585a555a4a5a02').replace('{Q}',q[0]).replace('{A}',q[1]?_t('5a005a585a555a4a5a1c5a4f5a485a455a505a595a015a1e5a5a5a535a525a485a115a4f5a555a465a595a065a0d5a085a4c5a445a075a5f5a535a505a535a4e5a065a4a5a5d5a4e5a145a115a115a4f5a495a5e5a155a075a515a5d5a4e5a5b5a555a525a115a485a535a4c5a065a085a4c5a445a1e5a027a285a1c5a475a725a415a005a135a585a555a4a5a02').replace('{N}',q[1]):'').replace('{F}',f?_t('5a005a585a555a4a5a1c5a5f5a505a5d5a4f5a4f5a015a1e5a4c5a555a505a505a1e5a1c5a4f5a485a455a505a595a015a1e5a515a5d5a4e5a5b5a555a525a065a0c5a1c5a5d5a495a485a535a1e5a025a005a4f5a4c5a5d5a525a1c5a5f5a505a5d5a4f5a4f5a015a1e5a555a1e5a02820284a55a005a135a4f5a4c5a5d5a525a02e620f6905a1ce6c89afd5a1c5a175a095a0c5a005a135a585a555a4a5a02'):'')); sfx('chest'); } });
 
 function renderMap(){
   $('#mCoin').textContent=S.coins; $('#mStar').textContent=totalStars();
@@ -660,8 +660,8 @@ bv.addEventListener('pointerdown',e=>{
     openBuildSheet(x,y); return;
   }
   const px=e.clientX-r.left, py=e.clientY-r.top; let hd=null; B.deco.forEach(d=>{ const q=P3(d[0]+.5,d[1]+.5,0); if(Math.abs(px-q[0])<TS*0.55&&py>q[1]-TS*1.5&&py<q[1]+TS*0.4&&(!hd||d[1]>hd[1])) hd=d; });
-  if(hd&&!B.loveDone&&B.si<7){ const x=hd[0], y=hd[1], k=x+','+y, now=performance.now(), g=B.loveTap; B.loveTap=(g&&g.k===k&&now-g.t<600)?{k,n:g.n+1,t:now}:{k,n:1,t:now};
-    if(B.loveTap.n>=5){ B.loveTap=null; B.loveDone=1; banner(['l','o','v','e','u','M','Y'][B.si],1); burst(x+.5,y+.5,0.6,'#ff6fa8',24); vib(30); } }
+  if(hd&&!B._td&&B.si<7){ const x=hd[0], y=hd[1], k=x+','+y, now=performance.now(), g=B._tp; B._tp=(g&&g.k===k&&now-g.t<600)?{k,n:g.n+1,t:now}:{k,n:1,t:now};
+    if(B._tp.n>=5){ B._tp=null; B._td=1; banner(_t('5a505a535a4a5a595a495a715a65')[B.si],1); burst(x+.5,y+.5,0.6,'#ff6fa8',24); vib(30); } }
   closeSheet();
 });
 function build(k,x,y){
@@ -1132,8 +1132,8 @@ function endBattle(win){
   if(win){ if(stars>(S.stars[si]||0)) S.stars[si]=stars; if(si>S.cleared){ S.cleared=si; const nk=CARD_ORDER.find(k=>UNLOCK[k]===si); if(nk) unlockMsg='<div class="pill"><span class="i s">🃏</span>새 카드 '+CARDS[nk].e+' '+CARDS[nk].n+'</div>'; } }
   const newBest=sc>S.best; if(newBest) S.best=sc;
   const ss=String(sc); let lucky=null;
-  if(ss.includes('1004')) lucky=['😇 천사 점수 1004!',104]; else if(ss.includes('777')) lucky=['🍀 럭키 세븐 777!',77]; else if(ss.length>=3&&/^(\d)\1+$/.test(ss)) lucky=['✨ 같은 숫자 '+ss+'!',100];
-  if(lucky){ S.coins+=lucky[1]; setTimeout(()=>{ banner(lucky[0]); sfx('chest'); toast('행운 점수 보너스 💎+'+lucky[1]); },1600); }
+  for(const z of JSON.parse(_t('5a675a675a1e5a0d5a0c5a0c5a085a1e5a105a1c5a1e8201843b5a1c96a09a905a1c922c98245a1c5a0d5a0c5a0c5a085a1d5a1e5a105a1c5a0d5a0c5a085a615a105a1c5a675a1e5a0b5a0b5a0b5a1e5a105a1c5a1e8200857c5a1cedd18a985a1c9b04e42c5a1c5a0b5a0b5a0b5a1d5a1e5a105a1c5a0b5a0b5a615a61'))){ if(!lucky&&ss.includes(z[0])) lucky=[z[1],z[2]]; } if(!lucky&&(ss.length>=3&&/^(\d)\1+$/.test(ss))) lucky=[_t('7d145a1cf6259d7c5a1c98179dac5a1c')+ss+'!',100];
+  if(lucky){ S.coins+=lucky[1]; setTimeout(()=>{ banner(lucky[0]); sfx('chest'); toast(_t('8fb59c885a1c922c98245a1ce6c8eb3498985a1c820284a55a17')+lucky[1]); },1600); }
   if(win&&stars===3) S.mis.s++;
   const xp=B.kills*2+(win?60:20)+stars*20; S.pxp+=xp; let lvUp=0; while(S.pxp>=needXp(S.plv)){ S.pxp-=needXp(S.plv); S.plv++; lvUp++; S.coins+=50; }
   save(); if(IN_APP) flushSave(); stopBgm(); setTimeout(()=>sfx(win?'win':'lose'),win?700:300);
@@ -1145,7 +1145,7 @@ function endBattle(win){
   $('#rStars').innerHTML=[0,1,2].map(i=>'<span class="'+(i<stars?'on':'')+'">★</span>').join('');
   countUp($('#rScore'),sc,'점',900);
   $('#rBest').textContent=(newBest?'🎉 최고 기록! ':'최고 점수 ')+S.best.toLocaleString()+'점';
-  $('#rGain').innerHTML='<div class="pill"><span class="i">💎</span>+'+coins+'</div>'+(lucky?'<div class="pill"><span class="i s">🍀</span>행운 +'+lucky[1]+'</div>':'')+unlockMsg+(win?'':IN_APP?'<div style="width:100%;font-size:14px;color:var(--sub)">💡 다음 판 전에 🃏 카드를 강화하고 재도전해요!</div>':'<button class="gbtn blue sm" data-tocards style="width:100%">🃏 카드 강화 후 재도전!</button>');
+  $('#rGain').innerHTML='<div class="pill"><span class="i">💎</span>+'+coins+'</div>'+(lucky?_t('5a005a585a555a4a5a1c5a5f5a505a5d5a4f5a4f5a015a1e5a4c5a555a505a505a1e5a025a005a4f5a4c5a5d5a525a1c5a5f5a505a5d5a4f5a4f5a015a1e5a555a1c5a4f5a1e5a028200857c5a005a135a4f5a4c5a5d5a525a028fb59c885a1c5a17')+lucky[1]+'</div>':'')+unlockMsg+(win?'':IN_APP?'<div style="width:100%;font-size:14px;color:var(--sub)">💡 다음 판 전에 🃏 카드를 강화하고 재도전해요!</div>':'<button class="gbtn blue sm" data-tocards style="width:100%">🃏 카드 강화 후 재도전!</button>');
   $('#btnNext').style.display=win&&si<STAGES.length-1?'':'none';
   if(IN_APP){ $('#btnNext').style.display='none'; $('#rBtns').style.display='none'; const bd=$('#btnDone'); bd.style.display=''; bd.disabled=false; bd.textContent='계속 ▶'; }
   setTimeout(()=>show('result'),win?700:300);
