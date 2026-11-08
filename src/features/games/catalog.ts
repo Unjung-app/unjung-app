@@ -60,7 +60,7 @@ export const GAMES: Record<GameId, GameInfo> = {
     how: '화면을 탭해서 층을 떨어뜨려요. 딱 맞추면 콤보 보너스',
   },
   campus_walk: {
-    title: '운중고 3D 산책',
+    title: '학교 한바퀴',
     emoji: '🌸',
     desc: '교실부터 벚꽃 마당까지, 운중고의 여섯 장소를 탐험해요',
     tag: '3D 탐험',
