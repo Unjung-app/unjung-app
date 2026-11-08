@@ -5,9 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
 import { Button, Card } from '@/components/ui/primitives';
-import { Segmented } from '@/components/ui/Segmented';
 import { Screen } from '@/components/ui/Screen';
-import { useOpenFeature } from '@/features/hooks';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 
@@ -15,40 +13,26 @@ import { color, radius, space } from '@/theme/tokens';
 const BASE_URL = 'https://read365.edunet.net/PureScreen/SchoolSearchResult';
 const RECENT_SEARCHES_KEY = 'library.recentSearches';
 const MAX_RECENT_SEARCHES = 5;
-type SearchCategory = 'all' | 'title' | 'author' | 'publisher';
-type RecentSearch = { keyword: string; category: SearchCategory };
-
-const SEARCH_CATEGORIES: { value: SearchCategory; label: string }[] = [
-  { value: 'all', label: '전체' },
-  { value: 'title', label: '제목' },
-  { value: 'author', label: '저자' },
-  { value: 'publisher', label: '발행자' },
-];
-
-function isSearchCategory(value: unknown): value is SearchCategory {
-  return SEARCH_CATEGORIES.some((option) => option.value === value);
-}
-
-function parseRecentSearches(value: string | null): RecentSearch[] {
+function parseRecentSearches(value: string | null): string[] {
   try {
     const parsed: unknown = value ? JSON.parse(value) : [];
     if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((item): item is RecentSearch => {
-        if (typeof item !== 'object' || item === null) return false;
-        const entry = item as Record<string, unknown>;
-        return typeof entry.keyword === 'string' && !!entry.keyword && isSearchCategory(entry.category);
-      })
-      .slice(0, MAX_RECENT_SEARCHES);
+    const keywords = parsed.map((item: unknown) => {
+      if (typeof item === 'string') return item.trim();
+      if (item && typeof item === 'object' && 'keyword' in item && typeof item.keyword === 'string') {
+        return item.keyword.trim();
+      }
+      return '';
+    });
+    return [...new Set(keywords.filter(Boolean))].slice(0, MAX_RECENT_SEARCHES);
   } catch {
     return [];
   }
 }
 
-function searchUrl(keyword: string, category: SearchCategory) {
+function searchUrl(keyword: string) {
   const params = new URLSearchParams({
     searchKeyword: keyword,
-    ...(category === 'all' ? {} : { searchType: category.toUpperCase() }),
     provCode: 'J10',
     neisCode: 'J100005844',
     schoolName: '운중고등학교',
@@ -57,14 +41,12 @@ function searchUrl(keyword: string, category: SearchCategory) {
 }
 
 export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
-  const openFeature = useOpenFeature();
   const [keyword, setKeyword] = useState('');
-  const [category, setCategory] = useState<SearchCategory>('all');
   const [inputFocused, setInputFocused] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const word = keyword.trim();
   const matchingRecentSearches = recentSearches.filter((item) =>
-    word.toLowerCase().includes(item.keyword.toLowerCase()),
+    word.toLowerCase().includes(item.toLowerCase()),
   );
 
   useEffect(() => {
@@ -79,20 +61,18 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
     };
   }, []);
 
-  const search = (searchKeyword = word, searchCategory = category) => {
+  const search = (searchKeyword = word) => {
     const trimmedKeyword = searchKeyword.trim();
     if (!trimmedKeyword) return;
 
     const nextRecentSearches = [
-      { keyword: trimmedKeyword, category: searchCategory },
-      ...recentSearches.filter(
-        (item) => item.keyword !== trimmedKeyword || item.category !== searchCategory,
-      ),
+      trimmedKeyword,
+      ...recentSearches.filter((item) => item !== trimmedKeyword),
     ].slice(0, MAX_RECENT_SEARCHES);
     setRecentSearches(nextRecentSearches);
     AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(nextRecentSearches)).catch(() => {});
     setInputFocused(false);
-    WebBrowser.openBrowserAsync(searchUrl(trimmedKeyword, searchCategory)).catch(() => {});
+    WebBrowser.openBrowserAsync(searchUrl(trimmedKeyword)).catch(() => {});
   };
 
   return (
@@ -106,12 +86,7 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
         <AppText variant="heading" nativeID="lib-label">
           장서 검색
         </AppText>
-        <Segmented
-          label="검색 범위"
-          value={category}
-          onChange={setCategory}
-          options={SEARCH_CATEGORIES}
-        />
+        <AppText variant="body" color={color.inkMuted}>제목, 저자 등을 검색하세요.</AppText>
         <View
           style={{
             flexDirection: 'row',
@@ -143,13 +118,12 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
               최근 검색
             </AppText>
             {matchingRecentSearches.map((item) => {
-              const categoryLabel = SEARCH_CATEGORIES.find((option) => option.value === item.category)?.label;
               return (
                 <Pressable
-                  key={`${item.category}:${item.keyword}`}
+                  key={item}
                   accessibilityRole="button"
-                  accessibilityLabel={`${item.keyword}, ${categoryLabel} 범위로 다시 검색`}
-                  onPress={() => search(item.keyword, item.category)}
+                  accessibilityLabel={`${item} 다시 검색`}
+                  onPress={() => search(item)}
                   style={({ pressed }) => ({
                     minHeight: 44,
                     flexDirection: 'row',
@@ -161,10 +135,7 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
                     backgroundColor: pressed ? color.surfaceMuted : color.surface,
                   })}>
                   <AppText variant="bodyStrong" style={{ flex: 1 }}>
-                    {item.keyword}
-                  </AppText>
-                  <AppText variant="caption" color={color.inkMuted}>
-                    {categoryLabel}
+                    {item}
                   </AppText>
                 </Pressable>
               );
@@ -176,20 +147,6 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
           검색 결과는 독서로(read365)에서 보여 줘요. 대출 가능 여부도 그 화면에서 확인할 수 있어요.
         </AppText>
       </Card>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="분실물 보러 가기. 도서관에서 잃어버린 물건도 여기서 찾아요"
-        onPress={() => openFeature('lost')}
-        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 60, backgroundColor: pressed ? color.surfaceMuted : color.surface, borderRadius: radius.card, padding: space.lg })}>
-        <AppText style={{ fontSize: 24, lineHeight: 30 }}>🔎</AppText>
-        <View style={{ flex: 1 }}>
-          <AppText variant="bodyStrong">분실물 찾기</AppText>
-          <AppText variant="caption" color={color.inkMuted}>
-            도서관에서 잃어버린 물건도 분실물 게시판에서 찾고 올려요
-          </AppText>
-        </View>
-        <Icon name="chevronRight" size={16} color={color.inkFaint} />
-      </Pressable>
     </Screen>
   );
 }

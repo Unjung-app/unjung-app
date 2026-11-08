@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppText } from '@/components/ui/AppText';
@@ -9,9 +10,12 @@ import { color, radius, space } from '@/theme/tokens';
 import { KIND_EMOJI, useNoticeFeed } from './data';
 
 const SEEN_KEY = 'unjung.notice.seen';
+let seenThisSession = 0;
 
 /** 학생 공지 화면을 열면 '여기까지 봤음'을 기기에 적어 둔다 */
 export async function markNoticesSeen(maxId: number) {
+  if (maxId <= seenThisSession) return;
+  seenThisSession = maxId;
   try {
     await AsyncStorage.setItem(SEEN_KEY, String(maxId));
   } catch {
@@ -26,11 +30,18 @@ export function NoticeStrip() {
   const { items } = useNoticeFeed(status === 'ready');
   const [seen, setSeen] = useState<number | null>(null);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setSeen(seenThisSession);
     AsyncStorage.getItem(SEEN_KEY)
-      .then((v) => setSeen(v ? Number(v) : 0))
-      .catch(() => setSeen(0));
-  }, [items]);
+      .then((value) => {
+        const stored = Number(value) || 0;
+        seenThisSession = Math.max(seenThisSession, stored);
+        if (active) setSeen(seenThisSession);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []));
 
   if (!items || items.length === 0) return null;
   const fresh = seen === null ? 0 : items.filter((n) => n.id > seen).length;
@@ -39,10 +50,7 @@ export function NoticeStrip() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`학생 공지 ${items.length}개${fresh ? `, 새 공지 ${fresh}개` : ''}. 열기`}
-      onPress={() => {
-        markNoticesSeen(Math.max(...items.map((n) => n.id)));
-        openFeature('notice');
-      }}
+      onPress={() => openFeature('notice')}
       style={({ pressed }) => ({ backgroundColor: pressed ? color.surfaceMuted : color.surface, borderRadius: radius.card, padding: space.xl, gap: space.sm })}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
         <AppText variant="heading" style={{ flex: 1 }}>
@@ -51,7 +59,7 @@ export function NoticeStrip() {
         {fresh ? (
           <View style={{ backgroundColor: color.danger, borderRadius: radius.round, paddingHorizontal: 8, paddingVertical: 2 }}>
             <AppText variant="caption" weight="bold" color={color.onNavy}>
-              새 {fresh}
+              {fresh}
             </AppText>
           </View>
         ) : null}

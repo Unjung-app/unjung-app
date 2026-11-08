@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { REWARD } from '@/lib/rewards';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -31,9 +31,9 @@ export function NoticeScreen({ inStack = false }: { inStack?: boolean }) {
   const [filter, setFilter] = useState<NoticeKind | 'all'>('all');
 
   // 이 화면을 보면 홈의 '새 공지' 표시를 지운다
-  useEffect(() => {
-    if (feed.items?.length) markNoticesSeen(Math.max(...feed.items.map((n) => n.id)));
-  }, [feed.items]);
+  useFocusEffect(useCallback(() => {
+    if (feed.items?.length) void markNoticesSeen(Math.max(...feed.items.map((n) => n.id)));
+  }, [feed.items]));
 
   useFocusEffect(
     useCallback(() => {

@@ -21,6 +21,15 @@ await db.exec(`
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
   create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('test.jwt', true), ''), '{}')::jsonb $$;
   grant usage on schema auth to anon, authenticated; grant usage on schema public to anon, authenticated;
+  -- 사진 조회는 게시물과 별개로 Storage의 접근 정책도 통과해야 한다.
+  create schema storage;
+  create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+  create table storage.objects (bucket_id text, name text);
+  alter table storage.objects enable row level security;
+  create function storage.foldername(name text) returns text[] language sql immutable
+    as $$ select string_to_array(name, '/') $$;
+  grant usage on schema storage to anon, authenticated;
+  grant select on storage.objects to anon, authenticated;
 `);
 const dir = process.argv[2] ?? 'supabase/migrations';
 for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
@@ -436,7 +445,12 @@ const L1 = (await as(A, CA, `select public.post_lost_item('found', '검정 필�
 { const d = await as(D, CD, `select photo_path, keep_at, mine from public.lost_feed where id=${L1}`); const a = await as(A, CA, `select photo_path, my_photo_status from public.lost_feed where id=${L1}`);
   expect('사진은 승인 전엔 남에게 안 보임, 본인은 보임', d.rows[0]?.photo_path === null && d.rows[0]?.keep_at === '학생회실' && a.rows[0]?.photo_path === `${A}/p1.jpg` && a.rows[0]?.my_photo_status === 'pending'); }
 { const r = await as(D, CD, `select count(*)::int n from public.lost_photo_queue`); const b = await as(B, CB, `select count(*)::int n from public.lost_photo_queue`); expect('사진 검토 목록은 검토위원만', r.rows[0]?.n === 0 && b.rows[0]?.n === 1); }
+await q(`insert into storage.objects(bucket_id,name) values ('lost-photos','${A}/p1.jpg')`);
+const photoObject = `select name from storage.objects where bucket_id='lost-photos' and name='${A}/p1.jpg'`;
+{ const d = await as(D, CD, photoObject); expect('미승인 사진 파일은 다른 학생에게 비공개', d.ok && d.rows.length === 0); }
 await as(B, CB, `select public.review_lost_photo(${L1}, true)`);
+{ const d = await as(D, CD, photoObject); const outside = await as(X, 'someone@gmail.com', photoObject);
+  expect('승인된 사진 파일은 다른 학교 계정만 조회 가능', d.rows[0]?.name === `${A}/p1.jpg` && outside.ok && outside.rows.length === 0); }
 { const d = await as(D, CD, `select photo_path from public.lost_feed where id=${L1}`); expect('승인된 사진은 보임', d.rows[0]?.photo_path === `${A}/p1.jpg`); }
 { const r = await as(A, CA, `select public.respond_lost_item(${L1}, true)`); expect('내 글엔 응답 불가', !r.ok); }
 await as(D, CD, `select public.respond_lost_item(${L1}, true)`);

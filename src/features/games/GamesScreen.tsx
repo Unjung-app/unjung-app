@@ -4,7 +4,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
-import { Segmented } from '@/components/ui/Segmented';
 import { NameTag } from '@/components/NameTag';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
@@ -139,7 +138,23 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
       <AppText variant="heading" style={{ marginTop: space.md }}>
         이번 주 게임 랭킹
       </AppText>
-      <Segmented label="게임 선택" value={board} onChange={setBoard} options={GAME_IDS.map((g) => ({ value: g, label: GAMES[g].title.replace('운중고 ', '') }))} />
+      <View accessibilityRole="radiogroup" accessibilityLabel="게임 선택" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+        {GAME_IDS.map((id) => {
+          const game = GAMES[id];
+          const selected = id === board;
+          return (
+            <Pressable key={id} accessibilityRole="radio" accessibilityLabel={game.title} accessibilityState={{ checked: selected }}
+              onPress={() => setBoard(id)}
+              style={{ flexBasis: '46%', flexGrow: 1, minHeight: 44, borderRadius: radius.control,
+                paddingHorizontal: space.sm, paddingVertical: space.xs, justifyContent: 'center', alignItems: 'center',
+                backgroundColor: selected ? color.navy : color.surfaceMuted }}>
+              <AppText variant="label" align="center" color={selected ? color.onNavy : color.inkMuted}>
+                {game.title.replace('운중고 ', '')}
+              </AppText>
+            </Pressable>
+          );
+        })}
+      </View>
       {ranking.data?.me ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
           <AppText variant="label" weight="regular" color={color.inkMuted} style={{ flex: 1 }}>
