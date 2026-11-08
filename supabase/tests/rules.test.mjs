@@ -442,24 +442,44 @@ const ago = (id) => q(`update public.lost_items set created_at = now() - interva
 await ago(L1);
 { const r = await as(D, CD, `select public.resolve_lost_item(${L1}) r`); expect('주인이 받았어요 → 주운 사람 +10', r.ok && r.rows[0]?.r?.rewarded === true && (await bal(A)) === balL + 10); }
 { const r = await as(D, CD, `select public.resolve_lost_item(${L1})`); expect('이미 끝난 글 다시 처리 불가', !r.ok); }
+{ const pending = await as(D, CD, `select public.post_lost_comment(${L1}, '학생회실에 갈게요', false)`);
+  const posted = await as(D, CD, `select public.post_lost_comment(${L1}, '학생회실에 갈게요', true)`);
+  const student = await as(B, CB, `select body, name, student_no from public.read_lost_comments(${L1}, true)`);
+  const admin = await as(A, CA, `select name, student_no from public.read_lost_comments(${L1}, true)`);
+  const hidden = await as(B, CB, `select * from public.admin_lost_authors(array[${L1}]::bigint[])`);
+  const visible = await as(A, CA, `select * from public.admin_lost_authors(array[${L1}]::bigint[])`);
+  expect('댓글은 안내 확인 후 게시', !pending.ok && posted.ok && student.rows[0]?.body === '학생회실에 갈게요');
+  expect('댓글·게시물 실명과 학번은 관리자만 조회', student.rows[0]?.name === null && student.rows[0]?.student_no === null && !!admin.rows[0]?.student_no && hidden.rows.length === 0 && !!visible.rows[0]?.student_no);
+}
+{ const r = await as(A, CA, `select public.post_lost_item('lost', '가방', '교실', public.seoul_today(), '', '', '')`);
+  expect('같은 계정은 종류를 바꿔도 당일 두 번째 게시 불가', !r.ok && /하루에 한 번/.test(r.err ?? ''));
+}
+// 보상 테스트에서 게시일만 넘겨 동일 계정의 다음 등록을 준비한다.
+const previousLostDay = (id) => q(`update public.lost_post_days set day = (
+  select min(d.day) - 1 from public.lost_post_days d where d.author = lost_post_days.author
+) where author = '${id}' and day = public.seoul_today()`);
 const L2 = (await as(E, CE, `select public.post_lost_item('lost', '에어팟', '급식실', public.seoul_today(), '흰색 케이스', '', '') id`)).rows[0]?.id;
 await as(F1, CF1, `select public.respond_lost_item(${L2}, true)`);
 const balF = await bal(F1);
 { const r = await as(F1, CF1, `select public.resolve_lost_item(${L2})`); expect('잃어버린 물건 글: 받았다는 건 글쓴이만', !r.ok); }
 { const r = await as(E, CE, `select public.resolve_lost_item(${L2}) r`); expect('올리자마자(10분 안) 받았어요 → 해결은 되지만 보상 없음', r.ok && r.rows[0]?.r?.rewarded === false && r.rows[0]?.r?.reason === 'too_soon' && (await bal(F1)) === balF); }
+await previousLostDay(A);
 { const L4 = (await as(A, CA, `select public.post_lost_item('found', '수학 노트', '교실', public.seoul_today(), '', '교무실', '') id`)).rows[0]?.id;
   await as(D, CD, `select public.respond_lost_item(${L4}, true)`); await ago(L4); const b0 = await bal(A);
   const r = await as(D, CD, `select public.resolve_lost_item(${L4}) r`);
   expect('같은 두 학생 사이 보상은 30일에 1번', r.ok && r.rows[0]?.r?.reason === 'same_pair' && (await bal(A)) === b0); }
 { const b0 = await bal(F2); const got = [];
   for (const [u, c, it] of [[B, CB, '체육복'], [E, CE, '실내화'], [F1, CF1, '이어폰']]) {
+    await previousLostDay(F2);
     const id = (await as(F2, CF2, `select public.post_lost_item('found', '${it}', '체육관', public.seoul_today(), '', '학생회실', '') id`)).rows[0]?.id;
     await as(u, c, `select public.respond_lost_item(${id}, true)`); await ago(id);
     got.push((await as(u, c, `select public.resolve_lost_item(${id}) r`)).rows[0]?.r);
   }
   expect('분실물 보상은 한 학생당 한 주 2번(20)까지', got[0]?.rewarded && got[1]?.rewarded && got[2]?.reason === 'week_cap' && (await bal(F2)) === b0 + 20); }
+await previousLostDay(F2);
 const L3 = (await as(F2, CF2, `select public.post_lost_item('lost', '우산', '현관', public.seoul_today(), '', '', '') id`)).rows[0]?.id;
 { const r = await as(F2, CF2, `select public.close_lost_item(${L3})`); const f = await as(A, CA, `select count(*)::int n from public.lost_feed where id=${L3}`); expect('글쓴이가 닫으면 목록에서 사라짐', r.ok && f.rows[0]?.n === 0); }
+{ const r = await as(F2, CF2, `select public.post_lost_item('lost', '가방', '교실', public.seoul_today(), '', '', '')`); expect('글을 닫아도 당일 한도 유지', !r.ok && /하루에 한 번/.test(r.err ?? '')); }
 { await db.exec('reset role'); const r = await db.query(`set role anon; select count(*) from public.lost_feed`).then(() => ({ ok: true }), () => ({ ok: false })); await db.exec('reset role'); expect('비로그인 분실물 목록 불가', !r.ok); }
 
 // 검토위원 임명
@@ -568,6 +588,7 @@ await as(B, CB, `select public.review_notice(${pn2}, false, '날짜가 없어요
 { const o = await outbox(D, 'mine'); expect('내 글 알림 끄면 반려 알림 없음', !o.some((x) => x.ref === `notice:${pn2}`)); }
 await as(D, CD, `select public.set_push_prefs(true, true, true, false)`);
 // 분실물
+await previousLostDay(A);
 const PL = (await as(A, CA, `select public.post_lost_item('found', '파란 텀블러', '도서관', public.seoul_today(), '', '학생회실', '') id`)).rows[0]?.id;
 await as(B, CB, `select public.respond_lost_item(${PL}, true)`);
 await ago(PL);
