@@ -83,6 +83,11 @@ export function WalletScreen() {
           <AppText variant="caption" color={color.inkMuted}>
             최고 {wallet?.best ?? 0}일 · 🛡️ {wallet?.shields ?? 0}/2
           </AppText>
+          {wallet && !wallet.today_is_school_day ? (
+            <AppText variant="caption" color={color.accentInk}>
+              오늘은 쉬는 날이라 그대로예요. 다음 학교 가는 날 출석하면 +1
+            </AppText>
+          ) : null}
         </Card>
       </View>
       <AppText variant="caption" color={color.inkMuted}>

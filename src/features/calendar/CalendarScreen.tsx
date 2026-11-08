@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { View } from 'react-native';
+import { Segmented } from '@/components/ui/Segmented';
+import { MonthView } from './MonthView';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Card, SampleNotice } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
@@ -23,6 +26,7 @@ export function CalendarScreen({ inStack = false }: { inStack?: boolean }) {
   const schedule = useUpcomingSchedule(now.ymd);
   const upcoming = groupEvents(schedule.items).filter((e) => e.end >= now.ymd);
   const hero = upcoming.find((e) => isMajorEvent(e, grade));
+  const [view, setView] = useState<'list' | 'month'>('list');
 
   const months = new Map<string, EventRange[]>();
   for (const e of upcoming) {
@@ -53,7 +57,19 @@ export function CalendarScreen({ inStack = false }: { inStack?: boolean }) {
         </Card>
       ) : null}
 
-      {upcoming.length === 0 ? (
+      <Segmented
+        label="보기"
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'list', label: '목록' },
+          { value: 'month', label: '달력' },
+        ]}
+      />
+
+      {view === 'month' ? (
+        <MonthView today={now.ymd} events={schedule.items} />
+      ) : upcoming.length === 0 ? (
         <Card>
           <AppText variant="body" color={color.inkMuted}>
             앞으로 예정된 일정이 없어요

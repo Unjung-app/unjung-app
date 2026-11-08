@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 
 // 집중 모드 공부 세션.
 //  · 시간은 서버가 센다: 앱은 1분마다 신호(beat)만 보낸다. 서버는 신호 간격(90초 이하)만큼만 인정.
-//  · 다른 앱·다른 화면으로 가면 바로 일시정지(신호 중단). 60초 안에 돌아오면 이어서(떠난 시간은 빼고),
+//  · 다른 앱·다른 화면으로 가면 그 순간까지 신호를 보내고 일시정지. 60초 안에 돌아오면 이어서(떠난 시간은 빼고),
 //    넘으면 세션을 끝낸다.
 //  · 공부하는 동안 화면이 꺼지지 않게 한다(Wake Lock).
 
@@ -33,6 +33,7 @@ export function useStudySession(enabled: boolean) {
   const awayAt = useRef<number | null>(null);
   const runningSince = useRef<number | null>(null);
   const banked = useRef(0);
+  const leaving = useRef<Promise<void> | null>(null);
 
   const applyResult = useCallback((r: { ended?: boolean; reason?: string; in_class?: boolean; today?: StudyToday } | null) => {
     if (!r) return;
@@ -139,20 +140,26 @@ export function useStudySession(enabled: boolean) {
 
   const stop = useCallback(() => finish('수고했어요! 오늘 기록에 더했어요.'), [finish]);
 
-  // 화면을 떠남(다른 앱·다른 탭) → 일시정지
+  // 화면을 떠남(다른 앱·다른 탭·알림창) → 떠나기 직전까지를 바로 기록하고 일시정지.
+  // (예전엔 마지막 신호 뒤 화면을 보던 시간까지 버려져, 알림창을 자주 내리면 오래 공부할수록 시간이 줄었다 · 의견 #16)
   const leave = useCallback(() => {
     if (!id.current || awayAt.current !== null) return;
     awayAt.current = Date.now();
     clearTimers();
     pauseClock();
     setPhase('away');
-  }, []);
+    leaving.current = beat(false).finally(() => {
+      leaving.current = null;
+    });
+  }, [beat]);
 
   // 돌아옴 → 60초 안이면 이어서(떠난 시간은 서버가 세지 않게 skip), 넘었으면 종료
   const back = useCallback(async () => {
     if (!id.current || awayAt.current === null) return;
     const away = Date.now() - awayAt.current;
     awayAt.current = null;
+    if (leaving.current) await leaving.current;
+    if (!id.current) return;
     if (away > AWAY_LIMIT_MS) {
       await finish(`앱을 ${Math.round(away / 1000)}초 동안 떠나 있어서 세션이 끝났어요. 떠나기 전까지는 기록됐어요.`);
       return;
