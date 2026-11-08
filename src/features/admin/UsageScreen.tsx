@@ -4,7 +4,8 @@ import { AppText } from '@/components/ui/AppText';
 import { Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/state/auth';
+import { useStaffAccess } from './access';
+import { GAMES } from '@/features/games/catalog';
 import { color, radius, space } from '@/theme/tokens';
 
 type Usage = {
@@ -17,6 +18,9 @@ type Usage = {
   week_active: number;
   push: number;
   features: Record<string, number>;
+  games_week?: GameRow[];
+  games_since?: GameRow[];
+  games_since_day?: string;
 };
 
 const FEATURES: [string, string][] = [
@@ -30,24 +34,24 @@ const FEATURES: [string, string][] = [
   ['survey_answers', '설문 응답'],
 ];
 
-/** 관리자: 앱 사용 현황(가입 · 매일 접속 · 최근 7일 기능별). 접속 = 그날 앱을 연 학생(자동 출석 기준) */
+/** 관리자·개발자: 앱 사용 현황(가입 · 매일 접속 · 최근 7일 기능별). 접속 = 그날 앱을 연 학생(자동 출석 기준) */
 export function UsageScreen() {
-  const { role } = useAuth();
+  const { staff, checked } = useStaffAccess();
   const [u, setU] = useState<Usage | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc('admin_usage');
-    if (error) setErr('불러오지 못했어요. 관리자 계정인지, DB가 적용됐는지 확인해 주세요.');
+    if (error) setErr('불러오지 못했어요. 관리자·개발자 계정인지, DB가 적용됐는지 확인해 주세요.');
     else setU(data as Usage);
   }, []);
   useEffect(() => {
-    if (role === 'admin') load();
-  }, [role, load]);
+    if (staff) load();
+  }, [staff, load]);
 
-  if (role !== 'admin') {
+  if (!staff) {
     return (
       <Screen topInset={false}>
-        <AppText variant="body">관리자만 볼 수 있어요.</AppText>
+        <AppText variant="body">{checked ? '관리자·개발자만 볼 수 있어요.' : '확인하는 중…'}</AppText>
       </Screen>
     );
   }
@@ -110,7 +114,55 @@ export function UsageScreen() {
           </View>
         ))}
       </View>
+
+      {u.games_week ? <GameTable title="게임별 · 최근 7일" rows={u.games_week} /> : null}
+      {u.games_since ? <GameTable title={`게임별 · 출시(${(u.games_since_day ?? '').slice(5).replace('-', '/')}) 이후`} rows={u.games_since} /> : null}
+      {u.games_week ? (
+        <AppText variant="caption" color={color.inkFaint}>
+          학생 수·판 수는 개발자 계정의 플레이를 빼고 셉니다. 다시 온 학생 = 서로 다른 날 2번 이상 플레이. 의견 = 게임 화면의 '이 게임에 의견'으로 들어온 수.
+        </AppText>
+      ) : null}
     </Screen>
+  );
+}
+
+type GameRow = { game: string; plays: number; players: number; dev_plays: number; repeat_players: number; avg_minutes: number; feedback: number };
+
+/** 게임별 사용량 표: 플레이한 학생 수 순. 게임 정리(5개 유지) 판단 근거 */
+function GameTable({ title, rows }: { title: string; rows: GameRow[] }) {
+  return (
+    <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
+      <AppText variant="label" style={{ padding: space.lg, paddingBottom: space.sm }}>
+        🎮 {title}
+      </AppText>
+      {rows.length === 0 ? (
+        <AppText variant="body" color={color.inkMuted} style={{ paddingHorizontal: space.lg, paddingBottom: space.lg }}>
+          아직 기록이 없어요.
+        </AppText>
+      ) : (
+        rows.map((r, i) => {
+          const g = (GAMES as Record<string, (typeof GAMES)[keyof typeof GAMES] | undefined>)[r.game];
+          return (
+            <View
+              key={r.game}
+              accessible
+              accessibilityLabel={`${i + 1}위 ${g?.title ?? r.game}, 학생 ${r.players}명, ${r.plays}판, 다시 온 학생 ${r.repeat_players}명, 평균 ${r.avg_minutes}분, 의견 ${r.feedback}개`}
+              style={{ paddingHorizontal: space.lg, paddingVertical: space.md, borderTopWidth: 1, borderTopColor: color.lineSoft, gap: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <AppText variant="bodyStrong" style={{ flex: 1 }} numberOfLines={1}>
+                  {i + 1}. {g ? `${g.emoji} ${g.title}` : r.game}
+                </AppText>
+                <AppText variant="bodyStrong">{r.players.toLocaleString()}명</AppText>
+              </View>
+              <AppText variant="caption" color={color.inkMuted}>
+                {r.plays.toLocaleString()}판 · 다시 온 학생 {r.repeat_players}명 · 평균 {r.avg_minutes}분 · 의견 {r.feedback}개{r.dev_plays ? ` · 개발자 플레이 ${r.dev_plays}판(제외)` : ''}
+                {g?.by ? ` · ${g.by}` : ''}
+              </AppText>
+            </View>
+          );
+        })
+      )}
+    </View>
   );
 }
 

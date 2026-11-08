@@ -11,6 +11,9 @@ import { LoginPrompt } from '@/features/wallet/LoginPrompt';
 import { useFeedbackStats } from '@/features/feedback/FeedbackCard';
 import { useLaunchEvent } from '@/features/launch/Launch';
 import { useWallet } from '@/state/wallet';
+import { GAMES } from '@/features/games/catalog';
+
+const gameName = (id: string) => (GAMES as Record<string, { title: string } | undefined>)[id]?.title ?? '게임';
 import { stampLabel } from '@/lib/date';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
@@ -90,6 +93,14 @@ export function FeedbackScreen() {
       <AppText variant="body" color={color.inkMuted}>
         앱을 쓰다가 이상한 점이나 바라는 점이 있으면 알려 주세요. 운중고 앱 학생 개발팀이 직접 읽어요.
       </AppText>
+      {typeof from === 'string' && from.startsWith('game:') ? (
+        <Card tone="muted">
+          <AppText variant="bodyStrong">🎮 {gameName(from.slice(5))}에 대한 의견</AppText>
+          <AppText variant="caption" color={color.inkMuted}>
+            이 게임을 만든 학생 개발자가 직접 읽어요.
+          </AppText>
+        </Card>
+      ) : null}
       {stats?.launch ? (
         <Card tone="muted" style={{ gap: 4 }}>
           <AppText variant="bodyStrong">🎉 출시 2주 의견 이벤트</AppText>
