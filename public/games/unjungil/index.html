@@ -1,0 +1,2022 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>운중일생 — 시제품</title>
+<style>
+:root{
+  --ink:#1d2433; --sub:#5b6476; --faint:#8a93a6; --card:#ffffffee; --line:#e3e7ef;
+  --gold:#d9a514; --gold2:#fff4cc; --blue:#2f6fe4; --blue2:#e6efff; --red:#e05252; --green:#2f9e6a;
+  --bg1:#bfe3ff; --bg2:#f2f9ff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;color:var(--ink);background:#eef3f8}
+body{overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+#app{position:relative;height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;background:linear-gradient(180deg,var(--bg1),var(--bg2));transition:background 1.2s}
+/* 상단 */
+#top{display:flex;align-items:center;gap:8px;padding:10px 12px 6px}
+#top .who{flex:1;min-width:0}
+#top .nm{font-weight:800;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#top .meta{font-size:12px;color:var(--sub)}
+.speed{display:flex;gap:4px}
+.speed button{min-width:34px;height:32px;border:1px solid var(--line);background:#fff;border-radius:9px;font-size:12px;font-weight:700}
+.speed button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+#btnMenu{width:36px;height:32px;border:1px solid var(--line);background:#fff;border-radius:9px}
+/* 캐릭터 + 스탯 */
+#hero{display:flex;gap:10px;padding:4px 12px 8px;align-items:center}
+#avatar{width:92px;height:92px;flex:none;border-radius:20px;background:#ffffff88;position:relative;overflow:hidden;box-shadow:0 2px 10px #0001}
+#avatar svg{width:100%;height:100%}
+#place{position:absolute;right:4px;bottom:2px;font-size:20px}
+#stats{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.st{font-size:11px;color:var(--sub)}
+.st b{color:var(--ink);font-weight:700}
+.bar{height:6px;border-radius:4px;background:#0000000f;overflow:hidden;margin-top:2px}
+.bar i{display:block;height:100%;border-radius:4px;transition:width .5s}
+#tags{padding:0 12px 6px;display:flex;gap:4px;flex-wrap:wrap;min-height:4px}
+.tag{font-size:11px;padding:2px 7px;border-radius:999px;background:#ffffffaa;border:1px solid var(--line)}
+.tag.gold{background:var(--gold2);border-color:var(--gold);font-weight:700}
+/* 기록 */
+#log{flex:1;overflow-y:auto;padding:6px 12px 14px;scroll-behavior:smooth}
+.yr{margin:14px 0 4px;font-size:12px;font-weight:800;color:var(--sub);display:flex;align-items:center;gap:6px}
+.yr::after{content:"";flex:1;height:1px;background:#0000001a}
+.ln{font-size:14.5px;line-height:1.6;margin:3px 0;animation:fade .35s}
+.ln.big{font-size:16px;font-weight:700}
+.ln.sys{font-size:12.5px;color:var(--sub)}
+.ln.fx{font-size:12px;color:var(--faint)}
+.ln.gold{background:var(--gold2);border-left:3px solid var(--gold);padding:4px 8px;border-radius:6px}
+.ln.memo{font-style:italic;color:#6a5a2a}
+.ln.ach{background:#fff;border:1px solid var(--gold);border-radius:10px;padding:6px 10px;font-weight:700}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+/* 선택 시트 */
+#sheet{position:absolute;left:0;right:0;bottom:0;max-height:62%;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -8px 30px #0002;padding:16px 14px calc(16px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .3s}
+#sheet.on{transform:none}
+#sheet h3{margin:0 0 6px;font-size:17px}
+#sheet .txt{font-size:14.5px;line-height:1.65;color:#2b3345;white-space:pre-line;margin-bottom:12px}
+.ch{display:block;width:100%;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:11px 13px;margin:7px 0;min-height:48px;font-size:14.5px;line-height:1.45}
+.ch:active{transform:scale(.99)}
+.ch .d{display:block;font-size:11.5px;color:var(--faint);margin-top:2px}
+.ch.gold{border-color:var(--gold);background:linear-gradient(135deg,#fffaf0,#fff1c2);box-shadow:0 0 0 2px #f6d77a55;position:relative}
+.ch.gold::before{content:"✨ 특수";position:absolute;right:10px;top:8px;font-size:11px;font-weight:800;color:#a57800}
+.ch.rare{border-color:#8fb1f5;background:var(--blue2)}
+.ch[disabled]{opacity:.45}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{border:1.5px solid var(--line);border-radius:14px;padding:10px;background:#fff;min-height:96px;text-align:left}
+.card .em{font-size:26px}
+.card .t{font-weight:800;font-size:14px;margin-top:2px}
+.card .s{font-size:11px;color:var(--faint);margin-top:2px}
+.card.rare{border-color:#8fb1f5;background:var(--blue2)}
+.card.gold{border-color:var(--gold);background:linear-gradient(135deg,#fffaf0,#ffe9a6);box-shadow:0 0 12px #f5c84299;animation:shine 2.4s infinite}
+@keyframes shine{50%{box-shadow:0 0 22px #f5c842cc}}
+/* 에너지 */
+.en{display:flex;align-items:center;gap:8px;margin:6px 0}
+.en .lab{width:92px;font-size:13.5px}
+.en .pips{flex:1;display:flex;gap:3px}
+.en .pips i{flex:1;height:12px;border-radius:3px;background:#e9edf3}
+.en .pips i.on{background:var(--ink)}
+.en .pips i.fix{background:#9aa3b5}
+.en button{width:36px;height:34px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:18px}
+.left{font-size:12.5px;color:var(--sub);margin:4px 0 8px}
+.primary{display:block;width:100%;height:50px;border:0;border-radius:14px;background:var(--ink);color:#fff;font-weight:800;font-size:16px;margin-top:10px}
+.ghost{display:block;width:100%;height:44px;border:1px solid var(--line);border-radius:14px;background:#fff;font-weight:700;margin-top:8px}
+/* 시작 화면·덮개 */
+.cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;background:linear-gradient(180deg,#9fd3ff,#e9f6ff 60%,#fff);z-index:5}
+.cover h1{font-size:44px;margin:4px 0;letter-spacing:2px}
+.cover .han{font-size:15px;color:var(--sub);letter-spacing:6px}
+.cover p{color:var(--sub);line-height:1.7;font-size:14px}
+.cover .primary,.cover .ghost{max-width:320px}
+.cloud{position:absolute;font-size:56px;opacity:.85;animation:float 9s ease-in-out infinite}
+@keyframes float{50%{transform:translateX(18px)}}
+.hide{display:none!important}
+#paused{position:absolute;top:110px;left:50%;transform:translateX(-50%);background:#1d2433e6;color:#fff;padding:6px 14px;border-radius:999px;font-size:13px;z-index:3}
+/* 메뉴·도감 */
+.panel{position:absolute;inset:0;background:#fff;z-index:6;overflow-y:auto;padding:16px}
+.panel h2{margin:4px 0 12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cell{border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center;font-size:12px;min-height:70px}
+.cell .em{font-size:22px}
+.cell.no{opacity:.35;filter:grayscale(1)}
+.cell.gold{border-color:var(--gold);background:var(--gold2)}
+#shareImg{width:100%;border-radius:16px;box-shadow:0 4px 18px #0002;margin:8px 0}
+textarea{width:100%;min-height:70px;border:1px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:15px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div class="who"><div class="nm" id="nm">운중일생</div><div class="meta" id="meta"></div></div>
+    <div class="speed" id="speed"></div>
+    <button id="btnMenu" aria-label="메뉴">☰</button>
+  </div>
+  <div id="hero">
+    <div id="avatar"><div id="av"></div><div id="place"></div></div>
+    <div id="stats"></div>
+  </div>
+  <div id="tags"></div>
+  <div id="log"></div>
+  <div id="paused" class="hide">⏸ 일시정지</div>
+  <div id="sheet"></div>
+
+  <div class="cover" id="cover">
+    <div class="cloud" style="top:8%;left:6%">☁️</div><div class="cloud" style="top:16%;right:8%;animation-delay:-3s">☁️</div>
+    <div class="han">雲 中 一 生</div>
+    <h1>운중일생</h1>
+    <p>태어날 곳은 고를 수 없지만,<br>꿈은 고를 수 있다.<br><b>당신의 선택이 한 사람의 일생을 만듭니다.</b></p>
+    <button class="primary" id="btnNew">새로운 삶 시작</button>
+    <button class="ghost hide" id="btnCont">이어서 살기</button>
+    <button class="ghost" id="btnDex">직업 도감 · 업적</button>
+    <p style="font-size:11.5px;margin-top:18px">v0.2 · made by 이호원</p>
+  </div>
+  <div class="panel hide" id="panel"></div>
+</div>
+  <script>
+/* ===================== 앱 연결 코드 (고치지 마세요) =====================
+   앱 안에서 열리면 진짜 앱과 연결되고, 그냥 브라우저·AI 미리보기에서 열면
+   가짜(연습용)로 동작합니다. 그래서 앱 없이도 게임을 끝까지 만들어 볼 수 있어요.
+
+   UnjungGame.player            → { nickname: '닉네임', grade: 2 }  (연습용에선 '테스트')
+   UnjungGame.submitScore(n)    → 게임이 끝날 때 점수(정수)를 보냄. 결과: Promise<{ best }>
+                                  앱은 1.5초 뒤 결과 화면(한 판 더 / 나가기)으로 게임을 덮어요.
+   UnjungGame.submitScore(n, { hold: true }) → 점수만 기록하고, 게임의 결과 화면을 계속 보여 줘요.
+                                  그 화면의 '계속' 버튼에서 UnjungGame.done() 을 부르면 앱 결과 화면이 떠요.
+   UnjungGame.done()            → (hold로 보낸 뒤) 앱 결과 화면 열기
+   UnjungGame.getStudyMinutes() → 오늘 스터디 윗미 공부 시간(분). Promise<number> (연습용에선 0)
+   UnjungGame.save(obj)         → 이어하기용 저장(작은 데이터, 10KB까지). Promise
+   UnjungGame.load()            → 저장한 것 불러오기. Promise<obj | null>
+   UnjungGame.onPause(fn)       → 앱이 게임을 멈출 때(수업 시작 등) 부름
+   UnjungGame.exit()            → 앱으로 돌아가기
+========================================================================== */
+(function () {
+  const inApp = window.parent !== window && /[?&]unjung=1/.test(location.search);
+  const listeners = { pause: [] };
+  let seq = 0; const waiting = {};
+  function ask(type, data) {
+    if (!inApp) return Promise.resolve(null);
+    return new Promise((resolve) => { const id = ++seq; waiting[id] = resolve; window.parent.postMessage({ unjung: 1, id, type, data }, '*'); setTimeout(() => { if (waiting[id]) { delete waiting[id]; resolve(null); } }, 8000); });
+  }
+  window.addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.unjung !== 1) return;
+    if (m.reply && waiting[m.reply]) { waiting[m.reply](m.data); delete waiting[m.reply]; }
+    if (m.type === 'player') Object.assign(api.player, m.data || {});
+    if (m.type === 'pause') listeners.pause.forEach((f) => f());
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) listeners.pause.forEach((f) => f()); });
+  const KEY = 'unjung-game-practice';
+  const api = {
+    inApp,
+    player: { nickname: inApp ? '' : '테스트', grade: 2 },
+    submitScore(n, opts) {
+      n = Math.max(0, Math.floor(Number(n) || 0));
+      if (inApp) return ask('score', { score: n, hold: !!(opts && opts.hold) }).then((r) => r || { best: n });
+      let best = n; try { best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best); } catch (e) {}
+      return Promise.resolve({ best });
+    },
+    save(obj) { const s = JSON.stringify(obj ?? null); if (s.length > 10000) return Promise.reject(new Error('저장 데이터가 너무 커요(10KB까지)'));
+      if (inApp) return ask('save', s); try { localStorage.setItem(KEY + ':save', s); } catch (e) { return Promise.resolve(false); } return Promise.resolve(true); },
+    load() { if (inApp) return ask('load').then((s) => (s ? JSON.parse(s) : null)); try { return Promise.resolve(JSON.parse(localStorage.getItem(KEY + ':save'))); } catch { return Promise.resolve(null); } },
+    onPause(fn) { listeners.pause.push(fn); },
+    exit() { if (inApp) ask('exit'); },
+    done() { if (inApp) ask('done'); },
+    getStudyMinutes() { return inApp ? ask('study').then((m) => Math.max(0, Math.floor(Number(m) || 0))) : Promise.resolve(0); },
+  };
+  window.UnjungGame = api;
+  ask('ready');
+})();
+/* ======================= 앱 연결 코드 끝 ======================= */
+</script>
+<script>
+'use strict';
+/* ============================================================
+   운중일생 — 엔진 (시제품 v0.1)
+   - 장면은 모두 '데이터'(DATA.*)로 쓰고, 엔진은 그것을 보여 주고 결과를 적용한다.
+   - 장면 형식: { id, title, text, choices:[{ t, d, gold, rare, if(S), check:{abil, base}, fx, flag, log, ok:{fx,flag,log}, fail:{...}, then(S,ok) }] }
+     · fx 키: health/happy/rel/passion(생활), study/tech/art/body/lead/emp(능력치), money(만원), co.product 등(회사)
+     · flag: 게임이 기억해 두는 값(문자열 또는 배열). 나중 장면의 if/text에서 S.flags로 확인
+   ============================================================ */
+const $ = (s) => document.querySelector(s);
+const R = Math.random;
+const pick = (a) => a[Math.floor(R() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const wpick = (items, wf) => { const ws = items.map(wf); const tot = ws.reduce((x, y) => x + y, 0); let r = R() * tot; for (let i = 0; i < items.length; i++) { r -= ws[i]; if (r <= 0) return items[i]; } return items[items.length - 1]; };
+const QS = new URLSearchParams(location.search);
+const FAST = QS.get('fast') === '1';   // 시험용: 대기 없이 진행
+const AUTO = QS.get('auto') === '1';   // 시험용: 선택을 자동으로
+const FORCE = AUTO ? QS.get('force') : null; // 시험용: 꿈 카드에 특정 직업을 넣고 고름
+const SAVE_KEY = 'ujil-save-v2', DEX_KEY = 'ujil-dex-v1';
+/* 저장: 브라우저에서는 localStorage, 앱 안(격리된 화면)에서는 앱 계정(UnjungGame.save/load, 10KB까지) */
+const IN_APP = !!(window.UnjungGame && UnjungGame.inApp);
+const MEM = {};
+let appSaveT = 0;
+function compactSave(v) { if (!v || !v.logTail) return v; return Object.assign({}, v, { logTail: v.logTail.slice(-25), story: (v.story || []).slice(-40), qc: undefined }); }
+function flushApp() { clearTimeout(appSaveT); appSaveT = 0; try { UnjungGame.save({ s: compactSave(MEM[SAVE_KEY] || null), d: MEM[DEX_KEY] || null }).catch(() => {}); } catch (e) { /* */ } }
+const store = {
+  get(k) { if (IN_APP) return MEM[k] ? JSON.parse(JSON.stringify(MEM[k])) : null; try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { if (IN_APP) { MEM[k] = JSON.parse(JSON.stringify(v)); if (!appSaveT) appSaveT = setTimeout(flushApp, 1500); return; } try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 저장 불가 환경 */ } },
+  del(k) { if (IN_APP) { delete MEM[k]; clearTimeout(appSaveT); appSaveT = setTimeout(flushApp, 300); return; } try { localStorage.removeItem(k); } catch (e) { /* */ } },
+};
+window.addEventListener('pagehide', () => { if (IN_APP && appSaveT) flushApp(); });
+
+const STATS = [['health', '건강', '#2f9e6a'], ['happy', '행복', '#f0a020'], ['skill', '실력', '#2f6fe4'], ['rel', '관계', '#d1557a'], ['passion', '열정', '#e05252']];
+const ABIL = { study: '학업', tech: '기술', art: '창의·예술', body: '신체', lead: '리더십', emp: '공감' };
+const ABIL_KEYS = Object.keys(ABIL);
+const LIFE_KEYS = ['health', 'happy', 'rel', 'passion'];
+const BIRTH_YEAR = 2026;
+
+let S = null;            // 지금 살고 있는 삶
+let speed = 1, paused = false;
+
+/* ---------------- 상태 ---------------- */
+function skillOf(st) { const v = ABIL_KEYS.map((k) => st.abil[k]).sort((a, b) => b - a); return Math.round((v[0] + v[1] + v[2]) / 3); }
+function age() { return S.age; }
+function has(f) { return !!S.flags[f]; }
+function setFlag(f) { if (Array.isArray(f)) f.forEach(setFlag); else if (f) S.flags[f] = true; }
+function cnt(k, n = 1) { S.cnt[k] = (S.cnt[k] || 0) + n; }
+function hasTrait(t) { return S.traits.includes(t); }
+function fill(t) {
+  if (typeof t === 'function') t = t(S);
+  const val = { name: S.name, friend: S.friend, rival: S.rival, cof: S.cof || S.friend, co: S.co ? S.co.name : '회사' };
+  t = String(t).replace(/\{(name|friend|rival|cof|co)\}\{(은는|이가|을를|와과)\}/g, (m, k, j) => val[k] + josa(val[k], j[0], j[1]));
+  return t
+    .replace(/\{name\}/g, S.name).replace(/\{given\}/g, S.name.slice(1))
+    .replace(/\{friend\}/g, S.friend).replace(/\{rival\}/g, S.rival)
+    .replace(/\{cof\}/g, S.cof || S.friend)
+    .replace(/\{club\}/g, S.club ? DATA.clubs[S.club].n : '동아리')
+    .replace(/\{dream\}/g, S.dream ? DATA.jobs[S.dream].n : '꿈')
+    .replace(/\{job\}/g, S.job ? DATA.jobs[S.job].n : '일')
+    .replace(/\{uni\}/g, S.uni || '대학')
+    .replace(/\{co\}/g, S.co ? S.co.name : '회사')
+    .replace(/\{은는\}/g, josa(S.name, '은', '는')).replace(/\{이가\}/g, josa(S.name, '이', '가'));
+}
+function josa(w, a, b) { const c = w.charCodeAt(w.length - 1); if (c < 0xac00 || c > 0xd7a3) return b; const jong = (c - 0xac00) % 28; if (a === '으로') return jong && jong !== 8 ? '으로' : '로'; return jong ? a : b; }
+
+/* 능력치 성장: 타고난 재능과 특성이 배율 */
+function growMul(k) {
+  let m = 0.45 + (S.talent[k] / 100) * 0.6;
+  for (const t of S.traits) { const d = DATA.traits[t]; if (d && d.mul && d.mul[k]) m *= d.mul[k]; }
+  return m;
+}
+function applyFx(fx, quiet) {
+  if (!fx) return '';
+  const out = [];
+  for (const [k, v0] of Object.entries(fx)) {
+    let v = v0;
+    if (typeof v === 'function') v = v(S);
+    if (!v) continue;
+    if (LIFE_KEYS.includes(k)) {
+      if (k === 'health' && v < 0 && hasTrait('steel')) v = Math.round(v * 0.6);
+      if (k === 'passion' && v > 0 && hasTrait('okto')) v = Math.round(v * 1.4);
+      if (v > 0) v = v * clamp((105 - S.st[k]) / 60, 0.15, 1); // 높을수록 오르기 어렵다
+      const before = S.st[k]; S.st[k] = clamp(S.st[k] + v, 0, 100); const d = Math.round(S.st[k] - before);
+      if (d) out.push(STATS.find((s) => s[0] === k)[1] + (d > 0 ? ' +' : ' ') + d);
+    } else if (ABIL[k]) {
+      if (v > 0) v = v * growMul(k) * clamp((100 - S.abil[k]) / 70, 0.08, 1); // 높을수록 오르기 어렵다
+      const before = S.abil[k]; S.abil[k] = clamp(S.abil[k] + v, 0, 100); const d = Math.round(S.abil[k] - before);
+      if (d) out.push(ABIL[k] + (d > 0 ? ' +' : ' ') + d);
+      if (v > 0 && !S.revealed.includes(k) && S.talent[k] >= 70 && S.abil[k] > 40) revealTalent(k, true);
+    } else if (k === 'money') {
+      S.money += v; out.push('돈 ' + (v > 0 ? '+' : '') + won(v));
+    } else if (k.startsWith('co.') && S.co) {
+      const key = k.slice(3); S.co[key] = (S.co[key] || 0) + v;
+      if (key !== 'runway' && key !== 'equity') S.co[key] = clamp(S.co[key], 0, 100);
+      out.push(({ product: '제품력', team: '팀', rep: '평판', runway: '런웨이(개월)', equity: '내 지분(%p)' })[key] + (v > 0 ? ' +' : ' ') + v);
+    }
+  }
+  const txt = out.join(' · ');
+  if (txt && !quiet) line(txt, 'fx');
+  refreshHud();
+  return txt;
+}
+function won(m) { // 만원 단위
+  const a = Math.abs(m); const s = m < 0 ? '-' : '';
+  if (a >= 10000) return s + (a / 10000).toFixed(a >= 100000 ? 0 : 1) + '억 원';
+  return s + Math.round(a).toLocaleString() + '만 원';
+}
+function revealTalent(k, quiet) {
+  if (S.revealed.includes(k)) return;
+  S.revealed.push(k);
+  if (!quiet) line('✨ 숨어 있던 재능이 드러났다: ' + ABIL[k] + (S.talent[k] >= 85 ? ' (빛나는 재능!)' : ''), 'gold');
+  else line('✨ 재능 발견: ' + ABIL[k], 'sys');
+  refreshHud();
+}
+/* 판정: 기본값 + 능력치 보정 + 특성 + 운 → 5~95% */
+function chance(c) {
+  let ab = typeof c.abil === 'function' ? c.abil(S) : c.abil;
+  const ks = Array.isArray(ab) ? ab : [ab];
+  const v = ks.reduce((x, k) => x + (ABIL[k] ? S.abil[k] : S.st[k] || 0), 0) / ks.length;
+  let p = (c.base ?? 45) + (v - 50) * 0.7 + S.luck;
+  for (const t of S.traits) { const d = DATA.traits[t]; if (d && d.check) p += d.check(c, S) || 0; }
+  if (c.extra) p += c.extra(S) || 0;
+  return clamp(Math.round(p), 5, 95);
+}
+function diffLabel(p) { return p >= 70 ? '쉬움' : p >= 40 ? '보통' : '어려움'; }
+function roll(c) { const p = chance(c); return { ok: R() * 100 < p, p }; }
+
+/* ---------------- 시간 ---------------- */
+async function wait(ms) {
+  if (FAST) { await new Promise((r) => setTimeout(r, 0)); return; }
+  let left = ms / speed;
+  while (left > 0) {
+    await new Promise((r) => setTimeout(r, 50));
+    if (!paused) left -= 50;
+  }
+}
+async function beat(n = 1) { await wait(1300 * n); }
+
+/* ---------------- 기록 ---------------- */
+function line(text, cls = '') {
+  const t = fill(text);
+  S.logTail.push([t, cls]); if (S.logTail.length > 120) S.logTail.shift();
+  if (cls === '' || cls === 'big' || cls === 'gold' || cls === 'memo') S.story.push(t.length > 80 ? t.slice(0, 80) + '…' : t);
+  if (S.story.length > 60) S.story.shift();
+  drawLine(t, cls);
+}
+function drawLine(t, cls) {
+  const el = document.createElement('div');
+  if (cls === 'yr') { el.className = 'yr'; el.textContent = t; } else { el.className = 'ln ' + cls; el.textContent = t; }
+  const box = $('#log'); box.appendChild(el);
+  while (box.children.length > 160) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+function yearHead() { line((BIRTH_YEAR + S.age) + '년 · ' + S.age + '세', 'yr'); }
+
+/* ---------------- 장면(선택) ---------------- */
+function padLog() { const sh = $('#sheet'), box = $('#log'); const h = sh.classList.contains('on') ? sh.offsetHeight : 0; box.style.paddingBottom = (h + 14) + 'px'; box.scrollTop = box.scrollHeight; }
+function openSheet(html) { const sh = $('#sheet'); sh.innerHTML = html; sh.classList.add('on'); sh.scrollTop = 0; padLog(); }
+function closeSheet() { $('#sheet').classList.remove('on'); padLog(); }
+if (window.ResizeObserver) new ResizeObserver(() => padLog()).observe(document.getElementById('sheet') || document.body);
+window.addEventListener('resize', () => padLog());
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
+
+/** 장면을 보여 주고 고른 선택지의 결과를 적용한다. 고른 선택지 객체를 돌려준다. */
+async function scene(sc) {
+  const opts = sc.choices.filter((c) => !c.if || c.if(S));
+  if (!opts.length) return null;
+  countQ();
+  save();
+  const title = fill(sc.title || '');
+  const text = fill(sc.text || '');
+  const html = '<h3>' + esc(title) + '</h3><div class="txt">' + esc(text) + '</div>' +
+    opts.map((c, i) => {
+      const cl = c.gold ? 'gold' : c.rare ? 'rare' : '';
+      let d = c.d ? fill(c.d) : '';
+      if (c.check) d = (d ? d + ' · ' : '') + '판정: ' + diffLabel(chance(c.check));
+      return '<button class="ch ' + cl + '" data-i="' + i + '">' + esc(fill(c.t)) + (d ? '<span class="d">' + esc(d) + '</span>' : '') + '</button>';
+    }).join('');
+  openSheet(html);
+  const i = await new Promise((res) => {
+    $('#sheet').querySelectorAll('.ch').forEach((b) => b.addEventListener('click', () => res(+b.dataset.i), { once: true }));
+    if (AUTO) setTimeout(() => { const gi = opts.findIndex((o) => o.gold); res(FORCE && gi >= 0 ? gi : Math.floor(R() * opts.length)); }, FAST ? 0 : 400);
+  });
+  closeSheet();
+  const c = opts[i];
+  line('▶ ' + fill(c.t), 'sys');
+  await resolve(c);
+  // 주의: 'then'이 있는 객체를 async 함수에서 돌려주면 Promise로 취급되므로 떼어 낸다
+  return Object.assign({}, c, { then: undefined });
+}
+async function resolve(c) {
+  let ok = true;
+  if (c.check) { const r = roll(c.check); ok = r.ok; line(ok ? '— 성공!' : '— 실패…', ok ? 'big' : 'sys'); }
+  const branch = c.check ? (ok ? c.ok : c.fail) : c;
+  if (c.fx) applyFx(c.fx);
+  if (branch && branch !== c) { if (branch.log) line(branch.log, branch.gold ? 'gold' : ''); applyFx(branch.fx); setFlag(branch.flag); if (branch.cnt) cnt(branch.cnt); if (branch.then) await branch.then(S, ok); }
+  if (c.log && !c.check) line(c.log, c.gold ? 'gold' : '');
+  setFlag(c.flag);
+  if (c.cnt) cnt(c.cnt);
+  if (c.then) await c.then(S, ok);
+  refreshHud();
+  return ok;
+}
+/* 데이터 묶음에서 조건에 맞는 장면 하나를 골라 실행 (이미 본 장면은 제외) */
+async function randomScene(pool, n = 1) {
+  for (let k = 0; k < n; k++) {
+    if (!budgetOK()) return;
+    const cand = pool.filter((sc) => (!S.seen[sc.id] || (sc.repeat && S.age - S.seen[sc.id] >= 6)) && (!sc.when || sc.when(S)));
+    if (!cand.length) return;
+    const sc = wpick(cand, (x) => x.w || 1);
+    S.seen[sc.id] = Math.max(1, S.age);
+    await beat(0.6);
+    await scene(sc);
+  }
+}
+
+/* ---------------- 선택 예산 ----------------
+   운중고 밖에서는 1년에 평균 1~2번만 고르게 한다.
+   한 해가 지날 때마다 1.3씩 쌓이고(최대 2.5) 선택할 때마다 1씩 쓴다.
+   필수 장면(관문·창업 핵심)은 예산이 없어도 나오고, 덤 장면은 예산이 있을 때만 나온다. */
+function inHS() { return String(STEPS[S.step] || '').startsWith('hs:'); }
+function countQ() { S.qc = S.qc || {}; S.qc[S.age] = (S.qc[S.age] || 0) + 1; if (!inHS()) S.allow = (S.allow || 0) - 1; }
+function budgetOK() { return inHS() || (S.allow || 0) >= 1; }
+/* ---------------- 에너지 배분 ---------------- */
+const EN = [['study', '공부·연습', '📚'], ['rest', '운동·휴식', '🏃'], ['people', '사람', '🤝'], ['fun', '놀이·취미', '🎮'], ['dream', '꿈 도전', '⭐']];
+async function energy(label, fixed = {}, ask = true) {
+  const fixTot = Object.values(fixed).reduce((a, b) => a + b, 0);
+  const total = 10 - fixTot;
+  let a = Object.assign({ study: 2, rest: 2, people: 2, fun: 2, dream: 2 }, S.lastEnergy || {});
+  // 남은 칸에 맞추기
+  let sum = EN.reduce((x, [k]) => x + a[k], 0);
+  while (sum > total) { const k = EN.map((e) => e[0]).sort((x, y) => a[y] - a[x])[0]; a[k]--; sum--; }
+  while (sum < total) { a[pick(EN)[0]]++; sum++; }
+  if (!ask && S.lastEnergy) { S.lastEnergy = Object.assign({}, a); return a; }
+  countQ();
+  if (AUTO) { a = { study: 0, rest: 0, people: 0, fun: 0, dream: 0 }; for (let i = 0; i < total; i++) a[pick(EN)[0]]++; S.lastEnergy = a; return a; }
+  save();
+  const render = () => {
+    const used = EN.reduce((x, [k]) => x + a[k], 0);
+    openSheet('<h3>' + esc(label) + '</h3><div class="left">에너지 10칸을 나눠 쓰세요' + (fixTot ? ' (일·가족에 ' + fixTot + '칸 고정)' : '') + ' · 남은 칸 <b>' + (total - used) + '</b></div>' +
+      Object.entries(fixed).map(([k, v]) => '<div class="en"><span class="lab">' + ({ work: '💼 일', care: '👶 가족' })[k] + '</span><span class="pips">' + '<i class="fix"></i>'.repeat(v) + '</span></div>').join('') +
+      EN.map(([k, n, e]) => '<div class="en"><span class="lab">' + e + ' ' + n + '</span><button data-k="' + k + '" data-d="-1">−</button><span class="pips">' + Array.from({ length: total }, (_, i) => '<i class="' + (i < a[k] ? 'on' : '') + '"></i>').join('') + '</span><button data-k="' + k + '" data-d="1">+</button></div>').join('') +
+      '<button class="primary" id="enOk"' + (used !== total ? ' disabled style="opacity:.5"' : '') + '>이대로 보내기</button>');
+    $('#sheet').querySelectorAll('.en button').forEach((b) => b.onclick = () => {
+      const k = b.dataset.k, d = +b.dataset.d; const used2 = EN.reduce((x, [kk]) => x + a[kk], 0);
+      if (d > 0 && used2 >= total) return; if (d < 0 && a[k] <= 0) return; a[k] += d; render();
+    });
+  };
+  render();
+  await new Promise((res) => { $('#sheet').addEventListener('click', function h(e) { if (e.target.id === 'enOk' && !e.target.disabled) { $('#sheet').removeEventListener('click', h); res(); } }); });
+  closeSheet();
+  S.lastEnergy = Object.assign({}, a);
+  return a;
+}
+/* 에너지 → 성장. focus: 공부·연습이 주로 키우는 능력치들 */
+function grow(a, scale = 1, focus = null) {
+  const f = focus || S.focus || ['study'];
+  const fx = {};
+  const add = (k, v) => { fx[k] = (fx[k] || 0) + v; };
+  f.forEach((k) => add(k, a.study * 1.2 * scale / f.length));
+  add('study', a.study * 0.35 * scale);
+  add('health', (a.rest * 2.2 - 4) * scale); add('body', a.rest * 0.6 * scale);
+  add('rel', (a.people * 2.4 - 4) * scale); add('lead', a.people * 0.5 * scale); add('emp', a.people * 0.5 * scale);
+  add('happy', (a.fun * 2.6 - 5) * scale); add('art', a.fun * 0.4 * scale);
+  add('passion', (a.dream * 2.4 - 3) * scale);
+  if (S.dream) { const j = DATA.jobs[S.dream]; j.abil.forEach((k) => add(k, a.dream * 1.0 * scale / j.abil.length)); }
+  if (a.study + a.dream >= 7) { add('happy', -4 * scale); add('health', -3 * scale); }
+  if (a.fun + a.rest >= 7) { add('passion', -2 * scale); }
+  for (const k in fx) fx[k] = Math.round(fx[k] * 10) / 10;
+  applyFx(fx, true);
+  // 평균 회귀: 행복·관계·열정은 돌보지 않으면 보통(50)으로 돌아간다
+  ['happy', 'rel', 'passion'].forEach((k) => { S.st[k] = clamp(S.st[k] + (50 - S.st[k]) * 0.07 * scale, 0, 100); });
+  // 나이에 따른 건강 감소
+  if (S.age >= 40) S.st.health = clamp(S.st.health - (S.age - 38) * 0.08 * scale * (S.body === 'weak' ? 1.3 : S.body === 'strong' ? 0.7 : 1), 0, 100);
+  refreshHud();
+}
+
+/* ---------------- 업적·도감 ---------------- */
+function dex() { return store.get(DEX_KEY) || { jobs: {}, ach: {}, lives: 0 }; }
+function unlock(id) {
+  if (S.ach.includes(id)) return;
+  const a = DATA.achievements[id]; if (!a) return;
+  S.ach.push(id);
+  const d = dex(); d.ach[id] = 1; store.set(DEX_KEY, d);
+  line('🏆 업적 달성 — ' + a.em + ' ' + a.n + ' : ' + a.d, 'ach');
+}
+function dexJob(id) { const d = dex(); d.jobs[id] = 1; store.set(DEX_KEY, d); }
+
+/* ---------------- 화면 ---------------- */
+function refreshHud() {
+  if (!S) return;
+  S.st.skill = skillOf(S);
+  $('#nm').textContent = S.name;
+  const jobTxt = S.job ? DATA.jobs[S.job].n + (S.level != null ? ' · ' + levelName() : '') : S.phaseName || '';
+  $('#meta').textContent = S.age + '세 · ' + (S.gender === 'm' ? '남' : '여') + ' · ' + S.quint + '분위' + (jobTxt ? ' · ' + jobTxt : '');
+  $('#stats').innerHTML = STATS.map(([k, n, c]) => {
+    const v = Math.round(S.st[k]);
+    return '<div class="st">' + n + ' <b>' + v + '</b><div class="bar"><i style="width:' + v + '%;background:' + c + '"></i></div></div>';
+  }).join('') + '<div class="st">돈 <b>' + won(S.money) + '</b></div>';
+  const tags = [];
+  S.revealed.forEach((k) => tags.push('<span class="tag">✨' + ABIL[k] + '</span>'));
+  if (S.dream && !S.job) tags.push('<span class="tag ' + (DATA.jobs[S.dream].tier === 'gold' ? 'gold' : '') + '">꿈: ' + DATA.jobs[S.dream].em + ' ' + DATA.jobs[S.dream].n + '</span>');
+  S.traits.forEach((t) => tags.push('<span class="tag gold">' + DATA.traits[t].n + '</span>'));
+  $('#tags').innerHTML = tags.join('');
+  $('#av').innerHTML = avatarSVG();
+  $('#place').textContent = S.place || '';
+  paintBg();
+}
+function levelName() { const j = DATA.jobs[S.job]; return (j.levels || DATA.levels)[S.level] || ''; }
+function stage() { const a = S.age; return a < 2 ? 'baby' : a < 8 ? 'child' : a < 14 ? 'kid' : a < 17 ? 'teen' : a < 20 ? 'hs' : a < 65 ? 'adult' : 'senior'; }
+function paintBg() {
+  const bg = { baby: ['#ffe3ec', '#fff7fa'], child: ['#c8ecff', '#f4fbff'], kid: ['#c9f0d8', '#f4fff8'], teen: ['#d9d4ff', '#f7f6ff'], hs: ['#a9c1ef', '#eef3fd'], adult: ['#d7e2f0', '#f6f8fb'], senior: ['#ffd2b0', '#fff4ea'] }[stage()];
+  const app = $('#app'); app.style.setProperty('--bg1', bg[0]); app.style.setProperty('--bg2', bg[1]);
+}
+/* 겹쳐 그리는 작은 캐릭터: 나이·표정(행복)·안색(건강)·소품(직업) */
+function avatarSVG() {
+  const sg = stage(), f = S.gender === 'f';
+  const hp = S.st.happy, hl = S.st.health;
+  const scale = { baby: 0.7, child: 0.8, kid: 0.88, teen: 0.95, hs: 1, adult: 1, senior: 1 }[sg];
+  const skin = hl < 30 ? '#f1ddd0' : '#ffd9bf';
+  const hair = sg === 'senior' ? '#d9d9d9' : (S.age >= 50 ? '#555' : '#2b2b33');
+  const mouth = hp >= 70 ? '<path d="M42 66 Q50 75 58 66" stroke="#7a3b2e" stroke-width="3" fill="none" stroke-linecap="round"/>'
+    : hp >= 40 ? '<path d="M43 68 L57 68" stroke="#7a3b2e" stroke-width="3" stroke-linecap="round"/>'
+      : '<path d="M42 71 Q50 64 58 71" stroke="#7a3b2e" stroke-width="3" fill="none" stroke-linecap="round"/>';
+  const eyes = (hl < 30 ? '<ellipse cx="40" cy="57" rx="5" ry="2.2" fill="#b9a3c9" opacity=".8"/><ellipse cx="60" cy="57" rx="5" ry="2.2" fill="#b9a3c9" opacity=".8"/>' : '') +
+    (hp < 30 ? '<path d="M36 50 L44 52 M64 50 L56 52" stroke="#333" stroke-width="2"/>' : '') +
+    '<circle cx="40" cy="53" r="3.2" fill="#222"/><circle cx="60" cy="53" r="3.2" fill="#222"/>';
+  const blush = hp >= 75 ? '<circle cx="34" cy="62" r="4" fill="#ff9aa2" opacity=".5"/><circle cx="66" cy="62" r="4" fill="#ff9aa2" opacity=".5"/>' : '';
+  let hairSvg = sg === 'baby' ? '<path d="M44 26 Q50 18 56 26" stroke="' + hair + '" stroke-width="3" fill="none"/>'
+    : f ? '<path d="M22 56 Q20 22 50 20 Q80 22 78 56 L78 82 Q72 70 70 48 Q50 40 30 48 Q28 70 22 82 Z" fill="' + hair + '"/>'
+      : '<path d="M24 50 Q22 20 50 19 Q78 20 76 50 Q70 36 50 34 Q30 36 24 50 Z" fill="' + hair + '"/>';
+  let body = '';
+  if (sg === 'hs') body = '<path d="M22 100 Q24 84 50 82 Q76 84 78 100 Z" fill="#1f3a68"/><path d="M44 83 L50 92 L56 83" fill="#fff"/><rect x="48" y="86" width="4" height="10" fill="#c0392b"/>';
+  else if (sg === 'adult') body = '<path d="M20 100 Q22 84 50 82 Q78 84 80 100 Z" fill="' + (S.job ? DATA.fieldColor[DATA.jobs[S.job].field] || '#46546e' : '#6c7a96') + '"/>';
+  else if (sg === 'senior') body = '<path d="M20 100 Q22 84 50 82 Q78 84 80 100 Z" fill="#8c7b6a"/>';
+  else body = '<path d="M26 100 Q28 86 50 84 Q72 86 74 100 Z" fill="' + (f ? '#f28fb0' : '#6fb1f2') + '"/>';
+  const glasses = (S.age >= 55 || S.abil.study > 85) && sg !== 'baby' ? '<circle cx="40" cy="53" r="7" stroke="#333" stroke-width="1.8" fill="none"/><circle cx="60" cy="53" r="7" stroke="#333" stroke-width="1.8" fill="none"/><path d="M47 53 L53 53" stroke="#333" stroke-width="1.8"/>' : '';
+  const wrinkle = sg === 'senior' ? '<path d="M30 46 Q34 44 38 46 M62 46 Q66 44 70 46" stroke="#b08a70" stroke-width="1.2" fill="none"/>' : '';
+  const prop = S.job ? DATA.jobs[S.job].em : sg === 'hs' ? '🎒' : sg === 'baby' ? '🍼' : '';
+  return '<svg viewBox="0 0 100 100"><g transform="translate(50 100) scale(' + scale + ') translate(-50 -100)">' + body +
+    '<rect x="44" y="72" width="12" height="12" fill="' + skin + '"/>' +
+    '<circle cx="50" cy="52" r="27" fill="' + skin + '"/>' + hairSvg + eyes + blush + mouth + glasses + wrinkle + '</g>' +
+    (prop ? '<text x="78" y="26" font-size="20" text-anchor="middle">' + prop + '</text>' : '') + '</svg>';
+}
+
+/* ---------------- 저장 ---------------- */
+function save() { if (S && !S.over) store.set(SAVE_KEY, S); }
+
+/* ============================================================
+   운중일생 — 데이터 (시제품 v0.1)
+   여기를 늘리면 게임이 풍부해진다. 형식은 engine.js 맨 위 설명 참고.
+   ============================================================ */
+const DATA = {};
+
+DATA.names = {
+  sur: ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황', '안', '송', '류', '홍'],
+  m: ['민준', '서준', '도윤', '예준', '시우', '하준', '주원', '지호', '지후', '준우', '건우', '우진', '선우', '현우', '유준', '정우', '승우', '시윤', '은우', '태윤'],
+  f: ['서연', '서윤', '지우', '하은', '민서', '하윤', '윤서', '지유', '채원', '수아', '지아', '다은', '예은', '소율', '시아', '유나', '서아', '하린', '연우', '나은'],
+  friend: ['지훈', '수빈', '태오', '다인', '현서', '재민', '은채', '도현', '유진', '민재', '가은', '세아'],
+};
+DATA.regions = [
+  { id: 'pangyo', n: '판교', w: 30, tag: 'tech', d: '빌딩 사이로 노을이 지는 판교' },
+  { id: 'seoul', n: '서울', w: 22, tag: 'city', d: '지하철 소리가 자장가인 서울' },
+  { id: 'city', n: '지방 도시', w: 22, tag: 'city', d: '시장 골목이 정겨운 지방 도시' },
+  { id: 'sea', n: '바닷가 마을', w: 13, tag: 'nature', d: '파도 소리가 들리는 바닷가 마을' },
+  { id: 'mountain', n: '산골', w: 13, tag: 'nature', d: '별이 쏟아지는 산골' },
+];
+DATA.parents = {
+  cheer: { n: '응원형', d: '무엇을 하든 "해 봐!"라고 말해 주는 부모님' },
+  strict: { n: '엄격형', d: '성적표를 꼼꼼히 보는 부모님' },
+  free: { n: '자유형', d: '알아서 하라며 믿어 주는 부모님' },
+  worry: { n: '걱정형', d: '늘 "안전한 길"을 권하는 부모님' },
+};
+DATA.dol = [
+  { id: 'thread', n: '실', em: '🧵', d: '오래오래 건강하게', ab: null, fx: { health: 8 }, jobs: [] },
+  { id: 'money', n: '돈', em: '💴', d: '부자가 되려나', ab: 'lead', jobs: ['founder', 'accountant', 'marketer'] },
+  { id: 'pencil', n: '연필', em: '✏️', d: '공부를 잘하려나', ab: 'study', jobs: ['researcher', 'teacher', 'civil'] },
+  { id: 'brush', n: '붓', em: '🖌️', d: '예술가가 되려나', ab: 'art', jobs: ['designer', 'webtoon'] },
+  { id: 'rice', n: '쌀', em: '🍚', d: '평생 굶지 않고 복이 많으려나', ab: 'emp', fx: { rel: 6 }, jobs: ['social'] },
+  { id: 'stetho', n: '청진기', em: '🩺', d: '의사가 되려나', ab: 'emp', jobs: ['doctor', 'nurse', 'physio'] },
+  { id: 'gavel', n: '판사봉', em: '⚖️', d: '법조인이 되려나', ab: 'study', jobs: ['lawyer', 'civil'] },
+  { id: 'mic', n: '마이크', em: '🎤', d: '무대 위의 사람이 되려나', ab: 'art', jobs: ['star', 'announcer', 'pd'] },
+  { id: 'mouse', n: '마우스', em: '🖱️', d: '컴퓨터 천재가 되려나', ab: 'tech', jobs: ['developer', 'founder', 'gameplanner'] },
+  { id: 'ball', n: '축구공', em: '⚽', d: '운동선수가 되려나', ab: 'body', jobs: ['athlete', 'trainer'] },
+  { id: 'ladle', n: '국자', em: '🥄', d: '요리사가 되려나', ab: 'art', jobs: ['chef', 'barista'] },
+  { id: 'plane', n: '비행기 장난감', em: '✈️', d: '하늘을 날려나', ab: 'body', jobs: ['astronaut'] },
+  { id: 'book', n: '책', em: '📕', d: '이야기를 쓰려나', ab: 'study', jobs: ['teacher', 'reporter', 'webtoon'] },
+  { id: 'globe', n: '지구본', em: '🌏', d: '세계를 누비려나', ab: 'lead', jobs: ['reporter', 'founder'] },
+  { id: 'phone', n: '스마트폰', em: '📱', d: '…설마 유튜버?', ab: 'art', jobs: ['pd', 'star', 'marketer'] },
+];
+
+/* 운중고 동아리 24개 (이름·활동 영역은 실제 학교, 장면은 게임용) */
+DATA.clubs = {
+  nanadri: { n: '너나들이', area: '또래 상담·심리학', em: '💬', focus: ['emp'], cnt: 'empathy', hi: '쉬는 시간마다 고민 상담 부스를 열었다', comp: '또래 상담 사례 발표회' },
+  nerdlab: { n: '너드랩', area: '공학·기술', em: '🔧', focus: ['tech'], cnt: 'project', hi: '버려진 부품으로 움직이는 로봇을 만들었다', comp: '청소년 메이커 대회' },
+  dadok: { n: '다독다독', area: '독서 토론', em: '📚', focus: ['study', 'lead'], cnt: 'debate', hi: '한 권의 책으로 세 시간을 토론했다', comp: '독서 토론 대회' },
+  rise: { n: '라이즈', area: '교육', em: '🍎', focus: ['emp', 'study'], cnt: 'empathy', hi: '동네 초등학생들에게 수학을 가르쳤다', comp: '교육 봉사 발표회' },
+  leaders: { n: '리더스', area: '경영·마케팅', em: '📈', focus: ['lead'], cnt: 'leader', hi: '축제 부스로 실제 매출을 올렸다', comp: '청소년 마케팅 공모전' },
+  mankyu: { n: '맨큐', area: '경제·경영·마케팅', em: '💹', focus: ['lead', 'study'], cnt: 'leader', hi: '모의 투자 대회에서 수익률 1위를 했다', comp: '경제 탐구 대회' },
+  motive: { n: '모티브', area: '미술 실기', em: '🎨', focus: ['art'], cnt: 'art', hi: '복도 벽화를 그렸다', comp: '교내 전시회' },
+  broadcast: { n: '방송부', area: '방송', em: '📻', focus: ['art', 'lead'], cnt: 'stage', hi: '아침 방송 진행을 맡았다', comp: '학생 방송 콘테스트' },
+  sonorous: { n: '소너러스', area: '밴드', em: '🎸', focus: ['art'], cnt: 'stage', hi: '합주실에서 밤늦게까지 합을 맞췄다', comp: '축제 밴드 공연' },
+  standby: { n: '스탠바이', area: '영상 제작', em: '🎬', focus: ['art', 'tech'], cnt: 'film', hi: '학교 홍보 영상을 찍었다', comp: '청소년 단편 영화제' },
+  stage: { n: '스테이지', area: '댄스', em: '💃', focus: ['body', 'art'], cnt: 'stage', hi: '거울 앞에서 안무를 백 번 맞췄다', comp: '축제 댄스 무대' },
+  signbills: { n: '싸인빌즈', area: '힙합', em: '🎧', focus: ['art'], cnt: 'stage', hi: '직접 쓴 가사로 첫 무대를 올렸다', comp: '교내 힙합 경연' },
+  anis: { n: '아니스', area: '생명 과학', em: '🧬', focus: ['study', 'tech'], cnt: 'science', hi: '현미경으로 세포 분열을 처음 봤다', comp: '과학 학술제' },
+  atelier: { n: '아뜰리에', area: '공예', em: '🧶', focus: ['art'], cnt: 'art', hi: '직접 만든 컵으로 바자회를 열었다', comp: '공예 바자회' },
+  algorithm: { n: '알고리즘', area: '코딩·프로그래밍', em: '💻', focus: ['tech', 'study'], cnt: 'project', hi: '밤새 문제를 풀다 해가 떴다', comp: '정보 올림피아드' },
+  eskimos: { n: '에스키모스', area: '융합 과학', em: '🔬', focus: ['study', 'tech'], cnt: 'science', hi: '과학과 미술을 섞은 실험을 했다', comp: '융합 과학 탐구 대회' },
+  ecoscience: { n: '에코사이언스', area: '친환경 기술·과학', em: '🌱', focus: ['tech', 'emp'], cnt: 'science', hi: '학교 옥상에 태양광 화분을 설치했다', comp: '환경 과학 경진대회' },
+  offbroadway: { n: '오프브로드웨이', area: '연극·뮤지컬', em: '🎭', focus: ['art', 'emp'], cnt: 'stage', hi: '주인공 대사를 외우다 목이 쉬었다', comp: '정기 공연' },
+  unite: { n: '유나이트', area: '학문 융합·심화 탐구', em: '🧠', focus: ['study'], cnt: 'science', hi: '대학 논문을 읽고 탐구 보고서를 썼다', comp: '심화 탐구 발표회' },
+  eureka: { n: '유레카', area: '과학 실험', em: '⚗️', focus: ['study', 'tech'], cnt: 'science', hi: '실험이 열두 번 실패하고 열세 번째에 성공했다', comp: '과학 학술제' },
+  inside: { n: '인사이드', area: '심리학', em: '🫀', focus: ['emp', 'study'], cnt: 'empathy', hi: '친구들의 수면 습관을 조사해 보고서를 썼다', comp: '심리학 탐구 발표' },
+  bookmark: { n: '책갈피', area: '독서 활동', em: '🔖', focus: ['study', 'emp'], cnt: 'debate', hi: '도서관에 추천 도서 코너를 만들었다', comp: '독서 골든벨' },
+  highclear: { n: '하이클리어', area: '배드민턴', em: '🏸', focus: ['body'], cnt: 'sport', hi: '점심시간마다 체육관에서 셔틀콕을 쳤다', comp: '교내 배드민턴 리그' },
+  journey: { n: '나를찾는여행', area: '예술·체육', em: '🧭', focus: ['art', 'body'], cnt: 'art', hi: '나를 표현하는 작품과 운동을 함께 했다', comp: '활동 발표회' },
+};
+
+/* 직업. tier: normal(흰) · rare(파랑) · gold(특수) */
+DATA.fieldColor = { 의료: '#4aa3a2', '법·행정': '#3c4f7a', 과학: '#5865c9', '기술·IT': '#2f6fe4', '경영·경제': '#34495e', 교육: '#4caf7a', '예술·디자인': '#c06cc0', '대중문화·미디어': '#e2557b', 스포츠: '#e67e22', '요리·서비스': '#b5651d', '공공·안전': '#2c3e50', '사회·환경': '#3fa34d' };
+DATA.levels = ['신입', '실무자', '중견', '베테랑', '정점'];
+DATA.jobs = {
+  nurse: { n: '간호사', em: '💉', field: '의료', tier: 'normal', abil: ['emp', 'body'], salary: 4200 },
+  physio: { n: '물리치료사', em: '🦴', field: '의료', tier: 'normal', abil: ['body', 'emp'], salary: 3900 },
+  doctor: { n: '의사', em: '🩺', field: '의료', tier: 'rare', abil: ['study', 'emp'], salary: 12000, levels: ['전공의', '전문의', '중견 의사', '명의', '대학병원 교수'] },
+  civil: { n: '공무원', em: '🏛️', field: '법·행정', tier: 'normal', abil: ['study', 'lead'], salary: 3800 },
+  lawyer: { n: '변호사', em: '⚖️', field: '법·행정', tier: 'rare', abil: ['study', 'lead'], salary: 9000 },
+  researcher: { n: '연구원', em: '🧪', field: '과학', tier: 'normal', abil: ['study', 'tech'], salary: 5200, levels: ['연구원', '선임연구원', '책임연구원', '연구위원', '연구소장'] },
+  envres: { n: '환경연구원', em: '🌿', field: '과학', tier: 'normal', abil: ['study', 'emp'], salary: 4600 },
+  developer: { n: '개발자', em: '👩‍💻', field: '기술·IT', tier: 'normal', abil: ['tech', 'study'], salary: 5600 },
+  gameplanner: { n: '게임 기획자', em: '🕹️', field: '기술·IT', tier: 'normal', abil: ['art', 'tech'], salary: 4800 },
+  marketer: { n: '마케터', em: '📣', field: '경영·경제', tier: 'normal', abil: ['lead', 'art'], salary: 4700 },
+  accountant: { n: '회계사', em: '🧮', field: '경영·경제', tier: 'normal', abil: ['study', 'tech'], salary: 7000 },
+  teacher: { n: '교사', em: '🍎', field: '교육', tier: 'normal', abil: ['emp', 'study'], salary: 4300, levels: ['신규 교사', '담임 교사', '부장 교사', '교감', '교장'] },
+  kinder: { n: '유치원 교사', em: '🧸', field: '교육', tier: 'normal', abil: ['emp', 'art'], salary: 3500 },
+  designer: { n: '디자이너', em: '🎨', field: '예술·디자인', tier: 'normal', abil: ['art', 'tech'], salary: 4200 },
+  webtoon: { n: '웹툰 작가', em: '✒️', field: '예술·디자인', tier: 'normal', abil: ['art', 'emp'], salary: 3600 },
+  pd: { n: 'PD', em: '🎥', field: '대중문화·미디어', tier: 'normal', abil: ['art', 'lead'], salary: 5000 },
+  announcer: { n: '아나운서', em: '🎙️', field: '대중문화·미디어', tier: 'rare', abil: ['lead', 'study'], salary: 5800 },
+  trainer: { n: '트레이너', em: '🏋️', field: '스포츠', tier: 'normal', abil: ['body', 'emp'], salary: 3600 },
+  athlete: { n: '프로 선수', em: '🏅', field: '스포츠', tier: 'rare', abil: ['body', 'lead'], salary: 8000, retire: 36 },
+  chef: { n: '요리사', em: '👨‍🍳', field: '요리·서비스', tier: 'normal', abil: ['art', 'body'], salary: 3800 },
+  barista: { n: '바리스타', em: '☕', field: '요리·서비스', tier: 'normal', abil: ['art', 'emp'], salary: 3200 },
+  police: { n: '경찰관', em: '👮', field: '공공·안전', tier: 'normal', abil: ['body', 'lead'], salary: 4300 },
+  firefighter: { n: '소방관', em: '🚒', field: '공공·안전', tier: 'normal', abil: ['body', 'emp'], salary: 4300 },
+  social: { n: '사회복지사', em: '🤲', field: '사회·환경', tier: 'normal', abil: ['emp', 'lead'], salary: 3400 },
+  reporter: { n: '기자', em: '📰', field: '사회·환경', tier: 'normal', abil: ['study', 'lead'], salary: 4500 },
+  // 특수 직업
+  founder: { n: '유니콘 창업가', em: '🦄', field: '경영·경제', tier: 'gold', abil: ['lead', 'tech'], salary: 0 },
+  astronaut: { n: '우주비행사', em: '🚀', field: '과학', tier: 'gold', abil: ['body', 'study'], salary: 9000 },
+  star: { n: '월드 스타', em: '🌟', field: '대중문화·미디어', tier: 'gold', abil: ['art', 'body'], salary: 0 },
+};
+/* 가까운 분야 = 같은 field. 꿈 바꾸기 패널티 계산에 사용 */
+
+/* 졸업식 각성 특성 */
+DATA.traits = {
+  coder: { n: '밤샘 코더', d: '기술 성장 ×1.5, 대신 건강이 잘 깎임', mul: { tech: 1.5 }, cond: (S) => (S.cnt.project || 0) >= 2 && S.abil.tech >= 50, score: (S) => (S.cnt.project || 0) * 2 + S.abil.tech / 20 },
+  planner: { n: '판을 짜는 사람', d: '리더십 ×1.5, 팀을 이끄는 판정에 유리', mul: { lead: 1.5 }, check: (c) => (c.abil === 'lead' || (Array.isArray(c.abil) && c.abil.includes('lead')) ? 8 : 0), cond: (S) => S.flags.president || (S.cnt.leader || 0) >= 3, score: (S) => (S.flags.president ? 6 : 0) + (S.cnt.leader || 0) },
+  stage: { n: '무대 체질', d: '예술·대중문화 관문 +15%', check: (c, S) => (c.tag === 'stage' ? 15 : 0), mul: { art: 1.2 }, cond: (S) => (S.cnt.stage || 0) >= 3, score: (S) => (S.cnt.stage || 0) * 2 },
+  debater: { n: '토론의 신', d: '설득 판정 +15%', check: (c) => (c.tag === 'persuade' ? 15 : 0), mul: { lead: 1.15 }, cond: (S) => (S.cnt.debate || 0) >= 2, score: (S) => (S.cnt.debate || 0) * 2 },
+  lab: { n: '실험실 붙박이', d: '연구 직업 성장 ×1.5', mul: { study: 1.3, tech: 1.2 }, cond: (S) => (S.cnt.science || 0) >= 2, score: (S) => (S.cnt.science || 0) * 2 },
+  empath: { n: '공감 장인', d: '관계 회복이 쉽고 의료·교육에 유리', mul: { emp: 1.5 }, cond: (S) => (S.cnt.empathy || 0) >= 2, score: (S) => (S.cnt.empathy || 0) * 2 },
+  steel: { n: '강철 체력', d: '건강이 깎이는 양 40% 감소', mul: { body: 1.3 }, cond: (S) => (S.cnt.sport || 0) >= 3 && S.abil.body >= 60, score: (S) => (S.cnt.sport || 0) * 2 + S.abil.body / 25 },
+  cram: { n: '벼락치기 천재', d: '시험·관문 판정 +10%, 장기 성장은 느림', check: (c) => (c.tag === 'exam' ? 10 : 0), mul: { study: 0.9 }, cond: (S) => (S.cnt.cram || 0) >= 2, score: (S) => (S.cnt.cram || 0) * 2 },
+  okto: { n: '오뚝이', d: '열정이 회복될 때 40% 더 회복', cond: (S) => (S.cnt.comeback || 0) >= 1, score: (S) => (S.cnt.comeback || 0) * 3 },
+  insider: { n: '인싸의 정석', d: '기회 이벤트가 더 자주', cond: (S) => S.st.rel >= 82 && (S.cnt.event || 0) >= 6, score: (S) => S.st.rel / 15 + (S.cnt.event || 0) },
+  quiet: { n: '조용한 괴물', d: '실력 성장 ×1.3', mul: { study: 1.3, tech: 1.3, art: 1.3 }, cond: (S) => (S.cnt.event || 0) <= 2 && skillOf(S) >= 60, score: (S) => skillOf(S) / 12 },
+  legend: { n: '운중의 전설', d: '모든 관문 +10%', check: () => 10, cond: (S) => S.flags.president && S.flags.kept_all && (S.cnt.event || 0) >= 8 && skillOf(S) >= 75, score: () => 20 },
+};
+
+/* 업적 */
+DATA.achievements = {
+  dol_prophecy: { em: '🍼', n: '돌잡이 예언 적중', d: '돌잡이 때 집은 물건과 이어진 직업을 얻었다' },
+  child_dream: { em: '✏️', n: '어릴 적 꿈 그대로', d: '초등학생 때 적은 장래희망을 이뤘다' },
+  president: { em: '🗳️', n: '운중고 학생회장', d: '학생회장에 당선됐다' },
+  promise: { em: '🤝', n: '약속을 지킨 사람', d: '학생회장 공약을 모두 지켰다' },
+  festival: { em: '🎆', n: '축제의 전설', d: '축제 무대를 뒤집어 놓았다' },
+  sports_mvp: { em: '🏆', n: '체육대회 MVP', d: '체육대회에서 반을 우승으로 이끌었다' },
+  reversal: { em: '🔥', n: '역전 인생', d: '1분위에서 출발해 특수 직업에 닿았다' },
+  late_bloom: { em: '🌸', n: '대기만성', d: '40세가 넘어 꿈을 이뤘다' },
+  second_dream: { em: '🔁', n: '두 번째 꿈', d: '꿈을 바꿔 이뤘다' },
+  ordinary: { em: '🌿', n: '평범함의 위대함', d: '특수 직업 없이 행복하게 일생을 마쳤다' },
+  centenarian: { em: '🎂', n: '백 세 생일', d: '100세 생일을 맞았다' },
+  one_path: { em: '⛏️', n: '한 우물', d: '한 직업을 30년 넘게 했다' },
+  unicorn: { em: '🦄', n: '유니콘', d: '기업 가치 1조 원을 넘겼다' },
+  decacorn: { em: '🐉', n: '데카콘', d: '기업 가치 10조 원을 넘겼다' },
+  okto: { em: '🪀', n: '오뚝이', d: '세 번 망하고 다시 일어섰다' },
+  returned_ceo: { em: '👑', n: '돌아온 대표', d: '쫓겨났던 회사로 돌아와 회사를 살렸다' },
+  partners: { em: '🫱', n: '동업의 정석', d: '공동창업자와 끝까지 함께했다' },
+  school_app: { em: '📱', n: '학교 앱이 진짜 회사가 됐다', d: '운중고 시절 프로젝트를 상장까지 키웠다' },
+  moon: { em: '🌕', n: '달 착륙', d: '달에 발자국을 남겼다' },
+  billboard: { em: '🎶', n: '빌보드 1위', d: '세계 차트 1위에 올랐다' },
+  principal: { em: '🏫', n: '운중고 교장', d: '모교로 돌아와 교장이 되었다' },
+  richest: { em: '💎', n: '세계 부자 1위', d: '세계에서 가장 부유한 사람이 되었다' },
+  legend_grad: { em: '☁️', n: '운중의 전설', d: '졸업식에서 전설로 남았다' },
+  fate: { em: '🎲', n: '운명의 장난', d: '꿈 카드에서 같은 직업을 연속으로 봤다' },
+};
+
+/* ============ 장면 묶음 ============ */
+const P = DATA.pools = {};
+
+/* 반짝 순간: 숨은 재능을 드러낸다 */
+P.sparkle = [
+  { k: 'tech', t: '블록으로 자기 키만 한 탑을 쌓아 어른들이 놀랐다.' },
+  { k: 'art', t: '크레파스로 그린 가족 그림이 유치원 복도에 걸렸다.' },
+  { k: 'body', t: '놀이터 철봉에서 형·누나들보다 오래 매달렸다.' },
+  { k: 'study', t: '그림책을 한 번 읽어 주자 내용을 통째로 외워 버렸다.' },
+  { k: 'lead', t: '놀이터 아이들을 모아 술래잡기 규칙을 새로 만들었다.' },
+  { k: 'emp', t: '우는 친구 옆에 가만히 앉아 손을 잡아 주었다.' },
+  { k: 'tech', t: '고장 난 장난감 자동차를 분해했다가 다시 조립했다.' },
+  { k: 'art', t: '처음 들은 노래의 음을 정확히 따라 불렀다.' },
+];
+
+P.infant = [
+  { id: 'inf_weekend', title: '주말 나들이', text: '{name}의 부모님이 묻는다. "이번 주말엔 어디 갈까?"',
+    choices: [
+      { t: '🦕 박물관', fx: { study: 4 }, tag: 'book', log: '공룡 뼈 앞에서 한참을 서 있었다.' },
+      { t: '🛝 놀이터', fx: { body: 4, happy: 3 }, log: '모래 범벅이 되어 돌아왔다.' },
+      { t: '📚 도서관', fx: { study: 3, art: 2 }, log: '그림책 열 권을 빌려 왔다.' },
+      { t: '🧱 집에서 블록 놀이', fx: { tech: 4 }, log: '거실에 블록 도시가 생겼다.' },
+    ] },
+  { id: 'inf_talent_show', title: '유치원 장기자랑', text: '유치원 장기자랑 날. {name}의 차례가 다가온다.',
+    choices: [
+      { t: '🎤 노래를 부른다', fx: { art: 4, happy: 3 }, cnt: 'stage0', log: '박수 소리에 얼굴이 빨개졌다.' },
+      { t: '🕺 춤을 춘다', fx: { body: 3, art: 2 }, log: '선생님이 앙코르를 외쳤다.' },
+      { t: '😶 부끄러워서 숨는다', fx: { emp: 2 }, log: '대신 친구를 열심히 응원했다.' },
+    ] },
+];
+
+/* 초등학교 */
+P.elem = [
+  { id: 'el_dictation', title: '받아쓰기 시험', text: '내일은 받아쓰기 시험. 오늘은 친구들이 놀이터에서 축구를 하자고 한다.',
+    choices: [{ t: '집에서 연습한다', fx: { study: 4, happy: -2 }, log: '100점 맞은 시험지를 냉장고에 붙였다.' }, { t: '축구하러 간다', fx: { body: 3, rel: 4 }, log: '70점. 그래도 결승골은 내가 넣었다.' }] },
+  { id: 'el_leader', title: '반장 선거', text: '담임 선생님이 반장 후보를 받는다. 친구 {friend}{이가} "너 나가 봐!"라며 옆구리를 찌른다.',
+    choices: [
+      { t: '손을 번쩍 든다', check: { abil: 'lead', base: 45, tag: 'persuade' }, ok: { log: '반장이 되었다! 첫 임무는 우유 당번 정하기.', fx: { lead: 6, passion: 4 }, flag: 'class_leader' }, fail: { log: '두 표 차이로 떨어졌다. 그래도 연설은 멋있었다.', fx: { lead: 3 } } },
+      { t: '{friend}{이가} 나가게 추천한다', fx: { rel: 5, emp: 2 }, log: '{friend}{이가} 반장이 되고 고맙다며 젤리를 줬다.' },
+    ] },
+  { id: 'el_phone', title: '첫 스마트폰', text: '드디어 생긴 첫 스마트폰. 밤마다 무엇에 빠져들까?',
+    choices: [
+      { t: '🎮 게임', fx: { tech: 2, happy: 4, study: -2 }, flag: 'tag_game', log: '랭킹 1위를 찍었다(동네 기준).' },
+      { t: '📺 영상 보기·찍기', fx: { art: 4 }, flag: 'tag_video', log: '직접 찍은 브이로그 조회수가 37이 되었다.' },
+      { t: '📖 웹소설·웹툰', fx: { study: 2, art: 2 }, flag: 'tag_story', log: '결말이 마음에 안 들어 내 버전을 써 봤다.' },
+      { t: '💻 코딩 앱', fx: { tech: 5 }, flag: 'tag_code', log: '버튼을 누르면 고양이가 뛰는 앱을 만들었다.' },
+    ] },
+  { id: 'el_show', title: '학예회', text: '학예회 준비가 시작됐다. 무엇을 맡을까?',
+    choices: [{ t: '연극 주인공', fx: { art: 4, lead: 2 }, cnt: 'stage0' }, { t: '무대 소품 만들기', fx: { tech: 3, art: 2 } }, { t: '사회자', fx: { lead: 4 } }] },
+  { id: 'el_camp', title: '수련회', text: '처음 가 보는 2박 3일 수련회. 밤에 친구들이 베개 싸움을 시작했다.',
+    choices: [{ t: '앞장서서 참전', fx: { rel: 5, happy: 4, health: -2 } }, { t: '몰래 잠든다', fx: { health: 3 } }, { t: '선생님 몰래 망을 본다', fx: { rel: 3, lead: 2 } }] },
+  { id: 'el_cat', title: '길고양이', text: '학교 앞에 다친 길고양이가 있다.', choices: [{ t: '동물병원에 데려간다', fx: { emp: 5, money: -5 }, log: '고양이에게 "구름이"라는 이름을 지어 줬다.', flag: 'cat' }, { t: '선생님께 알린다', fx: { emp: 2, lead: 2 } }] },
+  { id: 'el_contest', title: '동네 대회', text: '구청에서 어린이 대회를 연다. 하나만 나갈 수 있다.',
+    choices: [
+      { t: '🔬 과학 상자 조립 대회', check: { abil: 'tech', base: 45 }, ok: { log: '은상! 상장을 들고 사진을 찍었다.', fx: { tech: 4, passion: 4 } }, fail: { log: '아깝게 입상 실패.', fx: { tech: 2 } } },
+      { t: '🖍️ 사생 대회', check: { abil: 'art', base: 45 }, ok: { log: '금상! 그림이 구청 로비에 걸렸다.', fx: { art: 4, passion: 4 } }, fail: { log: '참가상 연필 세트를 받았다.', fx: { art: 2 } } },
+      { t: '🏃 달리기 대회', check: { abil: 'body', base: 45 }, ok: { log: '1등으로 결승선을 끊었다!', fx: { body: 4, passion: 4 } }, fail: { log: '넘어졌지만 끝까지 달렸다.', fx: { body: 2, passion: 2 } } },
+    ] },
+  { id: 'el_fight', title: '친구와 다툼', text: '{friend}{이가} 내 지우개를 말없이 가져가 썼다. 사소한 일로 크게 다퉜다.',
+    choices: [{ t: '먼저 사과한다', fx: { rel: 4, emp: 3 } }, { t: '{friend}{이가} 사과할 때까지 기다린다', fx: { rel: -4 }, log: '일주일 뒤에야 화해했다.' }] },
+];
+P.academy = [
+  { id: 'code', n: '코딩 학원', fx: { tech: 6 }, cost: 2 }, { id: 'piano', n: '피아노', fx: { art: 6 }, cost: 2 }, { id: 'tkd', n: '태권도', fx: { body: 6 }, cost: 1 },
+  { id: 'art', n: '미술 학원', fx: { art: 5 }, cost: 2 }, { id: 'sci', n: '과학 실험 교실', fx: { study: 3, tech: 3 }, cost: 2 }, { id: 'eng', n: '영어 학원', fx: { study: 5 }, cost: 3 },
+  { id: 'none', n: '학원 없이 실컷 놀기', fx: { happy: 6, rel: 3 }, cost: 0 },
+];
+/* 중학교 */
+P.middle = [
+  { id: 'mid_puberty', title: '사춘기', text: (S) => ({ cheer: '부모님은 여전히 다정한데, 이상하게 다 귀찮다.', strict: '성적표를 본 부모님의 표정이 굳었다. "이게 최선이니?"', free: '부모님은 아무 말 없이 지켜본다. 그게 더 신경 쓰인다.', worry: '"요즘 무슨 생각 하니?" 부모님이 자꾸 방문을 연다.' })[S.parent],
+    choices: [{ t: '솔직하게 대화한다', fx: { rel: 4, emp: 3 }, log: '처음으로 부모님께 진짜 고민을 말했다.' }, { t: '방문을 닫는다', fx: { happy: -2, art: 2 }, log: '이어폰 속 노래 가사가 다 내 얘기 같았다.' }, { t: '운동으로 푼다', fx: { body: 4, health: 3 } }] },
+  { id: 'mid_exam', title: '첫 지필 시험', text: '중학교 첫 중간고사. 초등학교와는 완전히 다르다.',
+    choices: [{ t: '계획표를 짜서 공부', fx: { study: 5, happy: -2 } }, { t: '전날 밤에 몰아서', check: { abil: 'study', base: 40, tag: 'exam' }, ok: { log: '벼락치기가 통했다!', fx: { study: 3 }, cnt: 'cram' }, fail: { log: '시험지를 받고 머리가 하얘졌다.', fx: { happy: -3 } } }] },
+];
+
+/* 운중고: 무작위 사건 */
+P.hs = [
+  { id: 'hs_lunch', title: '급식 대란', text: '오늘 급식은 전설의 치킨. 4교시 종이 치자마자 복도가 경주장이 됐다.', choices: [{ t: '전력 질주', fx: { body: 2, happy: 4 }, log: '1등으로 치킨을 받았다.' }, { t: '친구 자리까지 맡아 준다', fx: { rel: 5 } }, { t: '여유롭게 걸어간다', fx: { happy: -2 }, log: '치킨은 끝나 있었다.' }] },
+  { id: 'hs_perf', title: '수행평가 폭탄 주간', text: '한 주에 수행평가가 다섯 개. 조별 과제에서 한 명이 연락을 안 받는다.', choices: [{ t: '내가 다 해 버린다', fx: { study: 4, health: -5, happy: -3 } }, { t: '역할을 다시 나눠 설득한다', check: { abil: 'lead', base: 45, tag: 'persuade' }, ok: { log: '모두가 제 몫을 해냈다. A를 받았다.', fx: { lead: 4, rel: 3 }, cnt: 'leader' }, fail: { log: '결국 밤을 새웠다.', fx: { health: -4 } } }, { t: '선생님께 상황을 말씀드린다', fx: { emp: 2 } }] },
+  { id: 'hs_blackout', title: '정전', text: '야간 자율학습 중 학교 전체가 정전됐다. 복도가 깜깜하다.', choices: [{ t: '휴대폰 불빛으로 괴담 대회', fx: { rel: 4, happy: 4 } }, { t: '어둠 속에서 단어를 외운다', fx: { study: 2 } }] },
+  { id: 'hs_snow', title: '폭설 휴교', text: '밤새 폭설이 내려 휴교 문자가 왔다!', choices: [{ t: '운동장에서 눈싸움', fx: { body: 3, rel: 4, happy: 5 } }, { t: '밀린 공부를 한다', fx: { study: 4 } }, { t: '하루 종일 잔다', fx: { health: 5 } }] },
+  { id: 'hs_lost', title: '분실물', text: '복도에서 지갑을 주웠다. 학생증이 들어 있다.', choices: [{ t: '주인을 찾아 돌려준다', fx: { rel: 3, emp: 3 }, log: '고맙다며 매점 빵을 사 줬다.' }, { t: '분실물 보관함에 둔다', fx: { emp: 1 } }] },
+  { id: 'hs_rumor', title: '시험지 유출 소문', text: '"수학 시험 문제가 돌고 있대." 단톡방이 시끄럽다.', choices: [{ t: '무시하고 내 공부를 한다', fx: { study: 3, passion: 2 }, log: '소문은 가짜였다.' }, { t: '확인하려고 기웃거린다', fx: { study: -2, happy: -2 }, log: '가짜였고, 공부 시간만 날렸다.' }] },
+  { id: 'hs_crush', title: '설레는 쪽지', text: '사물함에 쪽지가 붙어 있다. "축제 때 같이 다닐래?"', choices: [{ t: '좋아!', fx: { happy: 6, rel: 3 }, log: '축제 사진 속 둘 다 웃고 있었다.', flag: 'hs_date' }, { t: '친구로 지내자고 말한다', fx: { emp: 2 } }] },
+  { id: 'hs_mentor', title: '멘토 특강', text: (S) => '진로의 날, ' + (S.dream ? '{dream} 일을 하는' : '여러 분야의') + ' 졸업생 선배가 특강을 왔다.', choices: [{ t: '끝나고 찾아가 질문한다', fx: { passion: 6, lead: 2 }, log: '선배가 연락처를 남겨 줬다. "막히면 연락해."', flag: 'mentor' }, { t: '조용히 듣기만 한다', fx: { passion: 2 } }] },
+  { id: 'hs_burnout', title: '번아웃 경보', when: (S) => S.st.health < 40 || S.st.happy < 35, text: '아침에 눈을 떴는데 몸이 움직이지 않는다. 요즘 너무 달렸다.', choices: [{ t: '하루 쉰다', fx: { health: 8, happy: 6, study: -2 } }, { t: '버틴다', fx: { health: -6, passion: -4 } }] },
+  { id: 'hs_late', title: '지각 위기', text: '알람을 못 들었다. 8시 25분.', choices: [{ t: '택시를 탄다', fx: { money: -2 } }, { t: '전력 질주', check: { abil: 'body', base: 50 }, ok: { log: '교문이 닫히기 3초 전 통과!', fx: { body: 2 } }, fail: { log: '벌점 1점.', fx: { happy: -2 } } }] },
+  { id: 'hs_app', title: '학교 앱 개발', when: (S) => S.abil.tech >= 40 || ['nerdlab', 'algorithm'].includes(S.club), text: '학생회에서 운중고 전용 앱을 만들 개발팀을 모집한다. 급식·시간표·공지를 한 번에!', choices: [{ t: '개발팀에 지원한다', fx: { tech: 5, lead: 2 }, cnt: 'project', flag: 'school_app', log: '내가 만든 급식 화면을 전교생이 쓰기 시작했다.' }, { t: '사용자로 응원한다', fx: { happy: 2 } }] },
+];
+
+/* 운중고 행사 풀 (게임용 창작) */
+P.events = [
+  { id: 'ev_band', title: '밴드 정기 공연', when: (S) => S.abil.art >= 35 || S.club === 'sonorous', text: '소너러스가 정기 공연 게스트를 찾는다.', choices: [{ t: '무대에 선다', check: { abil: 'art', base: 45, tag: 'stage' }, ok: { log: '앙코르 함성이 체육관을 울렸다.', fx: { art: 5, passion: 5 }, cnt: 'stage' }, fail: { log: '첫 소절에서 음이 나갔다. 그래도 끝까지 불렀다.', fx: { art: 2, passion: 2 }, cnt: 'stage' } }, { t: '조명 담당을 맡는다', fx: { tech: 3 } }, { t: '관객석에서 응원', fx: { happy: 3 } }] },
+  { id: 'ev_sci', title: '과학 학술제', text: '과학 학술제 연구 발표 신청이 열렸다.', choices: [{ t: '탐구 보고서를 낸다', check: { abil: 'study', base: 42 }, ok: { log: '최우수상! 심사위원이 "대학원생 같다"고 했다.', fx: { study: 5, tech: 3, passion: 4 }, cnt: 'science' }, fail: { log: '장려상. 질문에 답을 못 한 게 아쉽다.', fx: { study: 3 }, cnt: 'science' } }, { t: '사회를 본다', fx: { lead: 3 } }] },
+  { id: 'ev_debate', title: '주제 토론 대회', text: '주제: "학교 안 스마트폰 사용, 허용해야 하는가?"', choices: [{ t: '찬성 측으로 나간다', check: { abil: ['lead', 'study'], base: 42, tag: 'persuade' }, ok: { log: '결승에서 상대의 논리를 뒤집었다. 우승!', fx: { lead: 5, study: 3 }, cnt: 'debate' }, fail: { log: '반박을 받고 말문이 막혔다.', fx: { lead: 2 }, cnt: 'debate' } }, { t: '반대 측으로 나간다', check: { abil: ['lead', 'study'], base: 42, tag: 'persuade' }, ok: { log: '"교실의 집중"이라는 한마디로 심사위원을 설득했다.', fx: { lead: 5, study: 3 }, cnt: 'debate' }, fail: { log: '아쉽게 준결승 탈락.', fx: { lead: 2 }, cnt: 'debate' } }, { t: '안 나간다', fx: {} }] },
+  { id: 'ev_hack', title: '교내 해커톤', when: (S) => S.abil.tech >= 35, text: '24시간 동안 앱 하나를 만드는 교내 해커톤!', choices: [{ t: '밤샘 참가', check: { abil: 'tech', base: 45 }, ok: { log: '급식 추천 앱으로 대상을 받았다.', fx: { tech: 6, health: -4, passion: 5 }, cnt: 'project', flag: 'hackathon' }, fail: { log: '새벽 4시에 코드가 다 날아갔다.', fx: { tech: 3, health: -4 }, cnt: 'project' } }, { t: '간식 담당으로 응원', fx: { rel: 3 } }] },
+  { id: 'ev_fair', title: '진로 박람회', text: '체육관에 직업 체험 부스 스무 개가 차려졌다.', choices: [{ t: '모든 부스를 돈다', fx: { passion: 4 }, flag: 'fair', log: '꿈 카드의 폭이 넓어질 것 같다.' }, { t: '관심 분야 부스에서 오래 머문다', fx: { passion: 3 }, then: (S) => { if (S.dream) S.dreamBoost = (S.dreamBoost || 0) + 1; } }] },
+  { id: 'ev_eng', title: '영어 말하기 대회', text: '영어 말하기 대회 공고가 붙었다.', choices: [{ t: '도전한다', check: { abil: ['study', 'lead'], base: 40 }, ok: { log: '대상! 원어민 선생님이 엄지를 들었다.', fx: { study: 4, lead: 3 }, flag: 'english' }, fail: { log: '긴장해서 준비한 문장을 잊었다.', fx: { study: 2 } } }, { t: '패스', fx: {} }] },
+  { id: 'ev_league', title: '점심시간 스포츠 리그', text: '반 대항 점심 리그가 열렸다.', choices: [{ t: '주전으로 뛴다', fx: { body: 4, rel: 3, health: 2 }, cnt: 'sport' }, { t: '응원단장', fx: { lead: 3, rel: 3 } }] },
+  { id: 'ev_film', title: '단편 영화제', when: (S) => S.abil.art >= 30, text: '교내 단편 영화제. 휴대폰 하나로 3분짜리 영화를 찍는다.', choices: [{ t: '감독을 맡는다', check: { abil: 'art', base: 42 }, ok: { log: '관객상 수상! 엔딩에서 다들 울었다.', fx: { art: 5, lead: 3 }, cnt: 'film' }, fail: { log: '편집이 마감에 못 맞춰 출품 실패.', fx: { art: 2 } } }, { t: '배우로 출연', fx: { art: 3, rel: 2 }, cnt: 'stage' }] },
+  { id: 'ev_startup', title: '창업 경진대회', when: (S) => S.grade >= 2, text: '교내 창업 경진대회. 학교의 불편을 해결할 아이디어를 낸다.', choices: [{ t: '팀을 꾸려 나간다', check: { abil: ['lead', 'tech'], base: 40 }, ok: { log: '대상! 심사위원 한 명이 "졸업하면 진짜 해 보라"고 했다.', fx: { lead: 4, tech: 3, passion: 5 }, cnt: 'leader', flag: 'startup_contest' }, fail: { log: '발표 중에 노트북이 꺼졌다.', fx: { lead: 2 } } }, { t: '구경만 한다', fx: {} }] },
+  { id: 'ev_eco', title: '환경 캠페인 주간', text: '분리배출 캠페인 주간. 함께할 사람을 찾는다.', choices: [{ t: '캠페인을 이끈다', fx: { lead: 3, emp: 3 }, cnt: 'empathy' }, { t: '포스터를 만든다', fx: { art: 3 } }] },
+  { id: 'ev_quiz', title: '학급 대항 퀴즈쇼', text: '반 대표 3명을 뽑는다. 친구들이 나를 본다.', choices: [{ t: '대표로 나간다', check: { abil: 'study', base: 45 }, ok: { log: '마지막 문제를 맞혀 반이 우승했다!', fx: { study: 3, rel: 5 } }, fail: { log: '1번 문제에서 탈락… 그래도 웃겼다.', fx: { rel: 2 } } }, { t: '응원석에서', fx: { rel: 2 } }] },
+  { id: 'ev_busking', title: '교내 버스킹', when: (S) => S.abil.art >= 40, text: '축제를 앞두고 점심시간 버스킹 무대가 열렸다.', choices: [{ t: '노래한다', check: { abil: 'art', base: 45, tag: 'stage' }, ok: { log: '영상이 학교 SNS에서 화제가 됐다.', fx: { art: 5, rel: 4 }, cnt: 'stage', flag: 'viral' }, fail: { log: '마이크가 고장 났다. 무반주로 끝까지 불렀다.', fx: { art: 2, passion: 3 }, cnt: 'stage' } }, { t: '관객', fx: { happy: 2 } }] },
+  { id: 'ev_mun', title: '모의 UN', when: (S) => S.grade >= 2, text: '모의 UN 대회. 각자 한 나라의 대표가 된다.', choices: [{ t: '의장단에 지원한다', check: { abil: ['lead', 'study'], base: 38, tag: 'persuade' }, ok: { log: '결의안을 통과시켰다. 최우수 대표상!', fx: { lead: 5, study: 3 }, cnt: 'debate', flag: 'mun' }, fail: { log: '협상이 결렬됐다. 외교는 어렵다.', fx: { lead: 2 } } }, { t: '대표로만 참가', fx: { lead: 2, study: 2 } }] },
+  { id: 'ev_goldenbell', title: '독서 골든벨', text: '도서관 주최 독서 골든벨!', choices: [{ t: '참가', check: { abil: 'study', base: 42 }, ok: { log: '최후의 1인으로 골든벨을 울렸다!', fx: { study: 4, passion: 3 } }, fail: { log: '7번 문제에서 탈락.', fx: { study: 1 } } }, { t: '패스', fx: {} }] },
+];
+
+/* 체육대회·축제 (역할을 고른다) */
+P.sports = { id: 'sports', title: '체육대회', text: '파란 하늘, 체육대회 날. 반 친구들이 나를 바라본다.',
+  choices: [
+    { t: '🏃 계주 마지막 주자', check: { abil: 'body', base: 42 }, ok: { log: '마지막 코너에서 두 명을 제쳤다! 반이 우승했다.', fx: { body: 4, rel: 5, passion: 3 }, cnt: 'sport', flag: 'sports_win' }, fail: { log: '바통을 놓쳤다… 친구들이 괜찮다며 등을 두드려 줬다.', fx: { rel: 2 }, cnt: 'sport' } },
+    { t: '📣 응원단', fx: { lead: 3, rel: 4 }, cnt: 'event' },
+    { t: '📸 기록 사진 담당', fx: { art: 3 } },
+    { t: '🌳 그늘에서 쉰다', fx: { health: 3 } },
+  ] };
+P.festival = { id: 'festival', title: '운중 축제', text: '축제 날! 운동장에 부스가 줄지어 서 있다. 오늘 나는…',
+  choices: [
+    { t: '🎤 무대 공연', if: (S) => S.abil.art >= 30 || DATA.clubs[S.club || 'nerdlab'].cnt === 'stage', check: { abil: 'art', base: 42, tag: 'stage' }, ok: { log: '무대가 끝나자 함성이 터졌다. 오늘의 주인공!', fx: { art: 5, rel: 5, passion: 4 }, cnt: 'stage', flag: 'festival_star' }, fail: { log: '긴장해서 박자를 놓쳤지만, 친구들이 더 크게 소리쳐 줬다.', fx: { art: 2, rel: 2 }, cnt: 'stage' } },
+    { t: '🍢 반 부스 운영', fx: { lead: 3, money: 3 }, cnt: 'leader', log: '떡꼬치 300개를 팔았다.' },
+    { t: '🎡 친구들과 부스 투어', fx: { rel: 5, happy: 5 } },
+    { t: '🛠️ 축제 기획단', fx: { lead: 4, health: -2 }, cnt: 'leader' },
+  ] };
+
+/* 수학여행 (2학년 5월 말) */
+P.trip = [
+  { id: 'trip_bus', title: '수학여행 — 버스 자리', text: '버스에 오르자 자리 전쟁이 시작됐다.', choices: [{ t: '맨 뒷자리 사수', fx: { rel: 4, happy: 3 } }, { t: '{friend} 옆자리', fx: { rel: 5 } }, { t: '창가에서 풍경 감상', fx: { happy: 3, art: 2 } }] },
+  { id: 'trip_show', title: '수학여행 — 장기자랑', text: '밤 장기자랑. 반 대표를 정해야 한다.', choices: [{ t: '내가 나간다', check: { abil: ['art', 'body'], base: 45, tag: 'stage' }, ok: { log: '선생님들까지 일어나서 박수를 쳤다.', fx: { rel: 6, art: 3 }, cnt: 'stage' }, fail: { log: '썰렁… 그런데 그게 더 웃겨서 레전드가 됐다.', fx: { rel: 4 } } }, { t: '무대 뒤 연출', fx: { lead: 3 } }] },
+  { id: 'trip_night', title: '수학여행 — 밤 이야기', text: '불 꺼진 숙소. 누군가 묻는다. "너는 나중에 뭐 하고 싶어?"', choices: [{ t: (S) => S.dream ? '"{dream}." 처음으로 소리 내어 말한다' : '"아직 모르겠어"라고 솔직하게', fx: { passion: 6, rel: 4 }, log: '{friend}{이가} 말했다. "너라면 될 것 같아."' }, { t: '장난으로 넘긴다', fx: { rel: 2 } }] },
+];
+
+/* 학생회장 선거 연쇄 */
+DATA.promises = [
+  { id: 'store', n: '매점 부활', pop: 9, hard: 8 }, { id: 'uniform', n: '교복 자율화 확대', pop: 8, hard: 7 }, { id: 'app', n: '학교 앱으로 공지 통합', pop: 6, hard: 4 },
+  { id: 'library', n: '시험 기간 도서관 연장', pop: 6, hard: 3 }, { id: 'fest', n: '축제 하루 더', pop: 8, hard: 6 }, { id: 'movie', n: '격주 영화 상영회', pop: 7, hard: 3 }, { id: 'vending', n: '자판기 설치', pop: 9, hard: 8 },
+];
+
+/* 대학 생활 */
+P.uni = [
+  { id: 'u_club', title: '대학 학회', text: '{uni} 신입생 환영회. 학회 가입 권유가 쏟아진다.', choices: [{ t: '전공 학회', fx: { study: 4 }, then: (S) => S.focus && applyFx({ [S.focus[0]]: 3 }, true) }, { t: '밴드·공연 동아리', fx: { art: 4, happy: 3 } }, { t: '창업 동아리', fx: { lead: 4, tech: 2 }, flag: 'uni_startup' }, { t: '봉사 동아리', fx: { emp: 4, rel: 3 } }] },
+  { id: 'u_contest', title: '공모전', text: '상금 1,000만 원짜리 공모전 공고가 떴다.', choices: [{ t: '팀을 꾸려 도전', check: { abil: ['lead', 'art'], base: 38 }, ok: { log: '대상! 상금으로 팀원들과 여행을 갔다.', fx: { money: 250, passion: 6, lead: 3 } }, fail: { log: '1차 탈락. 그래도 포트폴리오가 생겼다.', fx: { art: 2 } } }, { t: '시험공부에 집중', fx: { study: 4 } }] },
+  { id: 'u_intern', title: '인턴', text: '방학 인턴 자리에 붙었다. 첫 출근날, 사수가 일을 산더미로 준다.', choices: [{ t: '야근하며 다 해낸다', fx: { health: -4, lead: 2 }, then: (S) => S.dream && applyFx({ [DATA.jobs[S.dream].abil[0]]: 5 }), log: '정규직 전환 이야기가 나왔다.', flag: 'intern_good' }, { t: '모르는 건 물어 가며 천천히', fx: { emp: 3, rel: 3 } }] },
+  { id: 'u_exchange', title: '교환학생', when: (S) => S.abil.study >= 50, text: '교환학생 선발 공고. 한 학기를 외국에서 보낼 수 있다.', choices: [{ t: '지원한다', check: { abil: 'study', base: 40, extra: (S) => (S.quint - 3) * 6 }, ok: { log: '낯선 도시에서 세계 각국의 친구들을 만났다.', fx: { lead: 4, emp: 3, happy: 5, money: -300 }, flag: 'exchange' }, fail: { log: '아쉽게 떨어졌다.', fx: { passion: -2 } } }, { t: '국내에 남는다', fx: {} }] },
+  { id: 'u_break', title: '휴학 고민', text: '3학년. 지친다. 한 학기 쉬어 갈까?', choices: [{ t: '휴학하고 여행', fx: { happy: 8, health: 5, passion: 3, money: -200 } }, { t: '휴학하고 아르바이트', fx: { money: 400, health: -3 } }, { t: '그냥 달린다', fx: { study: 3, health: -3 } }] },
+  { id: 'u_part', title: '아르바이트', when: (S) => S.quint <= 2, text: '학비와 생활비를 벌어야 한다.', choices: [{ t: '카페 아르바이트', fx: { money: 300, emp: 2, health: -2 } }, { t: '과외', fx: { money: 450, study: 2 } }] },
+];
+
+/* 병역 */
+P.army = [
+  { id: 'ar_first', title: '훈련소', text: '머리를 짧게 깎았다. 훈련소의 첫날 밤, 낯선 천장을 본다.', choices: [{ t: '동기들과 금방 친해진다', fx: { rel: 5, body: 3 } }, { t: '일기를 쓴다', fx: { emp: 2, art: 2 } }] },
+  { id: 'ar_leave', title: '첫 휴가', text: '첫 휴가! 72시간을 어떻게 쓸까.', choices: [{ t: '가족과 밥 한 끼', fx: { happy: 5, rel: 4 } }, { t: '친구들과 밤새 논다', fx: { happy: 6, health: -2 } }, { t: '진로 준비', fx: { passion: 4 }, then: (S) => S.dream && applyFx({ [DATA.jobs[S.dream].abil[0]]: 3 }) }] },
+  { id: 'ar_study', title: '복무 중 공부', text: '일과 후 2시간. 사이버 강의와 자격증 공부를 할 수 있다.', choices: [{ t: '꾸준히 공부한다', fx: { study: 5, passion: 3 }, log: '전역할 때 자격증 두 개가 생겼다.' }, { t: '체력 단련', fx: { body: 5, health: 5 } }, { t: '쉰다', fx: { happy: 3 } }] },
+  { id: 'ar_senior', title: '선임과 후임', text: '실수한 후임이 혼날 위기다.', choices: [{ t: '감싸 주고 같이 수습한다', fx: { lead: 4, emp: 3, rel: 3 } }, { t: '모른 척한다', fx: { rel: -2 } }] },
+  { id: 'ar_end', title: '전역', text: '전역 신고를 마쳤다. 부대 정문을 나서며 생각한다. "이제 뭘 하지?"', choices: [{ t: '하던 꿈을 다시 붙잡는다', fx: { passion: 6 } }, { t: '새로운 길을 찾아본다', fx: { passion: 2, happy: 2 }, flag: 'rethink' }] },
+];
+
+/* 커리어 공통 장면 */
+P.career = [
+  { id: 'c_project', repeat: true, title: '큰 프로젝트', text: '{job}로서 맡게 된 가장 큰 일. 실패하면 책임도 크다.', choices: [{ t: '앞장서서 맡는다', check: { abil: (S) => DATA.jobs[S.job].abil[0], base: 45 }, ok: { log: '성공적으로 마쳤다. 이름이 업계에 알려지기 시작했다.', fx: { passion: 5 }, then: (S) => { S.perf += 2; } }, fail: { log: '결과가 좋지 않았다. 한동안 위축됐다.', fx: { passion: -5, happy: -3 } } }, { t: '경험 많은 동료를 돕는다', fx: { rel: 4 }, then: (S) => { S.perf += 1; } }] },
+  { id: 'c_offer', title: '이직 제안', text: '경쟁 회사에서 연봉 30% 인상을 제안했다.', when: (S) => !['teacher', 'civil', 'police', 'firefighter'].includes(S.job), choices: [{ t: '옮긴다', fx: { money: 500, rel: -2 }, then: (S) => { S.salaryMul = (S.salaryMul || 1) * 1.3; } }, { t: '남는다', fx: { rel: 3 }, then: (S) => { S.perf += 1; } }] },
+  { id: 'c_slump', repeat: true, title: '슬럼프', text: '어느 날부터 일이 재미없다. 이 길이 맞나?', choices: [{ t: '안식 휴가를 낸다', fx: { happy: 6, health: 4, passion: 3 } }, { t: '취미를 시작한다', fx: { happy: 4, art: 3 } }, { t: '꿈을 바꿀지 진지하게 고민한다', flag: 'consider_change', fx: { passion: 2 } }] },
+  { id: 'c_junior', repeat: true, title: '후배', text: '신입 후배가 큰 실수를 했다. 모두의 시선이 나에게 쏠린다.', choices: [{ t: '내 책임이라고 말한다', fx: { lead: 4, rel: 4 }, log: '후배는 그날을 평생 잊지 못했다고 한다.', flag: 'good_senior' }, { t: '원칙대로 보고한다', fx: { lead: 1 } }] },
+  { id: 'c_health', title: '건강검진 경고', when: (S) => S.st.health < 45 && S.age >= 35, text: '건강검진 결과지에 빨간 글씨가 가득하다.', choices: [{ t: '운동을 시작한다', fx: { health: 10, happy: 2 } }, { t: '바빠서 미룬다', fx: { health: -5 } }] },
+  { id: 'c_trip', repeat: true, title: '출장', text: '해외 출장이 잡혔다. 일정 사이에 하루가 빈다.', choices: [{ t: '현지 업계 사람들을 만난다', fx: { lead: 3, rel: 2 } }, { t: '혼자 도시를 걷는다', fx: { happy: 5, art: 2 } }] },
+  { id: 'c_study', repeat: true, title: '배움', text: '업무에 필요한 새 기술이 나왔다. 주말을 투자할까?', choices: [{ t: '주말 강의를 듣는다', fx: { happy: -2 }, then: (S) => applyFx({ [DATA.jobs[S.job].abil[0]]: 4 }) }, { t: '쉬는 게 먼저다', fx: { health: 3, happy: 2 } }] },
+  { id: 'c_conflict', title: '갈등', text: '팀에서 의견이 둘로 갈렸다. 양쪽 모두 나를 본다.', choices: [{ t: '중재안을 낸다', check: { abil: 'lead', base: 45, tag: 'persuade' }, ok: { log: '모두가 받아들일 수 있는 길을 찾았다.', fx: { lead: 3, rel: 3 } }, fail: { log: '양쪽 다 서운해했다.', fx: { rel: -4 } } }, { t: '내 생각을 밀어붙인다', fx: { lead: 2, rel: -2 } }] },
+  { id: 'c_award', title: '올해의 인물', when: (S) => S.perf >= 6, text: '업계에서 "올해의 인물" 후보에 올랐다.', choices: [{ t: '시상식에 간다', fx: { passion: 5, happy: 5 }, log: '무대에서 소감을 말하며 운중고 시절을 떠올렸다.' }] },
+];
+/* 직업 고유 장면 (시제품: 직업당 1개, 일부는 2개) */
+DATA.jobScenes = {
+  nurse: [{ title: '응급실의 밤', text: '새벽 3시 응급실. 환자 셋이 동시에 들어왔다.', choices: [{ t: '침착하게 순서를 정한다', check: { abil: 'emp', base: 45 }, ok: { log: '모두 무사했다. 선배가 말없이 커피를 건넸다.', fx: { lead: 3 } }, fail: { log: '정신없이 뛰었다. 그래도 모두 살렸다.', fx: { health: -4 } } }] }],
+  physio: [{ title: '다시 걷는 날', text: '사고로 다리를 다친 환자가 재활을 포기하려 한다.', choices: [{ t: '매일 함께 걷는다', fx: { emp: 4, passion: 4 }, log: '석 달 뒤, 환자가 혼자 계단을 올랐다.' }] }],
+  doctor: [{ title: '어려운 수술', text: '다른 병원에서 거절당한 환자가 찾아왔다.', choices: [{ t: '수술을 맡는다', check: { abil: 'study', base: 40 }, ok: { log: '수술 성공. 기사가 났다.', fx: { passion: 6 }, then: (S) => { S.perf += 2; } }, fail: { log: '최선을 다했지만 결과가 좋지 않았다. 오래 잠을 못 잤다.', fx: { happy: -6 } } }, { t: '더 큰 병원을 연결해 준다', fx: { emp: 2 } }] }],
+  civil: [{ title: '민원의 날', text: '하루 종일 화난 민원인이 찾아온다.', choices: [{ t: '끝까지 들어 준다', fx: { emp: 4, happy: -2 }, log: '돌아가던 민원인이 "고맙다"고 했다.' }, { t: '규정대로 처리한다', fx: { study: 2 } }] }],
+  lawyer: [{ title: '이길 수 없는 재판', text: '모두가 질 거라고 한 사건을 맡았다.', choices: [{ t: '밤새 증거를 찾는다', check: { abil: ['study', 'lead'], base: 38, tag: 'persuade' }, ok: { log: '결정적 증거를 찾아 승소했다!', fx: { passion: 6 }, then: (S) => { S.perf += 2; } }, fail: { log: '패소. 의뢰인이 손을 잡으며 고맙다고 했다.', fx: { emp: 3 } } }] }],
+  researcher: [{ title: '열세 번째 실험', text: '실험이 열두 번 실패했다. 연구비 마감은 다음 주.', choices: [{ t: '한 번 더', check: { abil: 'study', base: 42 }, ok: { log: '성공! 논문이 국제 학술지에 실렸다.', fx: { passion: 6 }, then: (S) => { S.perf += 2; } }, fail: { log: '실패. 하지만 실패의 이유를 알게 됐다.', fx: { study: 3 } } }, { t: '방향을 바꾼다', fx: { tech: 3 } }] }],
+  envres: [{ title: '바다의 경고', text: '연안 수온 자료에서 이상한 신호를 발견했다.', choices: [{ t: '언론에 알린다', fx: { lead: 3, emp: 3 }, log: '보고서가 정책 회의에 올라갔다.' }, { t: '더 확인한다', fx: { study: 4 } }] }],
+  developer: [{ title: '장애 대응', text: '금요일 밤, 서비스가 멈췄다. 사용자 100만 명이 기다린다.', choices: [{ t: '원인을 찾는다', check: { abil: 'tech', base: 45 }, ok: { log: '40분 만에 복구. 팀장이 치킨을 쐈다.', fx: { tech: 3 }, then: (S) => { S.perf += 1; } }, fail: { log: '새벽 6시에 복구했다.', fx: { health: -5 } } }] }, { title: '사이드 프로젝트', text: '퇴근 후 만든 앱이 입소문을 타기 시작했다.', choices: [{ t: '회사를 그만두고 키운다', gold: true, d: '유니콘 창업가로 가는 길', then: async (S) => { await changeCareer('founder', true); } }, { t: '취미로 남긴다', fx: { happy: 3 } }] }],
+  gameplanner: [{ title: '출시일', text: '내가 기획한 게임의 출시일. 첫날 평점이 3.1점이다.', choices: [{ t: '밤새 피드백을 읽고 고친다', fx: { art: 3, tech: 3, health: -3 }, log: '한 달 뒤 평점 4.5. 리뷰에 "갓겜"이라는 말이 보였다.' }] }],
+  marketer: [{ title: '광고 대박', text: '내가 만든 광고 문구가 유행어가 됐다.', choices: [{ t: '다음 캠페인도 맡는다', fx: { art: 3, lead: 3 }, then: (S) => { S.perf += 1; } }] }],
+  accountant: [{ title: '이상한 장부', text: '감사 중 장부에서 수상한 숫자를 발견했다. 고객사는 "그냥 넘어가 달라"고 한다.', choices: [{ t: '원칙대로 보고한다', fx: { passion: 3, study: 3 }, log: '고객사를 잃었지만 업계에서 신뢰를 얻었다.' }, { t: '한 번만 눈감는다', fx: { money: 300, happy: -6 }, flag: 'shady' }] }],
+  teacher: [{ title: '졸업식', text: '처음 담임을 맡은 반의 졸업식. 학생들이 단상으로 부른다.', choices: [{ t: '울지 않으려 애쓴다', fx: { emp: 4, happy: 6 }, log: '결국 울었다. 학생들도 울었다.' }] }, { title: '모교의 부름', when: (S) => S.level >= 3, text: '운중고에서 연락이 왔다. "선생님, 우리 학교 교장 공모에 지원해 보시겠어요?"', choices: [{ t: '지원한다', gold: true, check: { abil: ['lead', 'emp'], base: 40 }, ok: { log: '운중고 교장이 되었다. 교문을 지나는데 17살의 내가 보이는 것 같았다.', gold: true, then: (S) => { S.level = 4; unlock('principal'); } }, fail: { log: '아쉽게 다른 분이 선정됐다.', fx: { passion: -3 } } }, { t: '지금 학교에 남는다', fx: { rel: 3 } }] }],
+  kinder: [{ title: '첫 걸음마', text: '말이 늦던 아이가 처음으로 내 이름을 불렀다.', choices: [{ t: '안아 준다', fx: { emp: 4, happy: 6 } }] }],
+  designer: [{ title: '공모 당선', text: '도시의 새 상징 디자인 공모전.', choices: [{ t: '도전한다', check: { abil: 'art', base: 40 }, ok: { log: '당선! 버스 정류장마다 내 디자인이 걸렸다.', fx: { passion: 6 }, then: (S) => { S.perf += 2; } }, fail: { log: '최종 2위.', fx: { art: 2 } } }] }],
+  webtoon: [{ title: '마감 지옥', text: '연재 마감 6시간 전, 원고가 절반이다.', choices: [{ t: '밤을 새운다', fx: { art: 3, health: -5 }, log: '독자 댓글 1위: "이번 화 미쳤다".' }, { t: '휴재 공지를 올린다', fx: { health: 4, rel: -2 } }] }],
+  pd: [{ title: '시청률', text: '첫 연출 프로그램의 시청률이 2%다. 조기 종영 이야기가 나온다.', choices: [{ t: '포맷을 과감히 바꾼다', check: { abil: 'art', base: 40 }, ok: { log: '시청률 9%! 시즌 2가 확정됐다.', fx: { passion: 6 }, then: (S) => { S.perf += 2; } }, fail: { log: '종영. 하지만 마니아층이 생겼다.', fx: { art: 2 } } }] }],
+  announcer: [{ title: '생방송 사고', text: '생방송 중 프롬프터가 꺼졌다.', choices: [{ t: '애드리브로 이어 간다', check: { abil: 'lead', base: 45 }, ok: { log: '"방송사고를 명장면으로 만든 아나운서"라는 기사가 났다.', fx: { lead: 3 }, then: (S) => { S.perf += 1; } }, fail: { log: '3초간 정적이 흘렀다.', fx: { happy: -3 } } }] }],
+  trainer: [{ title: '회원의 목표', text: '마라톤 완주가 꿈인 60대 회원을 맡았다.', choices: [{ t: '함께 달린다', fx: { body: 3, emp: 3 }, log: '회원이 결승선에서 울며 나를 안았다.' }] }],
+  athlete: [{ title: '결승전', text: '리그 결승전. 마지막 1분, 공이 나에게 왔다.', choices: [{ t: '직접 해결한다', check: { abil: 'body', base: 42 }, ok: { log: '결승골! 경기장이 터질 듯했다.', fx: { passion: 8 }, then: (S) => { S.perf += 3; } }, fail: { log: '아깝게 빗나갔다.', fx: { passion: -4 } } }, { t: '동료에게 패스', fx: { rel: 4 } }] }],
+  chef: [{ title: '심사원이 온 날', text: '홀에 미식 가이드 심사원으로 보이는 손님이 앉았다.', choices: [{ t: '평소대로 요리한다', check: { abil: 'art', base: 42 }, ok: { log: '가이드북에 우리 가게 이름이 실렸다.', fx: { passion: 6 }, then: (S) => { S.perf += 2; } }, fail: { log: '소스가 살짝 짰다. 다음엔 꼭.', fx: { art: 2 } } }] }],
+  barista: [{ title: '라테아트 대회', text: '전국 라테아트 대회 예선.', choices: [{ t: '참가한다', check: { abil: 'art', base: 45 }, ok: { log: '우승! 내 카페에 줄이 생겼다.', fx: { passion: 5, money: 200 } }, fail: { log: '손이 떨려 하트가 찌그러졌다.', fx: { art: 2 } } }] }],
+  police: [{ title: '실종 신고', text: '아이가 사라졌다는 신고가 들어왔다.', choices: [{ t: '골목을 직접 뒤진다', check: { abil: 'body', base: 45 }, ok: { log: '놀이터 미끄럼틀 아래에서 잠든 아이를 찾았다.', fx: { passion: 5, emp: 3 } }, fail: { log: '동료가 먼저 찾았다. 아이는 무사했다.', fx: { rel: 2 } } }] }],
+  firefighter: [{ title: '화재 현장', text: '3층 창문에서 누군가 손을 흔든다.', choices: [{ t: '진입한다', check: { abil: 'body', base: 42 }, ok: { log: '구조 성공. 뉴스에 내 뒷모습이 나왔다.', fx: { passion: 6 }, then: (S) => { S.perf += 2; } }, fail: { log: '부상을 입었지만 동료와 함께 구해 냈다.', fx: { health: -10 } } }] }],
+  social: [{ title: '한 가정', text: '몇 달째 문을 열지 않는 집이 있다.', choices: [{ t: '매주 찾아간다', fx: { emp: 5, passion: 3 }, log: '여섯 번째 방문에 문이 열렸다.' }] }],
+  reporter: [{ title: '특종', text: '권력자의 비리 제보가 들어왔다. 압력이 들어온다.', choices: [{ t: '보도한다', check: { abil: ['study', 'lead'], base: 40 }, ok: { log: '특종! 올해의 기자상을 받았다.', fx: { passion: 6 }, then: (S) => { S.perf += 2; } }, fail: { log: '증거가 부족해 보도가 막혔다.', fx: { passion: -4 } } }, { t: '더 취재한다', fx: { study: 3 } }] }],
+};
+
+/* 가족·중년·노년 */
+P.family = [
+  { id: 'f_love', title: '인연', when: (S) => S.age >= 26 && S.age <= 40 && !S.partner, text: '오래 알던 사람과 자꾸 연락하게 된다.', choices: [{ t: '마음을 고백한다', fx: { happy: 6 }, then: (S) => { if (R() < 0.7) { S.partner = true; line('연인이 생겼다.'); } else line('친구로 남기로 했다.'); } }, { t: '지금은 일에 집중한다', fx: { passion: 3 } }] },
+  { id: 'f_marry', title: '결혼', when: (S) => S.partner && !S.married && S.age >= 28, text: '함께한 시간이 쌓였다. 결혼 이야기가 나온다.', choices: [{ t: '결혼한다', fx: { happy: 8, money: -1500 }, then: (S) => { S.married = true; line('작은 결혼식을 올렸다. {friend}{이가} 축가를 불렀다.'); } }, { t: '지금처럼 지낸다', fx: { happy: 2 } }] },
+  { id: 'f_child', title: '새 가족', when: (S) => S.married && !S.child && S.age <= 44, text: '가족이 한 명 늘어날 소식이 들려왔다.', choices: [{ t: '기쁘게 맞이한다', fx: { happy: 8 }, then: (S) => { S.child = { born: S.age, name: pick(DATA.names[R() < 0.5 ? 'm' : 'f']) }; line('{name}의 아이 ' + S.child.name + '(이)가 태어났다.'); } }] },
+  { id: 'f_parent', title: '부모님', when: (S) => S.age >= 45, text: '부모님이 편찮으시다는 연락이 왔다. 마침 회사엔 중요한 일이 있다.', choices: [{ t: '휴직하고 곁을 지킨다', fx: { rel: 6, emp: 4, passion: -2 }, then: (S) => { S.perf -= 1; } }, { t: '일과 병행한다', fx: { health: -5, happy: -3 } }] },
+];
+P.midlife = [
+  { id: 'm_reunion', title: '운중고 동창회', when: (S) => S.age >= 38, text: '20여 년 만의 운중고 동창회.', choices: [{ t: '참석한다', fx: { rel: 5, happy: 4 }, then: (S) => reunion() }] },
+  { id: 'm_ask', title: '이대로 괜찮을까', when: (S) => S.age >= 42, text: '거울 속 내가 묻는다. "어릴 적 꿈, 기억나?"', choices: [{ t: '지금의 길을 사랑한다', fx: { happy: 5, passion: 3 } }, { t: '늦었지만 새 꿈에 도전한다', flag: 'consider_change', fx: { passion: 6 } }] },
+];
+P.old = [
+  { id: 'o_grand', title: '손주', when: (S) => S.child && S.age >= 62, text: '손주가 할머니 할아버지 집에 놀러 왔다. "옛날 얘기 해 줘!"', choices: [{ t: '운중고 시절 이야기를 들려준다', fx: { happy: 6 }, log: '손주의 눈이 반짝였다.' }] },
+  { id: 'o_school', title: '모교 방문', text: '오랜만에 운중고 앞을 지난다. 교문은 그대로다.', choices: [{ t: '들어가 본다', fx: { happy: 5 }, then: (S) => line(S.club ? '{club} 동아리방에 후배들이 북적인다. 벽에 붙은 오래된 사진 속에 내가 있었다.' : '운동장에서 체육대회 연습 소리가 들렸다.', 'memo') }] },
+  { id: 'o_friend', title: '오랜 친구', text: '{friend}에게서 전화가 왔다. "밥 한번 먹자. 이번엔 진짜로."', choices: [{ t: '바로 약속을 잡는다', fx: { rel: 6, happy: 5 } }] },
+  { id: 'o_health', title: '건강 관리', text: '무릎이 예전 같지 않다.', choices: [{ t: '매일 산책한다', fx: { health: 5 } }, { t: '그냥 지낸다', fx: { health: -4 } }] },
+];
+
+/* 유니콘 창업가 — 견본 시나리오 (문서: 인생게임_시나리오_유니콘창업가.md) */
+DATA.founder = {
+  ideas: ['AI 과외 선생님', '동네 중고 거래', '반려동물 건강 기록', '기후 기술(탄소 측정)', '해외 K-푸드 배달', '학교 생활 앱'],
+  scenes: {
+    server: { title: '서버가 터진 밤', text: '새벽 3시. 유명 인플루언서가 {co}를 소개하자 사용자가 30배로 몰렸고, 서버가 멈췄다.',
+      choices: [
+        { t: '밤새 직접 고친다', check: { abil: 'tech', base: 45 }, ok: { log: '아침 7시, 서버가 다시 살아났다. 새로 온 사용자 대부분이 남았다.', fx: { 'co.product': 10, health: -6 } }, fail: { log: '새벽 내내 씨름했지만 하루 종일 먹통이었다.', fx: { 'co.rep': -8, health: -8 } } },
+        { t: '클라우드 비용을 크게 써서 버틴다', fx: { 'co.runway': -2, 'co.rep': 8 }, log: '통장이 아팠지만 서비스는 멀쩡했다.' },
+        { t: '"잠시 점검 중" 공지를 띄우고 잔다', fx: { health: 3, 'co.product': -6, 'co.rep': -4 }, log: '아침에 보니 새 사용자의 절반이 떠나 있었다.' },
+      ] },
+    invest: { title: '첫 투자 미팅', text: '투자자 세 명이 동시에 연락해 왔다.',
+      choices: [
+        { t: '빠르게 큰돈 (대신 지분을 많이 요구)', fx: { 'co.runway': 18, 'co.equity': -25 }, flag: 'fast_money', log: '통장에 0이 많이 생겼다. 대신 회사의 4분의 1을 내줬다.' },
+        { t: '조건은 좋지만 느린 투자', fx: { 'co.runway': 10, 'co.equity': -12, health: -4 }, log: '석 달을 기다리는 동안 피가 말랐다.' },
+        { t: '돈은 적지만 멘토가 되어 줄 투자자', fx: { 'co.runway': 6, 'co.equity': -8 }, flag: 'mentor_vc', log: '"막히면 언제든 전화해." 투자자가 말했다.' },
+      ] },
+    equity: { title: '47 대 53', when: (S) => S.cofounder, text: '금요일 밤 11시, 사무실에는 둘만 남았다. {cof}{이가} 노트북을 덮으며 말한다.\n"솔직히 말할게. 코드는 내가 거의 다 짰잖아. 지금 지분 47 대 53은 이상해. 50 대 50으로 맞추자."\n다음 주에는 투자 계약서에 서명해야 한다. 지금 정한 비율이 앞으로 계속 간다.',
+      choices: [
+        { t: '"맞아, 네 말이 맞아." 50 대 50으로 맞춘다', fx: { 'co.equity': -3, rel: 6 }, flag: 'trust', log: '{cof}{이가} 웃으며 말했다. "평생 같이 가자."' },
+        { t: '"대표는 책임이 더 커." 설득한다', check: { abil: 'lead', base: 45, tag: 'persuade' }, ok: { log: '{cof}{이가} 고개를 끄덕였다.', fx: { lead: 2 } }, fail: { log: '{cof}{은는} 대답 없이 퇴근했다. 무언가 금이 갔다.', flag: 'grudge', fx: { rel: -4 } } },
+        { t: '"4년에 걸쳐 나눠 받는 계약으로 하자."', d: '베스팅: 회사에 남아야 지분을 조금씩 받는 방식', check: { abil: ['study', 'lead'], base: 32 }, ok: { log: '공정한 계약서에 둘 다 서명했다.', flag: 'vesting', fx: { 'co.team': 6 } }, fail: { log: '"나를 못 믿는 거야?" 분위기가 싸늘해졌다.', flag: 'grudge' } },
+        { t: '"그럼 여기서 갈라서자."', fx: { 'co.team': -15, 'co.product': -8 }, flag: 'split', then: (S) => { S.cofounder = false; }, log: '{cof}{은는} 짐을 쌌다. 이제 혼자다.' },
+      ] },
+    copy: { title: '대기업의 습격', text: '대기업이 {co}와 똑같은 서비스를 출시했다. 광고비만 우리 1년 매출이다.',
+      choices: [
+        { t: '더 작고 깊은 시장으로 파고든다', check: { abil: 'lead', base: 42 }, ok: { log: '대기업이 못 보는 틈새를 지켜 냈다.', fx: { 'co.product': 8 } }, fail: { log: '사용자 30%가 빠져나갔다.', fx: { 'co.rep': -6, 'co.runway': -3 } } },
+        { t: '정면 승부: 가격을 내린다', fx: { 'co.runway': -5, 'co.rep': 6 } },
+        { t: '대기업에 회사를 팔 기회를 알아본다', flag: 'consider_exit', fx: { passion: -3 } },
+      ] },
+    wedding: { title: '친구 결혼식 날', text: '{friend}의 결혼식 날 아침, 결제 시스템에 장애가 났다. 축가는 내가 부르기로 했다.',
+      choices: [{ t: '결혼식에 간다. 팀을 믿는다', fx: { rel: 6, 'co.rep': -3 }, log: '축가를 부르는 동안 팀이 장애를 해결했다.' }, { t: '사무실로 달려간다', fx: { rel: -8, 'co.product': 4 }, log: '{friend}{은는} 괜찮다고 했지만 목소리가 서운했다.' }] },
+    leak: { title: '개인정보 유출', text: '보안 담당자가 창백한 얼굴로 들어왔다. "사용자 정보가 새어 나간 것 같습니다."',
+      choices: [
+        { t: '즉시 공개하고 사과한다', fx: { 'co.rep': -6, passion: 2 }, log: '큰 비판을 받았지만, "정직한 회사"라는 말도 들었다.', flag: 'honest' },
+        { t: '조용히 수습한다', then: (S) => { if (R() < 0.55) { line('3주 뒤 기자가 사실을 알아냈다. "은폐"라는 단어가 헤드라인에 걸렸다.'); applyFx({ 'co.rep': -30, passion: -6 }); } else { line('다행히 조용히 지나갔다. 하지만 마음 한구석이 무겁다.'); applyFx({ happy: -5 }); } } },
+      ] },
+    hire: { title: '첫 대규모 채용', text: '직원을 50명으로 늘려야 한다. 두 지원자가 남았다.',
+      choices: [{ t: '실력이 압도적인 지원자', fx: { 'co.product': 6, 'co.team': -3 } }, { t: '팀 문화에 맞는 지원자', fx: { 'co.team': 6 } }] },
+    burnout: { title: '번아웃', when: (S) => S.st.health < 45 || S.st.happy < 40, text: '회의 도중 말이 나오지 않는다. 몇 달째 하루 네 시간을 잤다.',
+      choices: [{ t: '2주간 완전히 쉰다', fx: { health: 12, happy: 8, 'co.product': -3 } }, { t: '버틴다', fx: { health: -8, passion: -5 } }] },
+    board: { title: '이사회의 밤', text: '투자자들이 긴급 이사회를 열었다. 안건은 하나 — "대표 교체".\n매출 성장이 두 분기 연속 멈췄다. 표결까지 48시간.',
+      choices: [
+        { t: '밤새 새 사업 계획서를 만들어 설득한다', check: { abil: ['lead', 'study'], base: 30, tag: 'persuade', extra: (S) => (S.flags.trust ? 30 : 0) + (S.flags.vesting ? 15 : 0) - (S.flags.grudge ? 25 : 0) + (S.flags.mentor_vc ? 10 : 0) }, ok: { log: '표결 결과 3 대 2. 대표 자리를 지켰다.', fx: { lead: 4, passion: 6 } }, fail: { log: '표결 결과 2 대 3. 내가 세운 회사에서 해임됐다.', then: (S) => fired() } },
+        { t: '직원들의 지지 서명을 받는다', if: (S) => S.co.team >= 60, check: { abil: 'lead', base: 45, extra: (S) => (S.flags.trust ? 20 : 0) - (S.flags.grudge ? 20 : 0) }, ok: { log: '직원 90%가 서명했다. 투자자들이 물러섰다.', fx: { 'co.team': 6 } }, fail: { log: '서명은 모였지만 표결을 뒤집지 못했다.', then: (S) => fired() } },
+        { t: '좋은 조건을 받아 내고 스스로 물러난다', fx: { happy: 3, passion: -5 }, then: (S) => { S.co.equityKeep = true; fired(true); } },
+      ] },
+  },
+};
+
+/* 기묘한 운중고 — 이상주의 세계의 비현실 이벤트 (11-08 추가) */
+P.wonder = [
+  { id: 'w_cloud', w: 2, title: '☁️ 옥상의 구름 정원', text: '아침에 등교해 보니 학교 옥상에 진짜 구름이 내려앉아 있다. 밟으면 폭신하다. 선생님들도 어쩔 줄 몰라 한다.', choices: [
+    { t: '구름 위에서 낮잠을 잔다', fx: { health: 6, happy: 6 }, log: '구름이 몸 모양대로 꺼졌다. 태어나서 가장 깊이 잤다.' },
+    { t: '구름 조각을 병에 담아 연구한다', check: { abil: ['study', 'tech'], base: 45 }, ok: { log: '구름이 왜 내려왔는지 가설을 세워 과학 학술제에 냈다. 심사위원이 할 말을 잃었다.', fx: { study: 4, tech: 4, passion: 5 }, cnt: 'project' }, fail: { log: '병뚜껑을 여는 순간 구름이 하늘로 돌아갔다.', fx: { happy: 2 } } },
+    { t: '반 친구들을 불러 구름 위 수업을 연다', fx: { lead: 4, rel: 5 }, cnt: 'leader' },
+  ] },
+  { id: 'w_letter', w: 2, title: '✉️ 10년 뒤에서 온 편지', text: '사물함에 낡은 편지가 꽂혀 있다. 보낸 사람은… 10년 뒤의 나. "지금 망설이는 그거, 해. 후회 안 해."', choices: [
+    { t: '믿고 미뤄 둔 일에 도전한다', fx: { passion: 10, happy: 2 }, flag: 'future_letter', log: '편지는 다음 날 사라졌다. 하지만 마음속 문장은 남았다.' },
+    { t: '누군가의 장난이라고 생각한다', fx: { study: 2 } },
+    { t: '10년 뒤의 나에게 답장을 쓴다', fx: { emp: 4, art: 3 }, log: '"그때의 너는 잘 지내고 있니?" 답장을 사물함에 넣어 두었다.' },
+  ] },
+  { id: 'w_floor', w: 2, title: '📚 도서관의 사라진 4층', text: '분명 3층까지밖에 없던 도서관에 계단이 하나 더 생겼다. 4층에는 아직 쓰이지 않은 책들이 있다. 책등에는 전교생의 이름이.', choices: [
+    { t: '내 이름이 적힌 책을 펼친다', then: () => { const k = ABIL_KEYS.filter((x) => !S.revealed.includes(x)).sort((a, b) => S.talent[b] - S.talent[a])[0]; if (k) { revealTalent(k); line('책에는 아직 내가 모르는 내가 적혀 있었다.', 'memo'); } else { applyFx({ passion: 6 }); line('책의 뒷부분은 백지였다. "나머지는 네가 써."', 'memo'); } } },
+    { t: '{friend}의 책을 몰래 읽는다', fx: { emp: 5, rel: -2 }, log: '친구가 남몰래 하던 걱정을 알게 됐다. 다음 날 먼저 말을 걸었다.' },
+    { t: '책을 덮고 조용히 내려온다', fx: { happy: 3 }, log: '미래는 미리 보지 않기로 했다.' },
+  ] },
+  { id: 'w_principal', w: 2, title: '🎲 하루 교장 선생님', text: '교장 선생님이 추첨으로 하루 동안 학교를 맡길 학생을 뽑았다. 당첨자는 {name}!', choices: [
+    { t: '급식에 디저트를 매일 넣는다', fx: { rel: 8, happy: 4 }, log: '그날 이후 전교생이 이름을 알았다.' },
+    { t: '점심 뒤 20분 낮잠 시간을 만든다', fx: { health: 4, lead: 3 }, log: '5교시 조는 학생이 0명. 선생님들이 정식 도입을 검토 중이다.' },
+    { t: '동아리 예산을 두 배로 올린다', fx: { lead: 5 }, cnt: 'leader', then: () => S.club && applyFx(Object.fromEntries(DATA.clubs[S.club].focus.map((k) => [k, 3]))) },
+  ] },
+  { id: 'w_cat', w: 2, title: '🐈 말하는 고양이 운중이', text: '화단에 사는 고양이 운중이가 처음으로 말을 걸었다. "너, 요즘 무슨 고민 있지?"', choices: [
+    { t: '진짜 고민을 털어놓는다', fx: { emp: 4, happy: 6, passion: 3 }, log: '"걱정은 내가 맡아 둘게." 운중이는 하품을 하고 사라졌다.' },
+    { t: '고양이에게 수학 문제를 물어본다', check: { abil: 'study', base: 50 }, ok: { log: '운중이가 꼬리로 풀이를 그려 줬다. 다음 시험에서 그 문제가 나왔다.', fx: { study: 5 } }, fail: { log: '"그건 네가 풀어야지." 고양이에게도 거절당했다.', fx: { happy: 2 } } },
+  ] },
+  { id: 'w_pause', title: '⏸️ 멈춘 쉬는 시간', text: '종이 울렸는데 시계가 멈췄다. 창밖의 새도 공중에 멈춰 있다. 움직이는 사람은 나 하나. 10분이 1시간처럼 길어졌다.', choices: [
+    { t: '밀린 공부를 끝낸다', fx: { study: 6 } },
+    { t: '멈춘 학교를 탐험한다', fx: { art: 4, happy: 5 }, log: '교무실 칠판에 다음 주 깜짝 이벤트가 적혀 있었다. 비밀로 하기로 했다.' },
+    { t: '멈춘 친구들 책상에 응원 쪽지를 놓는다', fx: { emp: 4, rel: 4 }, log: '시간이 다시 흐르자 교실 여기저기서 웃음이 터졌다.' },
+  ] },
+  { id: 'w_star', w: 2, title: '🌠 별똥별 야자', text: '야간 자율학습 중 운동장에 별똥별이 쏟아졌다. 전교생이 창가로 몰려든다. 소원을 빌 시간은 딱 3초.', choices: [
+    { t: '"꿈이 이루어지게 해 주세요"', fx: { passion: 8 }, then: () => { if (S.dream) applyFx({ [DATA.jobs[S.dream].abil[0]]: 4 }); } },
+    { t: '"가족이 건강하게 해 주세요"', fx: { emp: 4, happy: 4 } },
+    { t: '"친구들이랑 오래 함께하게 해 주세요"', fx: { rel: 7 } },
+  ] },
+  { id: 'w_robot', title: '🤖 로봇 전학생', text: '오늘 우리 반에 전학생이 왔다. 이름은 "운봇-7". 국가 프로젝트로 사람의 학교생활을 배우러 온 AI 로봇이다.', choices: [
+    { t: '짝꿍을 자청해 친구가 된다', fx: { tech: 5, emp: 3 }, flag: 'robot_friend', log: '운봇-7은 처음으로 "농담"이라는 걸 이해했다. 내 농담 덕분에.' },
+    { t: '성적으로 경쟁해 본다', check: { abil: 'study', base: 35 }, ok: { log: '국어 서술형에서 로봇을 이겼다! 로봇이 공책에 "감정"이라고 적었다.', fx: { study: 4, passion: 5 } }, fail: { log: '전 과목 만점. 로봇은 미안하다며 간식을 나눠 줬다.', fx: { happy: 2 } } },
+    { t: '로봇에게 사람의 놀이를 가르친다', fx: { rel: 4, happy: 5, art: 2 } },
+  ] },
+  { id: 'w_swap', title: '🔄 거꾸로 수업의 날', text: '오늘은 학생이 선생님이 되는 날. 1교시를 내가 맡게 됐다. 선생님들은 학생 자리에 앉았다.', choices: [
+    { t: '좋아하는 분야로 진짜 수업을 한다', check: { abil: 'lead', base: 45, tag: 'persuade' }, ok: { log: '수업이 끝나자 담임 선생님이 손을 들었다. "질문 있어요!"', fx: { lead: 5, passion: 4 }, cnt: 'leader' }, fail: { log: '10분 만에 준비한 내용이 바닥났다. 나머지는 퀴즈 시간.', fx: { happy: 2 } } },
+    { t: '선생님들께 쪽지 시험을 낸다', fx: { happy: 6, rel: 3 }, log: '체육 선생님이 수학 1등을 했다.' },
+  ] },
+  { id: 'w_museum', w: 2, title: '🏛️ 꿈 박물관', text: '잠들었더니 꿈속의 운중고에 박물관이 생겼다. 전시실마다 내가 될 수 있는 미래가 걸려 있다.', choices: [
+    { t: '가장 반짝이는 전시실로 간다', gold: true, then: () => { const id = drawJobs(1)[0]; S.exp[id] = (S.exp[id] || 0) + 2; line('전시실 이름은 "' + DATA.jobs[id].em + ' ' + DATA.jobs[id].n + '". 깨어나서도 그 장면이 선명했다.', 'memo'); } },
+    { t: '불 꺼진 전시실을 찾아간다', fx: { passion: 5, emp: 2 }, log: '"아직 아무도 가 보지 않은 길" 이라는 팻말만 있었다.' },
+  ] },
+  { id: 'w_rainbow', title: '🌈 무지개 계단', text: '소나기가 그친 뒤 운동장 끝에서 하늘까지 무지개 계단이 놓였다. 맨 위에 교실 하나가 떠 있다.', choices: [
+    { t: '끝까지 올라간다', check: { abil: 'body', base: 45 }, ok: { log: '하늘 교실 칠판에는 "용기 있는 사람에게만 보이는 문제"가 적혀 있었다.', fx: { body: 4, passion: 6 } }, fail: { log: '중간에서 숨이 차 내려왔다. 그래도 학교가 손바닥만 하게 보였다.', fx: { health: 3 } } },
+    { t: '아래에서 그림으로 남긴다', fx: { art: 6 }, cnt: 'stage', log: '그림은 학교 현관에 걸렸다.' },
+  ] },
+  { id: 'w_space', title: '🛰️ 우주 정거장 수업', text: '과학 시간, 우주 정거장의 한국인 우주비행사와 실시간 화상 수업이 열렸다. 질문 하나를 뽑는다고 한다.', choices: [
+    { t: '손을 번쩍 든다', check: { abil: 'study', base: 40 }, ok: { log: '"좋은 질문이에요. 꼭 우주에서 만나요." 우주비행사가 내 이름을 불렀다.', fx: { passion: 8, study: 3 }, flag: 'space_class' }, fail: { log: '다른 친구가 뽑혔다. 그래도 창밖의 지구를 오래 봤다.', fx: { passion: 3 } } },
+    { t: '조용히 우주를 상상한다', fx: { art: 3, happy: 3 } },
+  ] },
+  { id: 'w_wishbox', w: 2, title: '📱 학교 앱의 비밀 메뉴', text: '학교 앱 설정 맨 아래에 처음 보는 메뉴가 생겼다. "소원 건의함 — 하나만, 내일 이루어집니다."', choices: [
+    { t: '"매점을 24시간 열어 주세요"', fx: { happy: 6, rel: 3 }, log: '다음 날 매점에 "오늘부터 상시 영업" 팻말이 붙었다. 누가 썼는지는 아무도 모른다.' },
+    { t: '"모든 학생의 꿈을 응원해 주세요"', fx: { passion: 6, emp: 4 }, log: '다음 날, 전교생 사물함에 이름이 적힌 응원 카드가 들어 있었다.' },
+    { t: '이 메뉴를 만든 사람을 추적한다', if: (S) => S.abil.tech >= 40, fx: { tech: 6 }, flag: 'school_app', log: '코드 끝에 서명이 있었다. "2031년 졸업생 — 다음은 너야."' },
+  ] },
+  { id: 'w_choir', title: '🎶 전 세계 동시 합창', text: '세계의 모든 학교가 같은 시각, 같은 노래를 부르는 날. 운중고 대표로 운동장 한가운데에 설 사람을 뽑는다.', choices: [
+    { t: '대표로 선다', check: { abil: 'art', base: 40, tag: 'stage' }, ok: { log: '화면 너머 수많은 나라의 학생들과 같은 음을 냈다. 소름이 돋았다.', fx: { art: 5, rel: 4, passion: 4 }, cnt: 'stage' }, fail: { log: '긴장해서 박자를 놓쳤다. 그래도 지구 반대편 친구가 엄지를 들어 줬다.', fx: { rel: 3 } } },
+    { t: '반 친구들과 목청껏 따라 부른다', fx: { rel: 6, happy: 4 } },
+  ] },
+];
+
+/* ============================================================
+   운중일생 — 삶의 흐름 (시제품 v0.1)
+   ============================================================ */
+const FLAVOR = {
+  infant: ['첫걸음을 뗐다. 세 걸음 만에 주저앉았지만 모두가 박수를 쳤다.', '"엄마", "아빠" 다음으로 배운 말은 "까까"였다.', '어린이집에서 처음으로 친구를 사귀었다.', '자전거 보조 바퀴를 뗐다.', '밤마다 같은 그림책을 읽어 달라고 졸랐다.', '놀이터 모래성 쌓기 장인이 되었다.'],
+  kid: ['구구단 7단에서 한참 막혔다.', '운동회 날 엄마 아빠가 김밥을 싸 왔다.', '용돈을 모아 처음으로 문구점에서 마음껏 샀다.', '친구 집에서 처음으로 자고 왔다.', '방학 숙제를 개학 전날 몰아서 했다.', '학교 앞 떡볶이집 단골이 되었다.'],
+  teen: ['키가 한 해 동안 10cm 컸다.', '처음으로 혼자 버스를 타고 먼 곳에 가 봤다.', '좋아하는 가수의 노래를 하루 종일 들었다.', '친구들과 노래방에서 목이 쉬었다.'],
+  adult: ['바쁜 한 해가 지나갔다.', '주말마다 늦잠을 잤다.', '오랜만에 고향에 내려갔다.', '새 취미를 시작했다가 한 달 만에 그만뒀다.', '연말에 한 해를 돌아보며 일기를 썼다.', '이사를 했다. 창밖 풍경이 마음에 든다.', '마라톤 10km를 완주했다.', '운중고 단톡방이 오랜만에 시끄러웠다.', '첫 차를 샀다.', '퇴근길 노을이 유난히 예뻤다.', '후배에게 밥을 샀다. 예전의 내가 생각났다.', '독서 모임에 나가기 시작했다.', '휴가 때 바닷가에서 아무것도 안 했다.', '건강검진에서 "운동하세요"라는 말을 들었다.'],
+  old: ['아침 산책이 하루의 시작이 되었다.', '오래된 사진첩을 꺼내 보았다.', '텃밭에 상추를 심었다.', '젊은 시절 친구들의 소식을 들었다.'],
+};
+const HS_STEPS = [];
+for (let g = 1; g <= 3; g++) for (let s = 1; s <= 2; s++) for (let m = 1; m <= 2; m++) HS_STEPS.push('hs:' + g + ':' + s + ':' + m);
+const STEPS = ['birth', 'dol', 'infant', 'elem', 'middle', ...HS_STEPS, 'grad', 'after', 'career', 'old', 'end'];
+
+/* ---------------- 새 삶 ---------------- */
+function rnd(a, b) { return a + R() * (b - a); }
+function gauss(m, sd) { let u = 0, v = 0; while (!u) u = R(); while (!v) v = R(); return m + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function newLife() {
+  const g = R() < 0.5 ? 'm' : 'f';
+  const name = pick(DATA.names.sur) + pick(DATA.names[g]);
+  const fr = shuffle(DATA.names.friend);
+  const talent = {}; ABIL_KEYS.forEach((k) => talent[k] = clamp(Math.round(gauss(50, 15)), 10, 92));
+  shuffle(ABIL_KEYS).slice(0, R() < 0.4 ? 2 : 1).forEach((k) => talent[k] = Math.round(rnd(85, 96)));
+  const body = R() < 0.2 ? 'weak' : R() < 0.75 ? 'normal' : 'strong';
+  const abil = {}; ABIL_KEYS.forEach((k) => abil[k] = Math.round(4 + talent[k] * 0.12));
+  S = {
+    v: 1, step: 0, age: 0, over: false,
+    gender: g, name, friend: fr[0], rival: fr[1], cofCands: fr.slice(2, 5),
+    region: wpick(DATA.regions, (r) => r.w).id, quint: 1 + Math.floor(R() * 5), parent: pick(Object.keys(DATA.parents)),
+    talent, revealed: [], temper: { curious: Math.round(rnd(20, 90)), grit: Math.round(rnd(20, 90)), extro: Math.round(rnd(20, 90)) },
+    body, luck: Math.round(rnd(-8, 8)), lifeBase: Math.round(rnd(72, 92)),
+    st: { health: body === 'weak' ? 55 : body === 'strong' ? 82 : 70, happy: 65, rel: 55, passion: 55, skill: 0 },
+    abil, money: 0, traits: [], flags: {}, cnt: {}, seen: {}, hopes: [], exp: {}, ach: [], hist: [],
+    logTail: [], story: [], dol: null, club: null, clubs: [], subject: null, focus: ['study'], dream: null, firstDream: null, dreamChanges: 0, dreamDraws: [],
+    gpa: 50, grade: 0, after: null, uni: null, uniTier: null, job: null, level: null, perf: 0, jobStart: 0, jobYears: {},
+    co: null, partner: false, married: false, child: null, place: '🏠', phaseName: '',
+  };
+  S.st.skill = skillOf(S);
+  store.del(SAVE_KEY);
+}
+
+/* ---------------- 실행 ---------------- */
+async function live() {
+  while (S.step < STEPS.length) {
+    const id = STEPS[S.step];
+    const fn = RUN[id.split(':')[0]];
+    await fn(id);
+    if (S.over) return;
+    S.step++;
+    save();
+  }
+}
+function setAge(a) { if (!inHS() && a > S.age) S.allow = Math.min(2.5, (S.allow || 0) + (a - S.age) * 1.5); S.age = a; S.hist.push([a, Math.round(S.st.happy), Math.round(S.st.passion)]); yearHead(); refreshHud(); }
+function regionName() { return DATA.regions.find((r) => r.id === S.region).n; }
+
+const RUN = {};
+RUN.birth = async () => {
+  S.place = '🏠'; S.phaseName = '';
+  setAge(0);
+  const r = DATA.regions.find((x) => x.id === S.region);
+  line((BIRTH_YEAR) + '년 ' + (1 + Math.floor(R() * 12)) + '월, ' + r.d + '에서 {name}{이가} 태어났다.', 'big');
+  line('가정 형편 ' + S.quint + '분위 · ' + DATA.parents[S.parent].d + '.', 'sys');
+  line(S.body === 'weak' ? '작게 태어나 자주 아팠다.' : S.body === 'strong' ? '울음소리가 병원 복도를 울릴 만큼 튼튼했다.' : '건강하게 태어났다.');
+  if (S.quint === 1) line('넉넉하지 않은 집이었지만, 창문으로 햇살이 잘 들었다.', 'memo');
+  await beat(1.2);
+};
+RUN.dol = async () => {
+  setAge(1);
+  line('돌잔치 날. 상 위에 물건들이 놓였다. 가족들이 숨을 죽이고 지켜본다.');
+  await beat(0.6);
+  const items = shuffle(DATA.dol).slice(0, 4 + Math.floor(R() * 3));
+  await scene({ title: '🎉 돌잡이', text: '{name}의 작은 손이 상 위를 헤맨다. 무엇을 집을까?',
+    choices: items.map((it) => ({ t: it.em + ' ' + it.n, d: it.d, then: (S2) => {
+      S.dol = it.id;
+      if (it.ab) { S.talent[it.ab] = clamp(S.talent[it.ab] + 8, 0, 98); S.abil[it.ab] += 3; }
+      if (it.fx) applyFx(it.fx);
+      line('{name}{은는} ' + it.n + josa(it.n, '을', '를') + ' 꼭 쥐었다! "' + it.d + '?" 모두가 웃었다.');
+    } })) });
+  await beat();
+};
+RUN.infant = async () => {
+  S.phaseName = '유아기';
+  for (let a = 2; a <= 7; a++) {
+    setAge(a);
+    line(pick(FLAVOR.infant));
+    grow({ study: 2, rest: 3, people: 2, fun: 3, dream: 0 }, 0.4);
+    if (a === 3) await randomSceneById(P.infant, 'inf_weekend');
+    if (a === 5 || a === 7) await sparkle();
+    if (a === 6) await randomSceneById(P.infant, 'inf_talent_show');
+    await beat();
+  }
+};
+async function randomSceneById(pool, id) { if (!budgetOK()) return; const sc = pool.find((x) => x.id === id); if (sc) { S.seen[id] = 1; await scene(sc); } }
+async function sparkle() {
+  const hidden = ABIL_KEYS.filter((k) => !S.revealed.includes(k)).sort((a, b) => S.talent[b] - S.talent[a]);
+  if (!hidden.length) return;
+  const k = R() < 0.75 ? hidden[0] : pick(hidden);
+  const sp = pick(P.sparkle.filter((x) => x.k === k));
+  line('✨ ' + sp.t, '');
+  if (S.talent[k] >= 60) revealTalent(k); else line('어른들은 "평범하네" 하고 웃었다.', 'sys');
+  applyFx({ [k]: 3 }, true);
+}
+
+/* 직업 카드 가중치 */
+function jobWeight(id, flat) {
+  const j = DATA.jobs[id];
+  let w = { normal: 1, rare: 0.45, gold: 0.07 }[j.tier];
+  const m = j.abil.reduce((x, k) => x + S.abil[k] + S.talent[k] * 0.3, 0) / j.abil.length / 55;
+  w *= 0.3 + m * m;
+  const dol = DATA.dol.find((d) => d.id === S.dol);
+  if (dol && dol.jobs.includes(id)) w *= 2.2;
+  if (S.hopes.some((h) => h.job === id)) w *= 1.5;
+  if (S.focus.includes(j.abil[0])) w *= 1.4;
+  if (S.exp[id]) w *= 1 + 0.7 * S.exp[id];
+  if (id === S.dream && S.dreamBoost) w *= 1 + S.dreamBoost;
+  if (id === 'founder' && (S.flags.robot_friend || S.flags.startup_contest || S.flags.hackathon || S.flags.school_app || ['leaders', 'mankyu', 'algorithm', 'nerdlab'].includes(S.club))) w *= 3;
+  if (id === 'astronaut' && (S.dol === 'plane' || S.flags.space_class || (S.abil.body >= 55 && S.abil.study >= 55))) w *= 3;
+  if (id === 'star' && ((S.cnt.stage || 0) >= 2 || S.flags.viral)) w *= 3;
+  if (flat || S.flags.fair) w = Math.pow(w, 0.7);
+  return w;
+}
+function drawJobs(n, exclude = [], filter) {
+  const ids = Object.keys(DATA.jobs).filter((id) => !exclude.includes(id) && (!filter || filter(id)));
+  const out = [];
+  for (let i = 0; i < n - 1 && ids.length; i++) { const id = wpick(ids, (x) => jobWeight(x)); out.push(id); ids.splice(ids.indexOf(id), 1); }
+  if (ids.length) { const wild = wpick(ids, (x) => (DATA.jobs[x].tier === 'gold' ? 0.15 : 1)); out.push(wild); }
+  if (FORCE && DATA.jobs[FORCE] && !out.includes(FORCE) && !exclude.includes(FORCE) && (!filter || filter(FORCE))) out[0] = FORCE;
+  return out;
+}
+
+RUN.elem = async () => {
+  S.phaseName = '초등학생'; S.place = '🏫';
+  const evAges = shuffle([8, 9, 10, 11, 12, 13]);
+  for (let a = 8; a <= 13; a++) {
+    setAge(a);
+    line(pick(FLAVOR.kid));
+    grow({ study: 3, rest: 2, people: 2, fun: 3, dream: 0 }, 0.5);
+    if (a === 8 || a === 11) await academy();
+    if (a === 10) await sparkle();
+    if (a === 12 && S.hopes.length) { /* 회고 없음 */ }
+    await randomScene(P.elem, a === 9 || a === 12 ? 2 : 1);
+    if (a === 10) await hope('초등학교 3학년');
+    await beat();
+  }
+};
+async function academy() {
+  const opts = P.academy.filter((x) => x.cost <= S.quint - (x.cost >= 3 ? 1 : 0) || x.cost === 0 || (x.cost === 1));
+  await scene({ title: '방과 후', text: S.quint <= 2 ? '학원비가 부담되는 형편이다. 그래도 하나쯤은 해 볼 수 있다.' : '부모님이 묻는다. "방과 후에 뭐 배워 볼래?"',
+    choices: opts.map((x) => ({ t: x.n, fx: x.fx, then: () => { if (x.id === 'code') setFlag('tag_code'); } })) });
+}
+function autoHope(label) {
+  const id = drawJobs(3)[0];
+  S.hopes.push({ label, job: id });
+  line(label + ' 생활기록부 장래희망 칸에 "' + DATA.jobs[id].n + '"' + josa(DATA.jobs[id].n, '을', '를') + ' 적었다.', 'sys');
+}
+async function hope(label) {
+  const cands = drawJobs(3);
+  const c = await scene({ title: '📝 장래희망 칸', text: label + ' 생활기록부 장래희망 칸을 채운다.', choices: cands.map((id) => ({ t: DATA.jobs[id].em + ' ' + DATA.jobs[id].n })) });
+  const id = cands[c ? cands.findIndex((x) => DATA.jobs[x].em + ' ' + DATA.jobs[x].n === c.t) : 0];
+  S.hopes.push({ label, job: id });
+}
+RUN.middle = async () => {
+  S.phaseName = '중학생';
+  for (let a = 14; a <= 16; a++) {
+    setAge(a);
+    line(pick(FLAVOR.teen));
+    const en = await energy('중학교 3년 — 어떻게 보낼까?', {}, a === 14);
+    grow(en, 0.9, ['study']);
+    if (a === 14) {
+      const xs = drawJobs(3);
+      await scene({ title: '자유학기 직업 체험', text: '중학교 1학년 자유학기. 직업 체험 프로그램 하나를 고른다.',
+        choices: xs.map((id) => ({ t: DATA.jobs[id].em + ' ' + DATA.jobs[id].n + ' 체험', fx: { [DATA.jobs[id].abil[0]]: 4, passion: 3 }, then: () => { S.exp[id] = (S.exp[id] || 0) + 1; line(DATA.jobs[id].n + '의 하루를 따라다녔다. 생각보다 멋있었다.'); } })) });
+      await randomSceneById(P.middle, 'mid_exam');
+    }
+    if (a === 15) {
+      await randomSceneById(P.middle, 'mid_puberty');
+      if (S.region !== 'pangyo') { line('부모님 직장 때문에 판교로 이사했다. ' + regionName() + '의 친구들과 눈물의 작별을 했다.', 'big'); applyFx({ rel: -6, happy: -3, emp: 2 }); }
+      await sparkle();
+    }
+    if (a === 16) {
+      autoHope('중학교 3학년');
+      line('🏫 고등학교 배정 발표 — 운중고등학교!', 'gold');
+      line('구름 속(雲中)이라는 이름의 학교. 여기서 3년이 인생을 바꾼다고들 했다.', 'memo');
+      await scene({ title: '입학 전 겨울방학', text: '운중고 입학까지 두 달. 이 겨울을 어떻게 보낼까?',
+        choices: [{ t: '📘 선행 학습', fx: { study: 6, happy: -3 } }, { t: '🏃 운동', fx: { body: 5, health: 6 } }, { t: '📚 책 30권 읽기', fx: { study: 3, emp: 3, art: 2 } }, { t: '🎮 실컷 놀기', fx: { happy: 10, rel: 3 } }, { t: '⭐ 하고 싶은 것 미리 해 보기', fx: { passion: 8 }, then: () => { const k = S.revealed[0] || 'art'; applyFx({ [k]: 5 }); } }] });
+    }
+    await beat();
+  }
+};
+
+/* ---------------- 운중고 ---------------- */
+const MADI = ['전반', '후반'];
+/* 운중고: 학기마다 2마디(전반·후반). 시간 배분은 학기 초에 한 번, 시험은 1년에 한 번만 직접 고른다.
+   현실 행사 + '기묘한 운중고'(비현실 이벤트)를 섞는다. 선택은 한 마디에 1~3개. */
+RUN.hs = async (id) => {
+  const [, g, s, m] = id.split(':').map(Number);
+  S.grade = g; S.place = '🏫'; S.phaseName = '운중고 ' + g + '학년';
+  if (s === 1 && m === 1) {
+    setAge(16 + g);
+    if (g === 1) { line('🌸 운중고등학교 입학식. 새 교복이 아직 어색하다.', 'big'); line('같은 반에 {friend}{이가} 있다. 그리고 묘하게 신경 쓰이는 {rival}도.'); line('교장 선생님이 말했다. "이 학교에서는 가끔 이상한 일이 일어납니다. 놀라지 마세요."', 'memo'); }
+    if (g === 3) line('3학년. 교실 뒤 칠판에 수능 D-day가 적혔다.', 'big');
+  } else if (m === 1) line('— ' + g + '학년 ' + s + '학기가 시작됐다 —', 'yr');
+  if (m === 1) {
+    if (s === 1 && g <= 2) await clubPick(g);
+    const en = await energy('운중고 ' + g + '학년 ' + s + '학기 — 어떻게 보낼까?');
+    S.hsEn = en;
+  }
+  grow(S.hsEn || energyDefault(), 1.0, S.focus);
+  // 학기 전반
+  if (m === 1) {
+    if (g === 1 && s === 1) line('학교 앱으로 급식과 시간표를 확인하는 게 일상이 됐다.', 'sys');
+    if (g === 2 && s === 1) { line('🚌 5월 말, 2학년 수학여행!', 'big'); await scene(pick(P.trip)); }
+    if (s === 1 && g <= 2) await exam(g + '학년 1학기 중간고사'); else if (g <= 2) autoExam(g + '학년 ' + s + '학기 중간고사');
+    if (g === 3 && s === 1) { line('6월 모의고사. 교실이 조용하다.', 'sys'); await exam('6월 모의고사'); }
+    if (g === 3 && s === 2) { line('원서 접수 기간. 담임 선생님과 상담이 이어진다.', 'sys'); await finalPath(); line('수능이 끝났다. 교문 앞에서 후배들이 핫팩을 나눠 준다.', 'memo'); }
+    if (S.flags.president && ((g === 2 && s === 2) || (g === 3 && s === 1))) await presidentTerm();
+    if (s === 2 && g <= 2) await clubMoment(g === 1 ? 'hi' : 'comp');
+  } else {
+    // 학기 후반: 행사 → 갈림길
+    if (g <= 2) {
+      if (s === 1) { await scene(P.sports); if (S.flags.sports_win && !S.ach.includes('sports_mvp') && R() < 0.5) unlock('sports_mvp'); }
+      else { line('🏃 2학기 체육대회. ' + pick(['반이 줄다리기에서 이겼다.', '이어달리기에서 아깝게 2등.', '응원전에서 목이 쉬었다.']), 'sys'); await scene(P.festival); if (S.flags.festival_star && !S.ach.includes('festival')) unlock('festival'); }
+      autoExam(g + '학년 ' + s + '학기 기말고사');
+    }
+    if (g === 1 && s === 2) { await dreamCards('첫 꿈 카드', 5, true); await subjectPick(); }
+    if (g === 2 && s === 1) await election();
+    if (g === 2 && s === 2) await counsel();
+  }
+  // 이번 마디의 사건 하나: 기묘한 일(약 60%) 또는 학교의 현실 사건
+  if (g < 3 || m === 1 || s === 1) await hsEvent();
+  await beat();
+};
+function energyDefault() { return { study: 2, rest: 2, people: 2, fun: 2, dream: 2 }; }
+async function hsEvent() {
+  if (R() < 0.25) return;
+  const ok = (sc) => !S.seen[sc.id] && (!sc.when || sc.when(S));
+  const wonder = P.wonder.filter(ok), real = P.hs.concat(P.events).filter(ok);
+  const pool = (R() < 0.6 && wonder.length) || !real.length ? wonder : real;
+  if (!pool.length) return;
+  const sc = wpick(pool, (x) => x.w || 1);
+  S.seen[sc.id] = 1;
+  if (P.events.includes(sc)) line('📌 게시판: ' + sc.title + ' 공고', 'sys');
+  await beat(0.6);
+  const c = await scene(sc);
+  if (c && (c.check || (c.fx && Object.keys(c.fx).length))) cnt('event');
+}
+function autoExam(label) {
+  const r = roll({ abil: 'study', base: 45, tag: 'exam' });
+  line('📝 ' + label + ' — ' + (r.ok ? '목표 점수를 넘겼다.' : '아쉬운 점수였다.'), 'sys');
+  S.gpa = Math.round(S.gpa * 0.7 + (r.ok ? 60 + S.abil.study * 0.4 : 30 + S.abil.study * 0.3) * 0.3);
+}
+async function clubPick(g) {
+  const keys = shuffle(Object.keys(DATA.clubs)).filter((k) => k !== S.club).slice(0, 6);
+  const ch = keys.map((k) => { const c = DATA.clubs[k]; return { t: c.em + ' ' + c.n, d: c.area, then: () => { S.club = k; S.clubs.push(k); S.focus = [...new Set([...c.focus, ...(S.subject ? S.subject.focus : [])])]; line(c.n + ' 동아리에 들어갔다. (' + c.area + ')'); } }; });
+  if (g === 2 && S.club) ch.unshift({ t: DATA.clubs[S.club].em + ' ' + DATA.clubs[S.club].n + ' 계속하기', d: '1학년 때 동아리 그대로', then: () => { S.clubs.push(S.club); line('{club}에 남았다. 이제는 후배를 가르치는 선배다.'); applyFx({ lead: 3 }); } });
+  await scene({ title: g + '학년 동아리 선택', text: g === 1 ? '동아리 박람회 날. 선배들이 저마다 손짓한다. (오늘 모집 중인 동아리)' : '2학년 동아리 신청. 그대로 갈까, 새로 도전할까?', choices: ch });
+}
+async function clubMoment(kind) {
+  if (!S.club) return;
+  const c = DATA.clubs[S.club];
+  if (kind === 'hi') {
+    await scene({ title: c.em + ' ' + c.n, text: '{club} 활동 시간. ' + c.hi + '.', choices: [
+      { t: '누구보다 열심히 한다', fx: Object.fromEntries(c.focus.map((k) => [k, 5])), cnt: c.cnt, then: () => cnt('event') },
+      { t: '분위기 메이커가 된다', fx: { rel: 5, happy: 3 } },
+      { t: '적당히 참여한다', fx: { health: 2 } },
+    ] });
+  } else {
+    await scene({ title: '🏅 ' + c.comp, text: '{club} 대표로 ' + c.comp + '에 나갈 사람을 뽑는다.', choices: [
+      { t: '내가 나간다', check: { abil: c.focus, base: 40, tag: c.cnt === 'stage' ? 'stage' : c.cnt === 'debate' ? 'persuade' : '' }, ok: { log: c.comp + '에서 상을 받았다! 동아리방에 상장이 걸렸다.', fx: { passion: 6 }, cnt: c.cnt, then: null }, fail: { log: '아쉽게 입상하지 못했다. 그래도 많이 배웠다.', fx: { passion: 1 }, cnt: c.cnt } },
+      { t: '준비를 돕는다', fx: { rel: 4, lead: 2 } },
+    ] });
+  }
+}
+async function openEvents() {
+  const open = shuffle(P.events.filter((e) => !S.seen[e.id] && (!e.when || e.when(S)))).slice(0, 2);
+  if (!open.length) return;
+  line('📌 게시판: ' + open.map((e) => e.title).join(' · ') + ' 공고', 'sys');
+  for (const e of open) {
+    S.seen[e.id] = 1;
+    const c = await scene(e);
+    if (c && (c.check || (c.fx && Object.keys(c.fx).length))) cnt('event');
+  }
+}
+async function exam(label) {
+  const c = await scene({ title: '📝 ' + label, text: '시험 기간. 책상 위에 교과서가 산처럼 쌓였다.', choices: [
+    { t: '계획표대로 차근차근', check: { abil: 'study', base: 50, tag: 'exam' }, ok: { log: '목표 점수를 넘겼다.', fx: { study: 3 }, then: null }, fail: { log: '노력한 만큼 안 나왔다. 다음엔…', fx: { passion: -2 } } },
+    { t: '전날 밤 벼락치기', check: { abil: 'study', base: 35, tag: 'exam' }, ok: { log: '벼락치기가 또 통했다!', cnt: 'cram' }, fail: { log: '시험지를 받자 머리가 하얘졌다.', fx: { happy: -3 } } },
+    { t: '시험보다 컨디션이 먼저', fx: { health: 4, happy: 2 }, log: '푹 자고 시험을 봤다. 점수는 평범했다.' },
+  ] });
+  const ok = S.logTail.slice(-3).some((x) => /넘겼다|통했다/.test(x[0]));
+  S.gpa = Math.round(S.gpa * 0.7 + (ok ? 60 + S.abil.study * 0.4 : 30 + S.abil.study * 0.3) * 0.3);
+}
+async function subjectPick() {
+  await scene({ title: '2학년 과목 선택', text: '고교학점제. 2학년에 들을 과목을 골라야 한다.', choices: [
+    { t: '🔬 이공계 심화 (물리·화학·정보)', then: () => { S.subject = { n: '이공계', focus: ['study', 'tech'] }; } },
+    { t: '📜 인문·사회 심화 (정치·경제·심리)', then: () => { S.subject = { n: '인문사회', focus: ['study', 'lead', 'emp'] }; } },
+    { t: '🎨 예술·체육 심화 (미술·음악·체육)', then: () => { S.subject = { n: '예체능', focus: ['art', 'body'] }; } },
+  ] });
+  S.focus = [...new Set([...(S.club ? DATA.clubs[S.club].focus : []), ...S.subject.focus])];
+  line('선택 과목: ' + S.subject.n + ' 계열', 'sys');
+}
+/* 꿈 카드 (금색 = 특수 직업) */
+async function dreamCards(title, n, allowReroll, filter, exclude = []) {
+  let reroll = allowReroll && !S.flags.rerolled;
+  for (;;) {
+    const ids = drawJobs(n, exclude, filter);
+    S.lastCards = ids;
+    S.dreamDraws.push(ids);
+    if (S.dreamDraws.length >= 3) { const [a, b, c] = S.dreamDraws.slice(-3); if (a.some((x) => b.includes(x) && c.includes(x))) unlock('fate'); }
+    if (ids.some((x) => DATA.jobs[x].tier === 'gold')) line('✨ 금색 카드가 섞여 있다!', 'gold');
+    const picked = await cardSheet(title, ids, reroll);
+    if (picked === '__reroll') { reroll = false; S.flags.rerolled = true; line('진로 상담 선생님과 이야기한 뒤 카드를 다시 뽑았다.', 'sys'); continue; }
+    return picked;
+  }
+}
+async function cardSheet(title, ids, reroll) {
+  save();
+  openSheet('<h3>' + esc(title) + '</h3><div class="txt">지금까지의 경험과 재능이 보여 주는 길들이다. 원하는 길이 없을 수도 있다.</div><div class="cards">' +
+    ids.map((id) => { const j = DATA.jobs[id]; const cl = j.tier === 'gold' ? 'gold' : j.tier === 'rare' ? 'rare' : ''; return '<button class="card ' + cl + '" data-id="' + id + '"><div class="em">' + j.em + '</div><div class="t">' + esc(j.n) + '</div><div class="s">' + j.field + (j.tier === 'gold' ? ' · ✨특수' : j.tier === 'rare' ? ' · 희귀' : '') + '</div></button>'; }).join('') + '</div>' +
+    (reroll ? '<button class="ghost" id="reroll">🧑‍🏫 진로 상담 — 한 번 다시 뽑기</button>' : ''));
+  const res = await new Promise((r) => {
+    $('#sheet').querySelectorAll('.card').forEach((b) => b.onclick = () => r(b.dataset.id));
+    const rb = $('#reroll'); if (rb) rb.onclick = () => r('__reroll');
+    if (AUTO) setTimeout(() => r(FORCE && ids.includes(FORCE) ? FORCE : pick(ids)), 0);
+  });
+  closeSheet();
+  if (res !== '__reroll') {
+    const j = DATA.jobs[res];
+    const prev = S.dream;
+    S.dream = res; if (!S.firstDream) S.firstDream = res;
+    if (prev && prev !== res) S.dreamChanges++;
+    line('⭐ 꿈: ' + j.em + ' ' + j.n + (j.tier === 'gold' ? ' — 쉽지 않은 길이다.' : ''), j.tier === 'gold' ? 'gold' : 'big');
+    refreshHud();
+  }
+  return res;
+}
+async function counsel() {
+  await scene({ title: '진로 상담', text: '담임 선생님이 묻는다. "{dream}, 아직도 그 꿈이 맞니?"', choices: [
+    { t: '네, 그대로 갑니다', fx: { passion: 5 } },
+    { t: '다시 생각해 보고 싶어요', then: async () => { await dreamCards('꿈 다시 고르기', 4, !S.flags.rerolled); } },
+  ] });
+}
+
+/* 학생회장 선거 연쇄 */
+async function election() {
+  const invited = S.flags.class_leader || S.abil.lead >= 45 || S.st.rel >= 62;
+  line('🗳️ 학생회장 선거 공고가 붙었다. 임기는 2학년 2학기부터 3학년 1학기까지.', 'big');
+  const c = await scene({ title: '출마할까?', text: invited ? '{friend}{이가} 말한다. "너 나가 봐. 진짜로. 내가 선거운동 도와줄게."' : '선거 포스터를 보며 잠시 생각한다.', choices: [
+    { t: '출마한다', fx: { passion: 4 } },
+    { t: '{friend}의 러닝메이트가 된다', fx: { rel: 5, lead: 3 }, log: '부회장 후보로 함께 뛰었다.' },
+    { t: '이번엔 투표만 한다', fx: {} },
+  ] });
+  if (!c || c.t !== '출마한다') return;
+  const pool = shuffle(DATA.promises).slice(0, 5); const chosen = [];
+  for (let i = 0; i < 3; i++) {
+    const left = pool.filter((p) => !chosen.includes(p));
+    await scene({ title: '공약 고르기 (' + (i + 1) + '/3)', text: '인기도 중요하지만, 지킬 수 있어야 한다.', choices: left.map((p) => ({ t: p.n, d: '인기 ' + '★'.repeat(Math.round(p.pop / 2)) + ' · 실현 난이도 ' + '▲'.repeat(Math.round(p.hard / 2)), then: () => chosen.push(p) })) });
+  }
+  S.promises = chosen.map((p) => p.id);
+  line('공약: ' + chosen.map((p) => p.n).join(' / '), 'sys');
+  let debate = 0;
+  await scene({ title: '후보 토론회', text: '상대 후보 {rival}{이가} 날카롭게 묻는다. "' + chosen[0].n + ', 예산은 어떻게 마련하죠?"', choices: [
+    { t: '조사한 근거로 답한다', check: { abil: 'study', base: 45, tag: 'persuade' }, ok: { log: '숫자로 답하자 강당이 조용해졌다.', then: () => { debate = 15; } }, fail: { log: '자료가 부족했다.', then: () => { debate = -5; } } },
+    { t: '유머로 분위기를 가져온다', check: { abil: 'art', base: 45 }, ok: { log: '빵 터졌다. 질문은 잊혔다.', then: () => { debate = 10; } }, fail: { log: '아무도 웃지 않았다…', then: () => { debate = -8; } } },
+    { t: '진심으로 호소한다', check: { abil: 'emp', base: 45, tag: 'persuade' }, ok: { log: '몇몇이 고개를 끄덕였다.', then: () => { debate = 12; } }, fail: { log: '진심이 전해지지 않았다.', then: () => { debate = -3; } } },
+  ] });
+  // resolve의 then이 ok/fail에서도 실행되도록 처리됨 (아래 보정)
+  const pop = chosen.reduce((x, p) => x + p.pop, 0) / 3;
+  const support = S.st.rel * 0.35 + pop * 2.5 + debate + S.luck + rnd(-10, 10) + (S.flags.class_leader ? 5 : 0);
+  await beat();
+  line('개표 결과…', 'sys'); await beat();
+  if (support >= 40) {
+    line('🎉 ' + Math.round(50 + (support - 40) / 2) + '% 득표로 당선! 운중고 학생회장 {name}.', 'gold');
+    setFlag('president'); unlock('president'); applyFx({ lead: 6, passion: 6, rel: 4 }); cnt('leader', 2);
+  } else {
+    line('아쉽게 낙선했다. {rival}{이가} 다가와 악수를 청했다.', 'big');
+    applyFx({ passion: -4, lead: 3 }); cnt('comeback', 0);
+  }
+}
+async function presidentTerm() {
+  const left = (S.promises || []).filter((id) => !(S.kept || []).includes(id) && !(S.failedP || []).includes(id));
+  if (!left.length) return;
+  const p = DATA.promises.find((x) => x.id === left[0]);
+  await scene({ title: '공약 이행 — ' + p.n, text: '학교와 협상하는 날. 선생님들은 현실적인 문제를 이야기한다.', choices: [
+    { t: '자료를 준비해 설득한다', check: { abil: 'lead', base: 70 - p.hard * 4, tag: 'persuade' }, ok: { log: p.n + ' — 이뤄 냈다! 학생들이 박수를 쳤다.', then: () => { (S.kept = S.kept || []).push(p.id); } }, fail: { log: '이번엔 받아들여지지 않았다.', then: () => { (S.failedP = S.failedP || []).push(p.id); } } },
+    { t: '학생 설문으로 근거를 모은다', check: { abil: ['lead', 'emp'], base: 74 - p.hard * 4 }, ok: { log: '설문 결과 92% 찬성. 학교가 움직였다.', then: () => { (S.kept = S.kept || []).push(p.id); } }, fail: { log: '참여율이 낮아 근거가 약했다.', then: () => { (S.failedP = S.failedP || []).push(p.id); } } },
+  ] });
+  if (S.grade === 3) {
+    const rest = S.promises.filter((id) => !(S.kept || []).includes(id) && !(S.failedP || []).includes(id));
+    rest.forEach((id) => { if (R() < 0.5) (S.kept = S.kept || []).push(id); });
+    line('임기를 마쳤다. 지킨 공약 ' + (S.kept || []).length + '개 / ' + S.promises.length + '개', 'sys');
+    if ((S.kept || []).length === S.promises.length) { setFlag('kept_all'); unlock('promise'); }
+  }
+}
+/* 3학년 진로 승부 */
+const UNIS = { 최상위: ['한국최고대학교'], 상위: ['한강대학교', '미래공과대학교'], 중위: ['새솔대학교', '별빛대학교'] };
+function uniName(tier) {
+  const f = S.dream ? DATA.jobs[S.dream].field : '';
+  if (tier === '최상위') return f === '의료' ? '국립의학원' : (f === '과학' || f === '기술·IT') ? '판교과학기술원' : '한국최고대학교';
+  if (tier === '상위') return (f === '예술·디자인' || f === '대중문화·미디어') ? '구름예술대학교' : f === '스포츠' ? '국가대표스포츠대' : pick(UNIS.상위);
+  return pick(UNIS.중위);
+}
+async function finalPath() {
+  line('결전의 가을. 3년의 선택이 답을 기다린다.', 'big');
+  const tierBy = (p, ok) => { const m = (ok ? 1 : -1) * R() * 30 + (p - 50); return m >= 18 ? '최상위' : m >= -2 ? '상위' : m >= -25 ? '중위' : null; };
+  const ch = [
+    { t: '📂 수시 (학생부 종합)', d: '3년간의 활동과 내신', check: { abil: 'study', base: 30, extra: (S2) => (S2.gpa - 50) * 0.5 + (S2.cnt.event || 0) * 2 + (S2.flags.president ? 8 : 0) }, ok: { log: '최종 합격 문자가 왔다!' }, fail: { log: '불합격… 남은 기회가 있다.' }, then: (S2, ok) => { S.after = 'uni'; S.uniTier = tierBy(chance({ abil: 'study', base: 30 }), ok); } },
+    { t: '📝 정시 (수능)', d: '하루에 모든 것을 건다', check: { abil: 'study', base: 32, tag: 'exam' }, ok: { log: '가채점 결과에 손이 떨렸다. 잘 봤다!' }, fail: { log: '평소보다 못 봤다.' }, then: (S2, ok) => { S.after = 'uni'; S.uniTier = tierBy(chance({ abil: 'study', base: 32 }), ok); } },
+    { t: '🎭 실기 전형 (예체능)', if: (S2) => S2.abil.art >= 45 || S2.abil.body >= 45, check: { abil: S.abil.art >= S.abil.body ? 'art' : 'body', base: 35, tag: 'stage' }, ok: { log: '실기 시험장에서 실력을 다 보여 줬다.' }, fail: { log: '실기에서 실수가 나왔다.' }, then: (S2, ok) => { S.after = 'uni'; S.uniTier = tierBy(55, ok); if (S.uniTier === '상위' || S.uniTier === '최상위') S.uniForce = S.abil.art >= S.abil.body ? '구름예술대학교' : '국가대표스포츠대'; } },
+    { t: '💼 바로 취업', d: '일찍 사회로', then: () => { S.after = 'job'; } },
+    { t: '🚀 창업', if: (S2) => S2.flags.startup_contest || S2.flags.hackathon || S2.flags.school_app || S2.abil.lead >= 55, gold: S.dream === 'founder', then: () => { S.after = 'startup'; S.dream = 'founder'; } },
+    { t: '🎤 연습생', if: (S2) => S2.abil.art >= 50 || (S2.cnt.stage || 0) >= 2, gold: S.dream === 'star', then: () => { S.after = 'trainee'; S.dream = 'star'; } },
+    { t: '🏅 프로 입단 테스트', if: (S2) => S2.abil.body >= 58, check: { abil: 'body', base: 35 }, ok: { log: '입단 테스트 합격!' }, fail: { log: '입단 테스트에서 떨어졌다.' }, then: (S2, ok) => { S.after = ok ? 'pro' : 'job'; } },
+  ];
+  await scene({ title: '3학년 — 진로 승부', text: '꿈: {dream}. 어떤 길로 갈까?', choices: ch });
+  if (S.after === 'uni' && !S.uniTier) {
+    await scene({ title: '재수할까?', text: '원하던 결과가 아니다.', choices: [
+      { t: '한 번 더 도전한다 (재수)', fx: { passion: -3, happy: -5 }, then: () => { S.retake = true; } },
+      { t: '갈 수 있는 대학에 간다', then: () => { S.uniTier = '중위'; } },
+      { t: '바로 취업한다', then: () => { S.after = 'job'; } },
+    ] });
+  }
+}
+
+/* ---------------- 졸업식 ---------------- */
+RUN.grad = async () => {
+  S.gradSnap = { st: Object.assign({}, S.st), abil: Object.assign({}, S.abil), cnt: Object.assign({}, S.cnt) };
+  line('🎓 운중고등학교 졸업식', 'big');
+  line('3년 전 어색하던 교복이 이제 몸에 꼭 맞는다.', 'memo');
+  await beat();
+  const cands = Object.keys(DATA.traits).filter((k) => DATA.traits[k].cond(S)).sort((a, b) => DATA.traits[b].score(S) - DATA.traits[a].score(S));
+  let got = cands.slice(0, 2);
+  if (!got.length) got = Object.keys(DATA.traits).filter((k) => k !== 'legend').sort((a, b) => DATA.traits[b].score(S) - DATA.traits[a].score(S)).slice(0, 1);
+  line('☁️ 각성 — 3년의 시간이 하나의 이름으로 굳어진다.', 'gold');
+  for (const t of got) { S.traits.push(t); line('【' + DATA.traits[t].n + '】 ' + DATA.traits[t].d, 'gold'); await beat(0.7); }
+  if (got.includes('legend')) unlock('legend_grad');
+  refreshHud();
+  const alt = (S.lastCards || []).find((x) => x !== S.dream);
+  if (alt) {
+    const j = DATA.jobs[alt];
+    line('…만약 그때 ' + j.em + ' ' + j.n + josa(j.n, '을', '를') + ' 골랐다면?', 'memo');
+    line(pick(['어딘가에서 다른 내가 그 길을 걷고 있을지도 모른다.', '그 길의 끝에도 누군가 기다리고 있었을 것이다.', '하지만 지금 이 길도, 내가 고른 길이다.']), 'memo');
+  }
+  if (S.flags.president) line('학생회장으로서 마지막 인사를 했다. 강당이 박수로 가득 찼다.');
+  await beat();
+};
+
+/* ---------------- 졸업 후 ---------------- */
+RUN.after = async () => {
+  S.place = '🎓';
+  if (S.retake) {
+    setAge(20); S.phaseName = '재수생'; line('재수 학원의 아침은 6시에 시작된다.');
+    const en = await energy('재수의 1년'); grow(en, 1.2, ['study']);
+    const r = roll({ abil: 'study', base: 40, tag: 'exam' });
+    S.uniTier = r.ok ? (R() < 0.4 ? '최상위' : '상위') : '중위';
+    line(r.ok ? '이번엔 웃었다. 1년이 헛되지 않았다.' : '결과는 비슷했다. 그래도 버텨 낸 1년이 남았다.', r.ok ? 'big' : '');
+    if (r.ok) cnt('comeback');
+  }
+  if (S.after === 'uni') await university();
+  else if (S.after === 'job' || S.after === 'pro') { S.phaseName = S.after === 'pro' ? '신인 선수' : '사회 초년생'; await armyIfNeeded(20); }
+  else if (S.after === 'trainee') { S.phaseName = '연습생'; }
+  else if (S.after === 'startup') { S.phaseName = '창업 준비'; }
+};
+async function university() {
+  S.uni = S.uniForce || uniName(S.uniTier || '중위');
+  const start = S.retake ? 21 : 20;
+  line('🏛️ ' + S.uni + ' 입학 (' + (S.uniTier || '중위') + ')', 'big');
+  S.phaseName = S.uni + ' 대학생';
+  let armyWhen = null;
+  if (S.gender === 'm') {
+    const c = await scene({ title: '입대 시기', text: '언제 군대에 갈까?', choices: [{ t: '1학년 마치고', then: () => { armyWhen = 1; } }, { t: '2학년 마치고', then: () => { armyWhen = 2; } }, { t: '졸업하고', then: () => { armyWhen = 4; } }] });
+  }
+  let a = start;
+  for (let y = 1; y <= 4; y++) {
+    setAge(a);
+    for (let half = 1; half <= 2; half++) {
+      const en = await energy(S.uni + ' 생활 — 어떻게 보낼까?', {}, (y === 1 && half === 1) || (half === 1 && S.backFromArmy && !(S.backFromArmy = false)));
+      grow(en, 1.0, S.dream ? DATA.jobs[S.dream].abil : S.focus);
+      if (R() < 0.6) await randomScene(P.uni, 1);
+    }
+    a++;
+    if (armyWhen === y) { await army(a); a += 2; S.backFromArmy = true; }
+  }
+  S.age = a - 1;
+  line('졸업식. 학사모를 던졌다.', 'big');
+}
+async function armyIfNeeded(a) { if (S.gender === 'm' && !S.flags.served) { setAge(a); await army(a + 1); } }
+async function army(atAge) {
+  setAge(atAge); S.place = '🪖'; S.phaseName = '군 복무';
+  setFlag('served');
+  let branch = '육군';
+  if (S.after === 'pro') {
+    await scene({ title: '입대', text: '프로 선수는 국군체육부대(상무)에 지원할 수 있다.', choices: [{ t: '상무에 지원한다', check: { abil: 'body', base: 50 }, ok: { log: '상무 합격! 군복을 입고도 선수 생활을 이어 간다.', then: () => { branch = '상무'; } }, fail: { log: '불합격. 일반 병사로 입대했다.' } }, { t: '일반 입대', fx: {} }] });
+  } else if (S.st.health < 35 && S.body === 'weak') {
+    branch = '사회복무';
+    line('신체검사 결과 사회복무요원으로 판정됐다. 지역 도서관에서 근무하게 됐다.');
+  } else {
+    await scene({ title: '입대', text: '군에 지원할 수 있다. 지원하지 않으면 육군 어딘가로 배치된다.', choices: [
+      { t: '공군 기술병에 지원', check: { abil: 'tech', base: 45 }, ok: { log: '공군 기술병 합격. 비행기 정비를 배운다.', then: () => { branch = '공군 기술병'; applyFx({ tech: 5 }); } }, fail: { log: '불합격. 육군으로 간다.' } },
+      { t: '통역병에 지원', check: { abil: 'study', base: 40, extra: (S2) => (S2.flags.exchange || S2.flags.english ? 15 : 0) }, ok: { log: '통역병 합격.', then: () => { branch = '통역병'; applyFx({ study: 4, lead: 2 }); } }, fail: { log: '불합격. 육군으로 간다.' } },
+      { t: '그냥 입대한다', then: () => { line('배치 결과: ' + pick(['강원도 최전방', '경기도 포병 부대', '충청도 신병교육대 조교', '전라도 해안 경계 부대']) + '.'); } },
+    ] });
+  }
+  line(branch + ' 복무 시작. 복무 기간 1년 6개월.', 'big');
+  if (branch === '상무') { applyFx({ body: 6, passion: 3 }); }
+  const A = (id) => P.army.find((x) => x.id === id);
+  if (branch !== '사회복무') { S.seen.ar_first = 1; await beat(0.5); await scene(A('ar_first')); }
+  S.allow = Math.max(S.allow || 0, 1);
+  await randomScene(P.army.filter((x) => x.id !== 'ar_first' && x.id !== 'ar_end'), 1);
+  S.seen.ar_end = 1; await beat(0.5); await scene(A('ar_end'));
+  line('전역! 1년 6개월이 지났다.', 'big');
+  S.place = '🏠';
+}
+
+/* ---------------- 커리어 ---------------- */
+RUN.career = async () => {
+  if (!S.careerAge) S.careerAge = Math.max(S.age + 1, S.after === 'uni' ? 24 : 21);
+  if (S.job == null && !S.careerDone) {
+    if (S.after === 'trainee' || S.dream === 'star') { if (S.age < S.careerAge) setAge(S.careerAge); await starGate(); }
+    else if (S.dream === 'founder' || S.after === 'startup') { if (S.age < S.careerAge) setAge(S.careerAge); await founderCareer(); }
+    else if (S.dream === 'astronaut') { if (S.age < S.careerAge) setAge(S.careerAge); await astronautGate(); }
+    else { if (S.age < S.careerAge) setAge(S.careerAge); await firstJob(); }
+  }
+  if (S.job && S.job !== 'founder' && !S.careerDone) await careerLoop();
+};
+function gateBonus() {
+  const t = S.uniTier;
+  return t === '최상위' ? 12 : t === '상위' ? 6 : 0;
+}
+async function firstJob() {
+  S.place = '🏢';
+  let target = S.dream || drawJobs(1)[0];
+  if (S.after === 'pro') target = 'athlete';
+  for (let tries = 0; tries < 3; tries++) {
+    const j = DATA.jobs[target];
+    const base = j.tier === 'rare' ? 34 : 50;
+    const extra = (S2) => gateBonus() + (S2.flags.intern_good ? 6 : 0) + (target === 'doctor' ? (S2.uni === '국립의학원' ? 20 : -15) : 0) + (S.after === 'pro' && target === 'athlete' ? 40 : 0);
+    const c = await scene({ title: j.em + ' ' + j.n + ' — 관문', text: j.tier === 'rare' ? '경쟁률이 매우 높은 길이다. 채용 시험과 면접이 남았다.' : '서류, 시험, 면접. 마지막 관문이다.', choices: [
+      { t: '준비한 대로 도전한다', rare: j.tier === 'rare', check: { abil: j.abil, base, extra, tag: 'exam' }, ok: { log: '합격! "' + j.n + '"이라는 이름표를 처음 달았다.', then: null }, fail: { log: '불합격 통보를 받았다.' } },
+    ] });
+    if (S.logTail.slice(-3).some((x) => x[0].startsWith('합격'))) { await takeJob(target); return; }
+    applyFx({ passion: -6, happy: -4 });
+    setAge(S.age + 1);
+    const c2 = await scene({ title: '다시 도전할까?', text: '한 번 더 도전할 수도, 다른 길을 찾아볼 수도 있다.', choices: [
+      { t: '같은 꿈에 한 번 더', fx: { passion: 3 }, then: () => { const k = j.abil[0]; applyFx({ [k]: 6 }); cnt('comeback'); } },
+      { t: '가까운 분야의 다른 길', then: async () => { const alt = await dreamCards('다른 길 찾기', 4, false, (id) => DATA.jobs[id].field === j.field && id !== target && DATA.jobs[id].tier !== 'gold'); target = alt; } },
+      { t: '완전히 새로운 길', then: async () => { const alt = await dreamCards('새로운 길', 4, false, (id) => id !== target && DATA.jobs[id].tier !== 'gold'); target = alt; } },
+    ] });
+  }
+  // 세 번 다 떨어지면 가장 들어가기 쉬운 일반 직업
+  const fb = Object.keys(DATA.jobs).filter((id) => DATA.jobs[id].tier === 'normal').sort((a, b) => S.abil[DATA.jobs[b].abil[0]] - S.abil[DATA.jobs[a].abil[0]])[0];
+  line('돌고 돌아 ' + DATA.jobs[fb].n + '로 사회생활을 시작했다.', 'big');
+  S.fallback = true;
+  await takeJob(fb);
+  S.fallback = false;
+}
+async function takeJob(id) {
+  const j = DATA.jobs[id];
+  S.job = id; S.level = 0; S.jobStart = S.age; S.perf = 0;
+  if (id !== S.dream) { S.dreamChanges += S.dream ? 1 : 0; S.dream = id; }
+  dexJob(id);
+  line(j.em + ' ' + j.n + (j.tier === 'gold' ? ' — 꿈이 현실이 되었다.' : '로 일하기 시작했다.'), j.tier === 'gold' ? 'gold' : 'big');
+  const dol = DATA.dol.find((d) => d.id === S.dol);
+  if (dol && dol.jobs.includes(id)) { line('돌잡이 때 ' + dol.n + josa(dol.n, '을', '를') + ' 집더니…', 'memo'); unlock('dol_prophecy'); }
+  if (S.hopes.slice(0, 6).some((h) => h.job === id)) { const h = S.hopes.find((x) => x.job === id); line(h.label + ' 장래희망 칸에 적었던 그 꿈이다.', 'memo'); unlock('child_dream'); }
+  if (j.tier === 'gold' && S.quint === 1) unlock('reversal');
+  if (S.age >= 40 && id === S.dream && !S.fallback) unlock('late_bloom');
+  if (S.dreamChanges > 0 && S.firstDream && S.firstDream !== id && !S.fallback) unlock('second_dream');
+  refreshHud();
+}
+async function changeCareer(id, keepAbil) {
+  line('새로운 길에 도전한다: ' + DATA.jobs[id].em + ' ' + DATA.jobs[id].n, 'big');
+  S.dreamChanges++;
+  const near = S.job && DATA.jobs[S.job].field === DATA.jobs[id].field;
+  if (!near && !keepAbil) applyFx({ passion: -4 });
+  const prevYears = S.age - S.jobStart; if (S.job) S.jobYears[S.job] = (S.jobYears[S.job] || 0) + prevYears;
+  S.job = null; S.dream = id; S.level = null;
+  if (id === 'founder') { S.switchToFounder = true; }
+  else await takeJob(id);
+  if (near) S.level = Math.max(0, (S.level || 0));
+}
+async function careerLoop() {
+  const j = () => DATA.jobs[S.job];
+  const retireAt = () => j().retire || (j().tier === 'gold' ? 58 : 60 + Math.floor(R() * 5));
+  if (!S.retireAt) S.retireAt = retireAt();
+  while (S.age < S.retireAt && !S.careerDone) {
+    if (S.switchToFounder) { S.switchToFounder = false; await founderCareer(); return; }
+    setAge(S.age + 2);
+    S.place = j().em; S.phaseName = '';
+    line(pick(FLAVOR.adult));
+    const fixed = { work: 4 }; if (S.child && S.age - S.child.born < 10) fixed.care = 2;
+    const askEn = S.enJob !== S.job || S.age - (S.enAge || 0) >= 10 || (fixed.care && !S.enCare) || (!fixed.care && S.enCare);
+    if (askEn) { S.enJob = S.job; S.enAge = S.age; S.enCare = !!fixed.care; }
+    const en = await energy(j().n + ' — 앞으로 몇 년을 어떻게 보낼까?', fixed, askEn);
+    grow(en, 1.2, j().abil);
+    S.money += Math.round((j().salary || 4000) * 2 * (S.salaryMul || 1) * (1 + (S.level || 0) * 0.18) * 0.25);
+    // 직업 장면
+    const js = (DATA.jobScenes[S.job] || []).filter((sc, i) => !S.seen[S.job + i] && (!sc.when || sc.when(S)));
+    if (js.length && R() < 0.6) { const sc = js[0]; S.seen[S.job + (DATA.jobScenes[S.job].indexOf(sc))] = 1; await scene(sc); }
+    if (S.switchToFounder || !S.job) continue;
+    if (R() < 0.7) await randomScene(P.career, 1);
+    if (R() < 0.45) await randomScene(P.family, 1);
+    if (S.age >= 38 && R() < 0.5) await randomScene(P.midlife, 1);
+    if (S.switchToFounder) continue;
+    // 승진
+    if (S.level < 4) {
+      const r = roll({ abil: j().abil[0], base: 20 + S.perf * 6 + (S.age - S.jobStart) * 1.5 });
+      if (r.ok) { S.level++; S.perf = Math.max(0, S.perf - 2); line('📈 승진 — ' + levelName(), 'big'); applyFx({ passion: 4, happy: 3 }); }
+    }
+    if (S.level === 4 && !S.peakSaid) { S.peakSaid = true; line('🏔️ ' + j().n + '로서 정점에 올랐다.', 'gold'); }
+    if (S.flags.consider_change && !S.changedOnce) {
+      S.flags.consider_change = false;
+      await scene({ title: '새로운 꿈', text: '마음속에서 오래 미뤄 둔 질문이 다시 떠오른다. "다른 꿈에 도전해 볼까?"', choices: [
+        { t: '도전한다', then: async () => { S.changedOnce = true; const id = await dreamCards('새로운 꿈 카드', 4, false, (x) => x !== S.job); if (id === 'founder') { await changeCareer('founder'); } else if (DATA.jobs[id].tier === 'gold') { S.dream = id; S.job = null; if (id === 'star') await starGate(); else await astronautGate(); } else { const r2 = roll({ abil: DATA.jobs[id].abil, base: DATA.jobs[S.job].field === DATA.jobs[id].field ? 55 : 35 }); if (r2.ok) await changeCareer(id); else line('도전했지만 문이 열리지 않았다. 원래 자리로 돌아왔다.', 'sys'); } } },
+        { t: '지금 자리를 지킨다', fx: { happy: 3 } },
+      ] });
+      if (S.switchToFounder) { S.switchToFounder = false; await founderCareer(); return; }
+      if (!S.job) return;
+    }
+  }
+  const years = (S.jobYears[S.job] || 0) + (S.age - S.jobStart);
+  if (years >= 30) unlock('one_path');
+  line('🎊 ' + j().n + ' 은퇴. ' + years + '년의 시간이었다.', 'big');
+  if (S.age < 50) {
+    // 일찍 은퇴하는 직업(선수 등) → 제2의 인생
+    S.jobYears[S.job] = years;
+    const next = S.job === 'athlete' ? 'trainer' : S.job === 'star' ? 'pd' : null;
+    if (next) { line('은퇴 후, 제2의 인생을 시작했다.', 'big'); S.retireAt = null; S.fallback = true; await takeJob(next); S.fallback = false; S.retireAt = 60 + Math.floor(R() * 4); await careerLoop(); return; }
+  }
+  S.careerDone = true;
+}
+
+/* 우주비행사 (특수) */
+DATA.jobScenes.astronaut = [
+  { title: '첫 우주 비행', text: '발사 10초 전. 심장 소리가 헬멧 안에 울린다.', choices: [{ t: '창밖의 지구를 본다', fx: { happy: 10, passion: 8 }, log: '파란 구슬 같은 지구. 판교도, 운중고도 저 어딘가에 있다.' }] },
+  { title: '귀환선 고장', text: '귀환 도중 경보가 울린다. 자동 조종 장치가 멈췄다.', choices: [{ t: '수동으로 조종한다', check: { abil: ['body', 'study'], base: 40 }, ok: { log: '무사히 착수했다. 관제실이 환호성으로 가득 찼다.', fx: { passion: 6 }, then: (S2) => { S2.perf += 3; } }, fail: { log: '거친 착륙이었지만 모두 살아 돌아왔다.', fx: { health: -12 } } }] },
+  { title: '달 탐사 미션', gold: true, when: (S2) => S2.level >= 2, text: '한국인 최초 달 착륙 미션 탑승자 명단에 이름이 올랐다.', choices: [{ t: '달에 내린다', gold: true, check: { abil: ['body', 'study'], base: 32 }, ok: { log: '회색 먼지 위에 첫 발자국을 남겼다. "운중고 친구들, 보고 있어?"', gold: true, then: () => unlock('moon') }, fail: { log: '기상 문제로 착륙이 취소됐다. 달 궤도를 돌며 다음을 기약했다.', fx: { passion: -4 } } }] },
+];
+async function astronautGate() {
+  S.place = '🛰️';
+  const stages = [['선발 시험', ['study'], 24, '경쟁률 3,000 대 1'], ['우주 훈련', ['body'], 26, '원심분리기, 무중력 훈련, 생존 훈련'], ['최종 탑승자 선정', ['body', 'study'], 20, '마지막 한 자리']];
+  for (let i = 0; i < stages.length; i++) {
+    const [n, ab, base, d] = stages[i];
+    let passed = false;
+    for (let t = 0; t < 2 && !passed; t++) {
+      const c = await scene({ title: '🚀 ' + n, text: '우주비행사의 길 — ' + d + '.', choices: [{ t: '도전한다', gold: true, check: { abil: ab, base: base + t * 5 }, ok: { log: n + ' 통과!' }, fail: { log: n + '에서 떨어졌다.' } }] });
+      passed = S.logTail.slice(-3).some((x) => x[0].endsWith('통과!'));
+      if (!passed) { setAge(S.age + 1); applyFx({ passion: -5 }); }
+    }
+    if (!passed) { line('우주의 문은 열리지 않았다. 대신 우주를 연구하는 사람이 되기로 했다.', 'big'); await takeJob('researcher'); return; }
+  }
+  await takeJob('astronaut');
+}
+/* 월드 스타 (특수) */
+DATA.jobScenes.star = [
+  { title: '첫 월드 투어', text: '20개 도시, 50회 공연. 몸은 지쳤지만 관객의 함성이 다시 일으켜 세운다.', choices: [{ t: '모든 무대를 100%로', fx: { art: 4, health: -8 }, then: (S2) => { S2.perf += 2; } }, { t: '컨디션 관리를 한다', fx: { health: 4 } }] },
+  { title: '악성 루머', text: '사실이 아닌 소문이 퍼졌다. 기사 댓글이 무섭다.', choices: [{ t: '정면으로 해명한다', check: { abil: 'lead', base: 45, tag: 'persuade' }, ok: { log: '진실이 밝혀지고 팬들이 더 단단해졌다.', fx: { rel: 4 } }, fail: { log: '해명이 오히려 논란을 키웠다.', fx: { happy: -8 } } }, { t: '침묵하고 작업에 집중한다', fx: { art: 4, happy: -4 } }] },
+  { title: '세계 차트', when: (S2) => S2.level >= 2, text: '새 앨범이 세계 차트를 오르고 있다. 1위까지 단 한 계단.', choices: [{ t: '마지막 무대에 모든 것을 건다', gold: true, check: { abil: ['art', 'body'], base: 28, tag: 'stage' }, ok: { log: '빌보드 1위! 판교의 작은 연습실에서 시작한 꿈이었다.', gold: true, then: () => unlock('billboard') }, fail: { log: '2위. 그래도 역사상 가장 높은 기록이었다.', fx: { passion: 3 } } }] },
+];
+async function starGate() {
+  S.place = '🎤';
+  const stages = [['기획사 오디션', 30, '3분 안에 모든 걸 보여 줘야 한다'], ['데뷔 서바이벌', 20, '연습생 100명 중 7명만 데뷔한다']];
+  for (const [n, base, d] of stages) {
+    const c = await scene({ title: '🌟 ' + n, text: d + '.', choices: [{ t: '무대에 선다', gold: true, check: { abil: ['art', 'body'], base, tag: 'stage' }, ok: { log: n + ' 통과!' }, fail: { log: n + '에서 탈락했다.' } }] });
+    if (!S.logTail.slice(-3).some((x) => x[0].endsWith('통과!'))) {
+      setAge(S.age + 1); applyFx({ passion: -6 });
+      const c2 = await scene({ title: '연습실 불이 꺼진 밤', text: '다시 도전할까?', choices: [{ t: '한 번 더', then: () => { cnt('comeback'); } }, { t: '무대 뒤의 일을 찾는다', then: () => { S.giveUp = true; } }] });
+      if (S.giveUp) { S.giveUp = false; await takeJob(S.abil.tech > S.abil.lead ? 'designer' : 'pd'); return; }
+      const r = roll({ abil: ['art', 'body'], base: base + 5, tag: 'stage' });
+      if (!r.ok) { line('두 번째 도전도 닿지 않았다. 무대 뒤에서 꿈을 이어 가기로 했다.', 'big'); await takeJob('pd'); return; }
+      line(n + ' 통과! 두 번째 도전 끝에.', 'big');
+    }
+  }
+  await takeJob('star');
+}
+
+/* 유니콘 창업가 (특수, 견본) */
+function coName() { return pick(['구름', '운', '하늘', '모아', '이음', '새벽', '오롯']) + pick(['랩스', '앤코', '플러스', '웍스', '테크', '컴퍼니']); }
+function valTxt(v) { return v >= 10000 ? (v / 10000).toFixed(1) + '조 원' : Math.round(v) + '억 원'; }
+async function founderCareer(restart) {
+  S.place = '🦄'; S.job = 'founder'; S.level = null; S.phaseName = '';
+  if (!S.coStarted) {
+    S.coStarted = S.age; S.jobStart = S.age; dexJob('founder');
+    if (S.quint === 1) S.reversalCand = true;
+    const ideas = shuffle(DATA.founder.ideas.filter((x) => x !== '학교 생활 앱')).slice(0, 3);
+    const ch = ideas.map((x) => ({ t: x, then: () => { S.co.idea = x; } }));
+    if (S.flags.school_app || S.flags.hackathon) ch.unshift({ t: '운중고 시절 만들던 학교 앱을 키운다', gold: true, then: () => { S.co.idea = '학교 생활 앱'; setFlag('grow_school_app'); } });
+    S.co = { name: coName(), idea: '', product: clamp(Math.round(38 + (S.abil.tech - 50) / 3), 20, 60), team: clamp(Math.round(38 + (S.abil.lead - 50) / 3), 20, 60), rep: 35, runway: 12, equity: 100, val: 5, fails: S.co ? S.co.fails : 0 };
+    line('🦄 창업. 작은 오피스텔이 첫 사무실이 되었다. 회사 이름은 "{co}".', 'big');
+    await scene({ title: '아이템', text: '무엇으로 세상을 바꿀까?', choices: ch });
+    await scene({ title: '공동창업자', text: '혼자 갈까, 함께 갈까?', choices: [
+      ...S.cofCands.slice(0, 2).map((n, i) => ({ t: n + '와 함께', d: i === 0 ? '실력은 최고인데 고집이 세다' : '성실하고 사람을 잘 챙긴다', then: () => { S.cof = n; S.cofounder = true; applyFx(i === 0 ? { 'co.product': 10 } : { 'co.team': 10 }); } })),
+      { t: '혼자 시작한다', d: '빠르지만 번아웃 위험', then: () => { S.cofounder = false; } },
+    ] });
+    // 첫 자금은 형편·능력으로 자동 결정(창업 첫해 선택이 몰리지 않게)
+    if (S.quint >= 3 && R() < 0.6) { S.co.runway += 6; line('"{name}, 믿는다." 부모님이 통장을 건넸다.'); }
+    else if (roll({ abil: ['study', 'lead'], base: 45 }).ok) { S.co.runway += 6; line('정부 창업 지원금 선정! 서류만 200장을 썼다.'); }
+    else { S.co.runway += 3; applyFx({ health: -4 }); line('지원금은 떨어졌다. 밤에는 아르바이트를 하며 버텼다.'); }
+  }
+  const order = ['server', 'invest', 'equity', 'copy', 'wedding', 'hire', 'leak'];
+  while (!S.careerDone && S.age < 62) {
+    setAge(S.age + 1);
+    const y = S.age - S.coStarted;
+    const en = await energy('{co} ' + y + '년 차 — 앞으로 어떻게 보낼까?', { work: 5 }, y === 1 || y % 5 === 0);
+    grow(en, 1.0, ['lead', 'tech']);
+    if (S.fired) { await firedYears(); if (S.closed || S.newCo) return; continue; }
+    // 연차별 장면
+    const next = order.find((k) => !S.seen['co_' + k] && (!DATA.founder.scenes[k].when || DATA.founder.scenes[k].when(S)));
+    if (next) { S.seen['co_' + next] = 1; await scene(DATA.founder.scenes[next]); }
+    if (DATA.founder.scenes.burnout.when(S) && R() < 0.5 && budgetOK()) await scene(DATA.founder.scenes.burnout);
+    if (R() < 0.3) await randomScene(P.family, 1);
+    // 회사 성장
+    // 회사 성장: 대표의 능력·에너지와 회사 변수로 정해진다
+    S.co.product = clamp(S.co.product + 2 + (S.abil.tech - 50) / 10 + en.study * 0.6 + rnd(-4, 5), 0, 100);
+    S.co.team = clamp(S.co.team + 1 + (S.abil.lead - 50) / 10 + en.people * 0.6 + rnd(-4, 4), 0, 100);
+    S.co.rep = clamp(S.co.rep + (S.co.product - 50) / 8 + rnd(-3, 4), 0, 100);
+    const q = (S.co.product + S.co.team + S.co.rep) / 3;
+    let g = 1 + Math.max(-0.5, (q - 45) / 20) + rnd(-0.3, 0.6) + (S.st.passion - 50) / 200;
+    if (g > 1 && S.co.val > 3000) g = 1 + (g - 1) * (S.co.val > 30000 ? 0.18 : 0.4); // 커질수록 성장은 느려진다
+    S.co.val = Math.max(1, S.co.val * Math.max(0.35, g) + (q > 50 ? 5 : 0));
+    S.co.runway -= 12; if (S.co.product > 55) S.co.runway += 8; if (S.co.product > 70) S.co.runway += 6;
+    line('📊 기업 가치 ' + valTxt(S.co.val) + ' · 런웨이 ' + Math.max(0, Math.round(S.co.runway)) + '개월 · 내 지분 ' + Math.round(S.co.equity) + '%', 'sys');
+    S.money += 1500;
+    // 투자 라운드 (가치가 오르면)
+    if (S.co.runway < 8 && S.co.val >= 30 && S.co.rep >= 40) {
+      const dil = clamp(Math.round(15 + rnd(-5, 5)), 8, 22);
+      S.co.equity = Math.max(3, S.co.equity * (1 - dil / 100)); S.co.runway += 18;
+      line('💰 투자 유치 성공 — 런웨이 +18개월 (지분 ' + dil + '% 희석)', 'big');
+    }
+    if (S.co.runway <= 0) { await crisis(); if (S.closed) return; continue; }
+    if (S.co.val >= 10000 && !S.ach.includes('unicorn')) { line('🦄 기업 가치 1조 원 돌파!', 'gold'); unlock('unicorn'); if (S.reversalCand) unlock('reversal'); await ipo(); }
+    if (S.co.val >= 100000 && !S.ach.includes('decacorn')) { line('🐉 기업 가치 10조 원!', 'gold'); unlock('decacorn'); }
+    if (S.co.val * S.co.equity / 100 >= 1500000 && !S.ach.includes('richest')) { line('💎 경제 잡지 표지: "세계 부자 1위, ' + S.name + '"', 'gold'); unlock('richest'); }
+    if (S.flags.consider_exit && !S.exitAsked) { S.exitAsked = true; await exitOffer(); }
+    if (!S.boarded && y >= 5 && S.co.equity < 35 && R() < 0.45) { S.boarded = true; S.seen.co_board = 1; await scene(DATA.founder.scenes.board); }
+    if (y >= 6 && !S.exitAsked && R() < 0.15) { S.exitAsked = true; await exitOffer(); }
+  }
+  if (S.closed || S.newCo) return;
+  if (!S.careerDone) { S.careerDone = true; line('{co}의 경영을 후배들에게 넘기고 물러났다.', 'big'); }
+  founderWrap();
+}
+function founderWrap() {
+  if (S.cofounder && (S.flags.trust || S.flags.vesting)) unlock('partners');
+  if (S.flags.grow_school_app && S.ach.includes('unicorn')) unlock('school_app');
+  if (!S.exited) S.money += Math.round(S.co.val * S.co.equity / 100 * 10000 * 0.3);
+}
+async function crisis() {
+  await scene({ title: '통장 잔고 0', text: '다음 달 월급을 줄 돈이 없다. {co}의 운명이 걸린 밤.', choices: [
+    { t: '마지막 투자자를 찾아간다', check: { abil: 'lead', base: 30, extra: (S2) => S2.co.rep / 3 + (S2.flags.mentor_vc ? 15 : 0) }, ok: { log: '마감 1시간 전, 투자 확약서가 도착했다.', then: () => { S.co.runway = 12; S.co.equity = Math.max(3, S.co.equity * 0.8); } }, fail: { log: '아무도 답하지 않았다.', then: () => closeCo() } },
+    { t: '문을 닫는다', then: () => closeCo() },
+  ] });
+}
+function closeCo() {
+  S.co.fails = (S.co.fails || 0) + 1; cnt('comeback');
+  line('{co} 폐업. 마지막으로 사무실 불을 껐다.', 'big');
+  applyFx({ passion: -10, happy: -8, money: -2000 });
+  S.closed = true;
+}
+async function ipo() {
+  await scene({ title: '상장', text: '증권사들이 상장(주식 시장에 회사를 올리는 것)을 제안한다.', choices: [
+    { t: '상장한다', fx: { happy: 8 }, log: '종을 치는 순간, 첫 사무실의 오피스텔이 떠올랐다.' },
+    { t: '아직은 더 키운다', fx: { passion: 5 } },
+  ] });
+}
+async function exitOffer() {
+  await scene({ title: '인수 제안', text: '글로벌 기업이 {co}를 ' + valTxt(S.co.val * 1.3) + '에 사고 싶다고 한다.', choices: [
+    { t: '판다 (엑싯)', then: () => { S.exited = true; S.money += Math.round(S.co.val * 1.3 * S.co.equity / 100 * 10000); line('{co}{은는} 이제 다른 회사의 이름이 되었다. 통장에 상상도 못 한 숫자가 찍혔다.', 'big'); S.careerDone = true; line('이후 엔젤 투자자로 후배 창업가들을 도왔다.'); } },
+    { t: '거절한다', fx: { passion: 6 } },
+  ] });
+}
+function fired(self) {
+  S.fired = { at: S.age, self: !!self };
+  S.place = '🏠';
+  line(self ? '{co}의 대표에서 물러났다.' : '해임 통보. 내가 세운 회사의 출입증이 더는 열리지 않았다.', 'big');
+  applyFx({ passion: self ? -6 : -14, happy: -10 });
+  line('오랜만에 일찍 집에 들어왔다. 식탁에 둘러앉은 저녁이 낯설고 따뜻했다.', 'memo');
+}
+async function firedYears() {
+  if (S.age - S.fired.at < 2) { line('회사 밖에서의 시간이 흐른다. 산책을 하고, 책을 읽었다.'); applyFx({ health: 6, happy: 4 }); return; }
+  await scene({ title: '돌아온 대표?', text: '회사를 떠난 지 2년. 새 대표 아래에서 {co}{은는} 무리한 해외 확장으로 휘청인다.\n낯익은 번호로 전화가 온다. 예전 직원이다. "대표님, 다들 대표님 얘기만 해요."', choices: [
+    { t: '돌아가서 회사를 구한다', gold: true, if: () => S.co.rep >= 45 && S.co.equity >= 10, check: { abil: 'lead', base: 45 }, ok: { log: '복귀 1년 만에 {co}{이가} 다시 일어섰다.', gold: true, then: () => { S.fired = null; S.co.val *= 1.6; S.co.runway = 18; unlock('returned_ceo'); S.place = '🦄'; } }, fail: { log: '돌아갔지만 이미 늦었다. 회사를 정리했다.', then: () => { S.fired = null; closeCo(); } } },
+    { t: '새 회사를 차린다', then: () => { S.fired = null; S.coStarted = null; S.boarded = false; S.exitAsked = false; ['server', 'invest', 'equity', 'copy', 'wedding', 'hire', 'leak'].forEach((k) => delete S.seen['co_' + k]); S.newCo = true; line('실패를 아는 창업가는 두 배로 빠르다.', 'memo'); applyFx({ lead: 5, tech: 3 }); } },
+    { t: '투자자가 된다', then: () => { S.fired = null; S.careerDone = true; line('후배 창업가들에게 투자하며 노하우를 나눴다.', 'big'); } },
+    { t: '회사는 내려놓고 가족 곁으로', then: () => { S.fired = null; S.careerDone = true; applyFx({ happy: 12, health: 6 }); line('아이의 운동회에 처음으로 끝까지 있었다.', 'memo'); } },
+  ] });
+}
+/* 폐업·새 회사 처리: founderCareer 루프 안에서 확인 */
+const _founderCareer = founderCareer;
+founderCareer = async function () {
+  await _founderCareer();
+  while ((S.closed || S.newCo) && !S.careerDone && S.age < 55) {
+    const was = S.closed; S.closed = false; S.newCo = false;
+    if (was) {
+      const c = await scene({ title: '다시 일어설까?', text: '망한 경험은 ' + S.co.fails + '번. 그래도 아이디어는 아직 머릿속에 있다.', choices: [
+        { t: '다시 창업한다', then: () => { S.coStarted = null; ['server', 'invest', 'equity', 'copy', 'wedding', 'hire', 'leak'].forEach((k) => delete S.seen['co_' + k]); S.boarded = false; S.exitAsked = false; } },
+        { t: '회사에 들어가 경험을 쌓는다', then: async () => { S.careerDone = true; S.job = null; const id = drawJobs(1, ['founder', 'astronaut', 'star'])[0]; await takeJob(id); S.careerDone = false; } },
+      ] });
+      if (S.job && S.job !== 'founder') { await careerLoop(); return; }
+    }
+    await _founderCareer();
+    if ((S.co.fails || 0) >= 3 && S.ach.includes('unicorn')) unlock('okto');
+  }
+};
+
+/* 동창회: 같은 교실에서 출발한 다른 삶들 */
+function reunion() {
+  const others = [S.friend, S.rival, pick(DATA.names.friend.filter((n) => n !== S.friend && n !== S.rival))];
+  const fates = [
+    (n, j) => n + '{은는} ' + j + josa(j, '이', '가') + ' 되어 있었다. "너 그때 동아리에서 맨날 밤새웠잖아."',
+    (n, j) => n + '{은는} 회사를 그만두고 ' + j + josa(j, '으로', '로') + ' 새 출발을 했다고 했다.',
+    (n, j) => n + '{은는} 고향으로 내려가 ' + j + josa(j, '으로', '로') + ' 일한다. 제일 행복해 보였다.',
+    (n, j) => n + '{은는} 요즘 ' + j + josa(j, '으로', '로') + ' 이름을 날리는 중이다. 다들 사인을 받았다.',
+  ];
+  line('— 그날 밤, 운중고 친구들의 근황 —', 'sys');
+  others.forEach((n) => { const j = DATA.jobs[pick(Object.keys(DATA.jobs).filter((x) => DATA.jobs[x].tier !== 'gold' || R() < 0.1))].n; line(pick(fates)(n, j).replace('{은는}', josa(n, '은', '는')), 'memo'); });
+  line('같은 교실에서 출발했는데, 다들 이렇게 다른 곳에 서 있다.', 'memo');
+}
+
+/* ---------------- 노년 ---------------- */
+RUN.old = async () => {
+  S.place = '🌇'; S.phaseName = '은퇴 후';
+  if (!S.lifespan) {
+    const avgH = S.st.health;
+    S.lifespan = clamp(Math.round(S.lifeBase + (avgH - 55) / 4 + (S.body === 'strong' ? 3 : S.body === 'weak' ? -3 : 0) + rnd(-2, 4)), 68, 104);
+  }
+  while (S.age < 57) {
+    // 일찍 일을 내려놓은 경우(엑싯·해임 후 등): 남은 중년
+    setAge(S.age + 3);
+    line(pick(S.exited || S.job === 'founder' ? ['후배 창업가들의 발표를 들으며 조언을 건넸다.', '작은 회사 몇 곳에 투자했다.', '강연 요청이 이어졌다.', ...FLAVOR.adult] : FLAVOR.adult));
+    if (R() < 0.5) await randomScene(P.midlife, 1); else if (R() < 0.5) await randomScene(P.family, 1); else await beat();
+  }
+  if (S.age < 60) { setAge(60); line('일에서 한 걸음 물러났다.'); }
+  while (S.age + 3 < S.lifespan) {
+    setAge(S.age + 3);
+    line(pick(FLAVOR.old));
+    S.st.health = clamp(S.st.health - 2.5, 5, 100);
+    if (R() < 0.7) await randomScene(P.old, 1); else await beat();
+    if (S.child && S.age - S.child.born >= 16 && !S.childSchool) { S.childSchool = true; line('🏫 ' + S.child.name + '(이)가 운중고에 입학했다. 교문 앞에서 사진을 찍으며 한참 웃었다.', 'gold'); }
+  }
+  setAge(S.lifespan);
+};
+RUN.end = async () => {
+  if (S.age >= 100) unlock('centenarian');
+  const goldJob = Object.keys(S.jobYears).concat(S.job ? [S.job] : []).some((id) => DATA.jobs[id] && DATA.jobs[id].tier === 'gold') || S.ach.includes('principal');
+  if (!goldJob && S.st.happy >= 65) unlock('ordinary');
+  line('향년 ' + S.age + '세. {name}의 일생이 막을 내렸다.', 'big');
+  await beat(1.5);
+  const presets = ['구름 속에서 시작해, 구름 위에서 끝났다.', '후회 없이 살았다.', '사랑했던 모든 순간에 고맙다.', '꿈은 이루는 것보다 꾸는 동안이 더 좋았다.', '다시 태어나도 이 길을 고를 것이다.'];
+  let words = pick(presets);
+  if (!AUTO) {
+    openSheet('<h3>마지막 한마디</h3><div class="txt">{name}의 삶에 남길 한마디. 공유 카드의 맺음말이 됩니다.</div>'.replace('{name}', esc(S.name)) +
+      '<textarea id="lw" maxlength="40" placeholder="40자 이내">' + esc(words) + '</textarea>' +
+      presets.map((p) => '<button class="ch" data-p="' + esc(p) + '">' + esc(p) + '</button>').join('') + '<button class="primary" id="lwOk">남기기</button>');
+    $('#sheet').querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { $('#lw').value = b.dataset.p; });
+    words = await new Promise((r) => { $('#lwOk').onclick = () => r(($('#lw').value || '').trim().slice(0, 40) || pick(presets)); });
+    closeSheet();
+  }
+  S.words = words;
+  line('"' + words + '"', 'memo');
+  S.over = true;
+  const d = dex(); d.lives = (d.lives || 0) + 1; store.set(DEX_KEY, d);
+  store.del(SAVE_KEY);
+  await beat(1);
+  // 앱 기록: 업적 수와 살아온 해로 '인생 점수'를 남긴다(순위보다는 기념)
+  try { UnjungGame.submitScore(S.ach.length * 100 + S.age, { hold: true }); } catch (e) { /* */ }
+  if (IN_APP) flushApp();
+  showCard();
+};
+
+/* ---------------- 공유 카드 ---------------- */
+function lifeTitle() {
+  const reg = regionName();
+  if (S.ach.includes('moon')) return reg + '에서 달까지';
+  if (S.ach.includes('billboard')) return reg + '에서 세계 무대까지';
+  if (S.ach.includes('richest')) return reg + '에서 세계 1위까지';
+  if (S.ach.includes('unicorn')) return '오피스텔에서 유니콘까지';
+  if (S.ach.includes('returned_ceo')) return '돌아온 대표';
+  if (S.ach.includes('principal')) return '다시, 운중고로';
+  if (S.dreamChanges >= 2) return '세 번째 꿈의 주인';
+  if (S.ach.includes('second_dream')) return '두 번째 꿈을 이룬 사람';
+  if (S.ach.includes('child_dream')) return '어릴 적 꿈 그대로';
+  if (S.ach.includes('ordinary')) return '조용히 빛난 사람';
+  if (S.st.rel >= 80) return '사람 부자';
+  if (S.st.passion >= 80) return '끝까지 꿈꾼 사람';
+  const j = S.job ? DATA.jobs[S.job].n : '나';
+  return '평생 ' + j;
+}
+function cardData() {
+  const j = S.job ? DATA.jobs[S.job] : null;
+  const dol = DATA.dol.find((d) => d.id === S.dol);
+  const h3 = S.hopes.find((h) => h.label === '초등학교 3학년'); const hm = S.hopes.find((h) => h.label === '중학교 3학년');
+  return {
+    title: lifeTitle(),
+    who: S.name + ' · ' + (S.gender === 'm' ? '남' : '여') + ' · ' + regionName() + ' · ' + S.quint + '분위',
+    dol: dol ? dol.em + ' ' + dol.n : '-',
+    hope: (h3 ? DATA.jobs[h3.job].n : '-') + ' → ' + (hm ? DATA.jobs[hm.job].n : '-'),
+    school: (S.clubs.length ? [...new Set(S.clubs)].map((k) => DATA.clubs[k].n).join(' → ') : '-') + (S.traits.length ? ' · [' + S.traits.map((t) => DATA.traits[t].n).join(', ') + ']' : '') + (S.flags.president ? ' · 학생회장' : ''),
+    dream: (S.firstDream ? DATA.jobs[S.firstDream].n : '-') + ' → ' + (j ? j.em + ' ' + j.n + (j.tier === 'gold' ? ' ✨' : '') : '-'),
+    ach: S.ach.slice(-3).map((a) => DATA.achievements[a].em + ' ' + DATA.achievements[a].n),
+    age: S.age, words: S.words || '',
+  };
+}
+function showCard() {
+  const cd = cardData();
+  const cv = document.createElement('canvas'); cv.width = 720; cv.height = 1180;
+  const x = cv.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 1180); g.addColorStop(0, '#9fd3ff'); g.addColorStop(0.5, '#eef7ff'); g.addColorStop(1, '#ffe9d6');
+  x.fillStyle = g; x.fillRect(0, 0, 720, 1180);
+  x.fillStyle = '#ffffffdd'; roundRect(x, 36, 36, 648, 1108, 32); x.fill();
+  const F = '"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif';
+  x.fillStyle = '#8a93a6'; x.font = '600 22px ' + F; x.fillText('雲中一生 · 운중일생', 72, 96);
+  x.fillStyle = '#1d2433'; x.font = '800 46px ' + F; wrapText(x, cd.title, 72, 160, 576, 54);
+  x.font = '500 24px ' + F; x.fillStyle = '#5b6476'; x.fillText(cd.who, 72, 250);
+  const rows = [['🍼 돌잡이', cd.dol], ['✏️ 장래희망', cd.hope], ['🏫 운중고', cd.school], ['⭐ 꿈 → 실제', cd.dream], ['🏆 업적', cd.ach.join('  ') || '-']];
+  let y = 310;
+  for (const [k, v] of rows) { x.fillStyle = '#8a93a6'; x.font = '700 22px ' + F; x.fillText(k, 72, y); x.fillStyle = '#1d2433'; x.font = '500 25px ' + F; y = wrapText(x, v, 72, y + 36, 576, 34) + 26; }
+  // 인생 그래프
+  const gx = 72, gy = y + 10, gw = 576, gh = 170;
+  x.fillStyle = '#8a93a6'; x.font = '700 22px ' + F; x.fillText('📈 인생 그래프 (행복 · 열정)', gx, gy);
+  x.strokeStyle = '#e3e7ef'; x.lineWidth = 2; x.strokeRect(gx, gy + 14, gw, gh);
+  const hs = S.hist.filter((p, i, a) => i === 0 || p[0] !== a[i - 1][0]); const maxA = Math.max(1, S.age);
+  [[1, '#f0a020'], [2, '#e05252']].forEach(([idx, col]) => { x.strokeStyle = col; x.lineWidth = 4; x.beginPath(); hs.forEach((p, i) => { const px = gx + (p[0] / maxA) * gw, py = gy + 14 + gh - (p[idx] / 100) * gh; i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke(); });
+  x.fillStyle = '#5b6476'; x.font = '500 20px ' + F; x.fillText('0세', gx, gy + gh + 42); x.textAlign = 'right'; x.fillText(S.age + '세', gx + gw, gy + gh + 42); x.textAlign = 'left';
+  y = gy + gh + 90;
+  x.fillStyle = '#1d2433'; x.font = '800 30px ' + F; x.fillText('향년 ' + cd.age + '세', 72, y);
+  x.fillStyle = '#6a5a2a'; x.font = 'italic 600 28px ' + F; wrapText(x, '"' + cd.words + '"', 72, y + 52, 576, 38);
+  x.fillStyle = '#b0b7c6'; x.font = '500 18px ' + F; x.fillText('운중고 앱 학생 개발팀', 72, 1112);
+  const url = cv.toDataURL('image/png');
+  const txt = '☁️ 운중일생 — ' + cd.title + '\n' + cd.who + '\n돌잡이: ' + cd.dol + '\n장래희망: ' + cd.hope + '\n운중고: ' + cd.school + '\n꿈 → 실제: ' + cd.dream + '\n업적: ' + (cd.ach.join(', ') || '-') + '\n향년 ' + cd.age + '세 — "' + cd.words + '"';
+  const p = $('#panel'); p.classList.remove('hide');
+  p.innerHTML = '<h2>☁️ 한 사람의 일생</h2><img id="shareImg" alt="공유 카드" src="' + url + '"><a class="primary" style="display:flex;align-items:center;justify-content:center;text-decoration:none" download="운중일생_' + esc(S.name) + '.png" href="' + url + '">이미지로 저장</a><button class="ghost" id="cpy">글로 복사</button>' + (IN_APP ? '<button class="primary" id="appDone" style="margin-top:8px">🏁 기록 남기고 마치기</button>' : '') + '<button class="ghost" id="again">새로운 삶 시작</button><button class="ghost" id="toDex">직업 도감 · 업적</button>';
+  $('#cpy').onclick = () => { try { navigator.clipboard.writeText(txt); $('#cpy').textContent = '복사했어요'; } catch (e) { $('#cpy').textContent = '복사가 안 되는 환경이에요'; } };
+  $('#again').onclick = () => { p.classList.add('hide'); start(true); };
+  if ($('#appDone')) $('#appDone').onclick = () => { const b = $('#appDone'); b.disabled = true; b.textContent = '기록하는 중…'; flushApp(); setTimeout(() => UnjungGame.done(), 400); };
+  $('#toDex').onclick = () => showDex(true);
+  window.__lastCard = { title: cd.title, txt };
+}
+function roundRect(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
+function wrapText(x, t, a, b, w, lh) { let line2 = ''; let y = b; for (const ch of String(t)) { if (x.measureText(line2 + ch).width > w) { x.fillText(line2, a, y); line2 = ch; y += lh; } else line2 += ch; } if (line2) x.fillText(line2, a, y); return y; }
+
+/* ---------------- 도감 ---------------- */
+function showDex(fromCard) {
+  const d = dex();
+  const jobs = Object.entries(DATA.jobs);
+  const got = jobs.filter(([id]) => d.jobs[id]).length;
+  const p = $('#panel'); p.classList.remove('hide');
+  p.innerHTML = '<h2>📖 직업 도감 <span style="font-size:14px;color:#5b6476">' + got + ' / ' + jobs.length + '</span></h2><div class="grid3">' +
+    jobs.map(([id, j]) => '<div class="cell ' + (d.jobs[id] ? (j.tier === 'gold' ? 'gold' : '') : 'no') + '"><div class="em">' + (d.jobs[id] ? j.em : '❔') + '</div>' + (d.jobs[id] ? esc(j.n) : (j.tier === 'gold' ? '✨ 특수' : '???')) + '</div>').join('') +
+    '</div><h2 style="margin-top:20px">🏆 업적 <span style="font-size:14px;color:#5b6476">' + Object.keys(d.ach).length + ' / ' + Object.keys(DATA.achievements).length + '</span></h2><div class="grid3">' +
+    Object.entries(DATA.achievements).map(([id, a]) => '<div class="cell ' + (d.ach[id] ? 'gold' : 'no') + '"><div class="em">' + (d.ach[id] ? a.em : '🔒') + '</div><b>' + esc(a.n) + '</b><div style="font-size:10.5px;color:#5b6476">' + (d.ach[id] ? esc(a.d) : '???') + '</div></div>').join('') +
+    '</div><p style="color:#5b6476;font-size:13px">지금까지 살아 본 삶: ' + (d.lives || 0) + '번</p><button class="primary" id="dexClose">닫기</button>';
+  $('#dexClose').onclick = () => { if (fromCard) showCard(); else p.classList.add('hide'); };
+}
+
+/* ---------------- 시작·메뉴 ---------------- */
+function setupSpeed() {
+  const box = $('#speed');
+  box.innerHTML = [1, 2, 4, 8].map((v) => '<button data-v="' + v + '" class="' + (v === speed ? 'on' : '') + '">' + v + '×</button>').join('') + '<button data-v="p">' + (paused ? '▶' : '⏸') + '</button>';
+  box.querySelectorAll('button').forEach((b) => b.onclick = () => { if (b.dataset.v === 'p') paused = !paused; else { speed = +b.dataset.v; paused = false; } $('#paused').classList.toggle('hide', !paused); setupSpeed(); });
+}
+function start(fresh) {
+  $('#cover').classList.add('hide');
+  $('#log').innerHTML = '';
+  if (fresh || !S) newLife();
+  else S.logTail.forEach(([t, c]) => drawLine(t, c));
+  refreshHud();
+  live().catch((e) => { console.error(e); line('⚠️ 오류가 났어요: ' + e.message, 'sys'); });
+}
+$('#btnNew').onclick = () => { if (store.get(SAVE_KEY) && !confirmNew()) return; start(true); };
+let newArmed = false;
+function confirmNew() {
+  if (AUTO) return true;
+  if (!IN_APP) return window.confirm('저장된 삶이 있어요. 새로 시작하면 지워집니다. 계속할까요?');
+  // 앱 안에서는 확인 창이 막혀 있어서 두 번 누르게 한다
+  if (newArmed) return true;
+  newArmed = true; $('#btnNew').textContent = '한 번 더 누르면 저장된 삶이 지워져요';
+  setTimeout(() => { newArmed = false; $('#btnNew').textContent = '새로운 삶 시작'; }, 4000);
+  return false;
+}
+$('#btnCont').onclick = () => { S = store.get(SAVE_KEY); start(false); };
+$('#btnDex').onclick = () => showDex(false);
+$('#btnMenu').onclick = () => {
+  paused = true; setupSpeed(); $('#paused').classList.remove('hide');
+  const p = $('#panel'); p.classList.remove('hide');
+  p.innerHTML = '<h2>메뉴</h2><button class="primary" id="mResume">계속하기</button><button class="ghost" id="mDex">직업 도감 · 업적</button><button class="ghost" id="mHome">처음 화면으로 (저장됨)</button>' +
+    '<h3 style="margin-top:22px">지금의 나</h3><div style="font-size:13.5px;line-height:1.8;color:#2b3345">' + ABIL_KEYS.map((k) => ABIL[k] + ' ' + Math.round(S.abil[k]) + (S.revealed.includes(k) ? ' ✨' : '')).join(' · ') + '<br>꿈: ' + (S.dream ? DATA.jobs[S.dream].n : '-') + (S.traits.length ? '<br>특성: ' + S.traits.map((t) => DATA.traits[t].n).join(', ') : '') + '</div>';
+  $('#mResume').onclick = () => { p.classList.add('hide'); paused = false; setupSpeed(); $('#paused').classList.add('hide'); };
+  $('#mDex').onclick = () => showDex(false);
+  $('#mHome').onclick = () => { save(); location.reload(); };
+};
+setupSpeed();
+function pauseNow() { if (!S || S.over) return; paused = true; setupSpeed(); $('#paused').classList.remove('hide'); }
+try { UnjungGame.onPause(pauseNow); } catch (e) { /* */ }
+if (IN_APP) {
+  $('#btnNew').disabled = true; $('#btnNew').textContent = '불러오는 중…';
+  const ready = (d) => { if (d && d.s) MEM[SAVE_KEY] = d.s; if (d && d.d) MEM[DEX_KEY] = d.d; $('#btnNew').disabled = false; $('#btnNew').textContent = '새로운 삶 시작'; if (MEM[SAVE_KEY]) $('#btnCont').classList.remove('hide'); };
+  let done = false; const once = (d) => { if (!done) { done = true; ready(d); } };
+  UnjungGame.load().then(once).catch(() => once(null)); setTimeout(() => once(null), 8000);
+} else if (store.get(SAVE_KEY)) $('#btnCont').classList.remove('hide');
+if (AUTO) { speed = 8; setTimeout(() => start(true), 50); }
+
+</script>
+</body>
+</html>
