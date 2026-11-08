@@ -38,6 +38,26 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
   return Promise.race([ready, timeout]);
 }
 
+/** 구독이 지금 앱의 공개 키로 만든 것인가(키를 바꾸면 옛 구독으로는 알림이 가지 않는다) */
+function sameKey(sub: PushSubscription) {
+  const k = sub.options?.applicationServerKey;
+  if (!k) return true; // 알 수 없으면 그대로 둔다
+  const a = new Uint8Array(k as ArrayBuffer);
+  const b = base64ToBytes(VAPID_PUBLIC_KEY);
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/** 이 기기의 구독을 지금 키로 맞춘다: 없으면 만들고, 옛 키면 지우고 새로 만든다(알림 허용은 그대로라 다시 묻지 않음) */
+async function ensureSubscription(reg: ServiceWorkerRegistration) {
+  let sub = await reg.pushManager.getSubscription();
+  if (sub && !sameKey(sub)) {
+    await supabase.rpc('delete_push_subscription', { p_endpoint: sub.endpoint });
+    await sub.unsubscribe().catch(() => false);
+    sub = null;
+  }
+  return sub ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToBytes(VAPID_PUBLIC_KEY) }));
+}
+
 async function currentSubscription() {
   const reg = await registration();
   return reg ? reg.pushManager.getSubscription() : null;
@@ -71,7 +91,7 @@ export async function enablePush(): Promise<{ ok: true } | { ok: false; message:
   const reg = await registration();
   if (!reg) return { ok: false, message: '앱을 새로고침한 뒤 다시 시도해 주세요.' };
   try {
-    const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ToBytes(VAPID_PUBLIC_KEY) }));
+    const sub = await ensureSubscription(reg);
     const error = await save(sub);
     if (error) return { ok: false, message: /[가-힣]/.test(error.message) ? error.message : '알림 정보를 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.' };
     return { ok: true };
@@ -87,9 +107,16 @@ export async function disablePush() {
   await sub.unsubscribe().catch(() => false);
 }
 
-/** 앱을 열 때: 이미 켜 둔 기기면 지금 로그인한 계정으로 다시 저장(계정 바꿈·만료 대비) */
+/** 앱을 열 때: 이미 켜 둔 기기면 지금 로그인한 계정으로 다시 저장(계정 바꿈·만료 대비). 알림 키가 바뀌었으면 새 키로 다시 구독 */
 export async function syncPush() {
   if (pushSupport() !== 'ok' || Notification.permission !== 'granted') return;
-  const sub = await currentSubscription();
-  if (sub) await save(sub);
+  const reg = await registration();
+  if (!reg) return;
+  try {
+    const had = await reg.pushManager.getSubscription();
+    if (!had) return; // 끈 기기는 그대로
+    await save(await ensureSubscription(reg));
+  } catch {
+    /* 다음에 앱을 열 때 다시 */
+  }
 }
