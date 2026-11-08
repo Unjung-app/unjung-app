@@ -10,7 +10,7 @@ import { color, radius, space } from '@/theme/tokens';
 const ROLE_LABEL = { student: '학생', reviewer: '검토위원', admin: '관리자' } as const;
 
 /** 전체·설정 화면 맨 위의 계정 카드 */
-export function AccountCard() {
+export function AccountCard({ isDeveloper = false }: { isDeveloper?: boolean } = {}) {
   const router = useRouter();
   const { status, email, enrollment, role, signOut } = useAuth();
   const [confirmOut, setConfirmOut] = useState(false);
@@ -29,18 +29,20 @@ export function AccountCard() {
     );
   }
 
+  const badges = [role !== 'student' ? ROLE_LABEL[role] : null, isDeveloper ? '개발자' : null];
+
   return (
     <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
       <View style={{ padding: space.lg, gap: 2 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm }}>
           <AppText variant="heading">{enrollment?.name ?? '학번 등록 필요'}</AppText>
-          {role !== 'student' ? (
-            <View style={{ backgroundColor: color.accentSoft, borderRadius: radius.round, paddingHorizontal: 8, paddingVertical: 2 }}>
+          {badges.map((label) => label ? (
+            <View key={label} style={{ backgroundColor: color.accentSoft, borderRadius: radius.round, paddingHorizontal: 8, paddingVertical: 2 }}>
               <AppText variant="caption" weight="semibold" color={color.accentInk}>
-                {ROLE_LABEL[role]}
+                {label}
               </AppText>
             </View>
-          ) : null}
+          ) : null)}
         </View>
         <AppText variant="caption" color={color.inkMuted}>
           {enrollment ? `${enrollment.grade}학년 ${enrollment.class_no}반 ${enrollment.number}번 · ` : ''}
