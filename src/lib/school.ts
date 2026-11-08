@@ -107,6 +107,18 @@ export function parseSchedule(rows: Row[]): SchoolEvent[] {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/** 나이스에 아직 없는 학생회 행사(학생 의견 #8). 나이스에 같은 날 '축제'가 생기면 그쪽만 쓴다 */
+export const EXTRA_EVENTS: SchoolEvent[] = [
+  { date: '20261216', name: '동아리 발표회', holiday: false },
+  { date: '20261216', name: '축제', holiday: false },
+];
+
+/** 나이스 일정 + 학생회 행사(기간 안, 같은 날 비슷한 이름이 이미 있으면 빼고) */
+export function withExtraEvents(events: SchoolEvent[], from: string, to: string): SchoolEvent[] {
+  const extra = EXTRA_EVENTS.filter((x) => x.date >= from && x.date <= to && !events.some((e) => e.date === x.date && (e.name.includes(x.name) || x.name.includes(e.name))));
+  return [...events, ...extra].sort((a, b) => a.date.localeCompare(b.date));
+}
+
 /** 화면용 일정: 같은 이름이 이어지는 날짜(겨울방학 60일 등)를 기간 하나로 묶은 것 */
 export type EventRange = {
   start: string;

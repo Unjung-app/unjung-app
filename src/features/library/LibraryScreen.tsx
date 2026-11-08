@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Button, Card } from '@/components/ui/primitives';
 import { Segmented } from '@/components/ui/Segmented';
 import { Screen } from '@/components/ui/Screen';
+import { useOpenFeature } from '@/features/hooks';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 
@@ -56,6 +57,7 @@ function searchUrl(keyword: string, category: SearchCategory) {
 }
 
 export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
+  const openFeature = useOpenFeature();
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState<SearchCategory>('all');
   const [inputFocused, setInputFocused] = useState(false);
@@ -174,6 +176,20 @@ export function LibraryScreen({ inStack = false }: { inStack?: boolean }) {
           검색 결과는 독서로(read365)에서 보여 줘요. 대출 가능 여부도 그 화면에서 확인할 수 있어요.
         </AppText>
       </Card>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="분실물 보러 가기. 도서관에서 잃어버린 물건도 여기서 찾아요"
+        onPress={() => openFeature('lost')}
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 60, backgroundColor: pressed ? color.surfaceMuted : color.surface, borderRadius: radius.card, padding: space.lg })}>
+        <AppText style={{ fontSize: 24, lineHeight: 30 }}>🔎</AppText>
+        <View style={{ flex: 1 }}>
+          <AppText variant="bodyStrong">분실물 찾기</AppText>
+          <AppText variant="caption" color={color.inkMuted}>
+            도서관에서 잃어버린 물건도 분실물 게시판에서 찾고 올려요
+          </AppText>
+        </View>
+        <Icon name="chevronRight" size={16} color={color.inkFaint} />
+      </Pressable>
     </Screen>
   );
 }

@@ -21,10 +21,12 @@
   th { background:#EEF2F8; font-weight:600; }
   .box { background:#fff; border-radius:16px; padding:16px 20px; border-left:4px solid var(--accent); }
   a { color:#1B4FD8; }
+  .back{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;margin-bottom:12px;border-radius:999px;background:#eef1f6;color:#1b2a4a;font-weight:600;text-decoration:none}
 </style>
 </head>
 <body>
 <main>
+  <a href="/" id="back" class="back" aria-label="앱으로 돌아가기">← 앱으로 돌아가기</a>
   <header><img src="/icons/icon-192.png" alt=""><h1>개인정보 처리방침</h1></header>
   <p class="muted">운중고 스마트 스쿨 · 시행일 2026년 10월 24일</p>
 
@@ -85,5 +87,11 @@
   이메일: <a href="mailto:howonlee728@gmail.com">howonlee728@gmail.com</a></p>
   <p class="muted">이 방침이 바뀌면 앱 공지로 먼저 알립니다.</p>
 </main>
+<script>
+  // 앱(홈 화면 설치)에서 열면 브라우저 뒤로 가기 버튼이 없어서 직접 돌아가는 버튼을 둔다 (의견 #7)
+  document.getElementById('back').addEventListener('click', function (e) {
+    if (history.length > 1) { e.preventDefault(); history.back(); }
+  });
+</script>
 </body>
 </html>
