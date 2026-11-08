@@ -345,7 +345,12 @@ const g6 = (await sg(A, 'life', '2026-11-09 18:25+09')).rows[0]?.r;
 { const key = await keyOf(g6.id); expect('라이프 퀴즈: 동기화된 급식·시간표·학사일정 문제 포함', g6?.duration_s === 90 && key.length >= 8 && key.some((x) => /점심/.test(x.q) && /\//.test(x.q)) && key.some((x) => /우리 반/.test(x.q)) && key.some((x) => /지필평가/.test(x.q)) && key.every((x) => x.choices.length === 4)); }
 await q(`insert into public.token_ledger (user_id, delta, reason, ref_id) values ('${A}', 100, 'admin', 'test-game-fund')`);
 for (let k = 0; k < 4; k++) await sg(A, 'word', `2026-11-09 19:0${k}+09`);
-{ const r = await sg(A, 'word', '2026-11-09 19:30+09'); expect('하루 10판 제한', !r.ok && /10판/.test(r.err ?? '')); }
+{ const r = await sg(A, 'word', '2026-11-09 19:30+09'); expect('무료 10판 뒤에는 가격 확인 없이 시작 불가', !r.ok && /연장 가격/.test(r.err ?? '')); }
+{ const w = await q(`select public._start_game('${A}', 'word', '2026-11-09 19:31+09', 8) r`); expect('연장: 가격이 다르면 거부', !w.ok && /5토큰/.test(w.err ?? '')); }
+{ const c = await q(`select public._extra_play_cost(9) a, public._extra_play_cost(10) b, public._extra_play_cost(13) c, public._extra_play_cost(19) d, public._extra_play_cost(20) e`);
+  const x = c.rows[0]; expect('연장 가격: 할수록 비싸지고 20판에서 끝', x.a === 0 && x.b === 5 && x.c === 8 && x.d === 20 && x.e === null); }
+{ await q(`insert into public.token_ledger (user_id, delta, reason, ref_id) values ('${A}', 500, 'admin_adjust', 'test-extra')`);
+  const r = await q(`select public._start_game('${A}', 'word', '2026-11-09 19:32+09', 5) r`); expect('연장 11판째: 5토큰 내고 시작', r.ok && r.rows[0]?.r?.cost === 5 && r.rows[0]?.r?.plays_today === 11); }
 { const r = await sg(A, 'word', '2026-11-10 18:00+09'); expect('다음 날 첫 판은 무료', r.ok && r.rows[0]?.r?.cost === 0); }
 { const r = await as(B, CB, `select count(*)::int n from public.game_runs`); const w = await as(B, CB, `select count(*)::int n from public.game_words`); expect('게임 기록·단어장(정답) 직접 조회 불가', r.rows[0]?.n === 0 && w.rows[0]?.n === 0); }
 { const r = await as(B, CB, `select public.game_ranking('math', '2026-11-09') r`, 'B 게임 랭킹'); const k = r.rows[0]?.r;
