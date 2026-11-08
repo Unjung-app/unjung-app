@@ -64,11 +64,18 @@ export function FeedbackAdminScreen() {
         label="보기"
         value={filter}
         onChange={setFilter}
-        options={[
-          { value: 'open', label: '처리할 것' },
-          { value: 'game', label: '게임 의견' },
-          { value: 'all', label: '전체' },
-        ]}
+        options={
+          admin
+            ? [
+                { value: 'open', label: '처리할 것' },
+                { value: 'game', label: '게임 의견' },
+                { value: 'all', label: '전체' },
+              ]
+            : [
+                { value: 'open', label: '처리할 것' },
+                { value: 'all', label: '전체 게임 의견' },
+              ]
+        }
       />
       {rows === null ? (
         <AppText variant="body" color={color.inkMuted}>
