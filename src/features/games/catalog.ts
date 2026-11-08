@@ -43,6 +43,14 @@ export const GAMES: Record<GameId, GameInfo> = {
     by: '김현석',
     how: '노란 표시에서 탭하면 꺾기·점프, 파란 띠는 꾹 누르고 끝에서 떼요. 한 번 실수하면 끝',
   },
+  unjungil: {
+    title: '운중일생',
+    emoji: '☁️',
+    desc: '태어나서 운중고를 거쳐 일생을 산다. 꿈은 고를 수 있다',
+    tag: '인생 시뮬레이션',
+    by: '이호원',
+    how: '선택지를 눌러 삶을 이어 가요. 배속·일시정지, 자동 저장되어 다음에 이어서 살 수 있어요',
+  },
   defense: {
     title: '운중 디펜스',
     emoji: '🛡️',
