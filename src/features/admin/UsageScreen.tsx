@@ -19,6 +19,7 @@ type Usage = {
   push: number;
   features: Record<string, number>;
   games_week?: GameRow[];
+  games_4w?: GameRow[];
   games_since?: GameRow[];
   games_since_day?: string;
 };
@@ -115,11 +116,12 @@ export function UsageScreen() {
         ))}
       </View>
 
+      {u.games_4w ? <GameTable title="게임별 · 최근 4주 (교체 판단 기준)" rows={u.games_4w} /> : null}
       {u.games_week ? <GameTable title="게임별 · 최근 7일" rows={u.games_week} /> : null}
       {u.games_since ? <GameTable title={`게임별 · 출시(${(u.games_since_day ?? '').slice(5).replace('-', '/')}) 이후`} rows={u.games_since} /> : null}
       {u.games_week ? (
         <AppText variant="caption" color={color.inkFaint}>
-          학생 수·판 수는 개발자 계정의 플레이를 빼고 셉니다. 다시 온 학생 = 서로 다른 날 2번 이상 플레이. 의견 = 게임 화면의 '이 게임에 의견'으로 들어온 수.
+          순위 = 기간 중 플레이한 학생 수(개발자 계정 제외). 게임 교체는 결정 직전 4주 기준이고, 새로 들어온 게임은 첫 업데이트 한 번은 교체 대상에서 빠져요. 다시 온 학생 = 서로 다른 날 2번 이상 플레이. 의견 = 게임 화면의 '이 게임에 의견'으로 들어온 수.
         </AppText>
       ) : null}
     </Screen>
