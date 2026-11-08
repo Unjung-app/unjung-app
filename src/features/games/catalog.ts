@@ -59,6 +59,14 @@ export const GAMES: Record<GameId, GameInfo> = {
     by: '안현준, 김현석',
     how: '화면을 탭해서 층을 떨어뜨려요. 딱 맞추면 콤보 보너스',
   },
+  campus_walk: {
+    title: '운중고 3D 산책',
+    emoji: '🌸',
+    desc: '교실부터 벚꽃 마당까지, 운중고의 여섯 장소를 탐험해요',
+    tag: '3D 탐험',
+    by: '장원준',
+    how: '왼쪽 조이스틱으로 이동하고 화면을 드래그해 둘러봐요. 여섯 장소를 방문한 뒤 탐험 완료를 눌러요',
+  },
 };
 
 export const GAME_IDS: GameId[] = Object.keys(GAMES);
