@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { REWARD } from '@/lib/rewards';
 import { Image, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -6,20 +6,27 @@ import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
+import { supabase } from '@/lib/supabase';
+import { LostComments } from './LostComments';
 import { shortLabel } from '@/lib/date';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
 import { useLostFeed, type LostItem } from './data';
 
-/** 분실물 게시판: 주웠어요 / 잃어버렸어요 / 내 글 */
+type Author = { item_id: number; name: string | null; student_no: string | null };
 export function LostScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
-  const { status } = useAuth();
+  const { status, role, session } = useAuth();
+  const uid = session?.user.id;
+  const [adminUid, setAdminUid] = useState<string>();
+  const [authors, setAuthors] = useState<Author[]>([]);
+  const [adminError, setAdminError] = useState(false);
+  const showIdentity = role === 'admin' && !!uid && adminUid === uid;
   const { refresh } = useWallet();
   const ready = status === 'ready' || status === 'needsEnrollment';
   const feed = useLostFeed(ready);
-  const [tab, setTab] = useState<'all' | 'found' | 'lost' | 'mine'>('all');
+  const [tab, setTab] = useState<'all' | 'mine'>('all');
 
   useFocusEffect(
     useCallback(() => {
@@ -27,6 +34,17 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [feed.reload]),
   );
+
+  useEffect(() => {
+    if (!showIdentity || !feed.items?.length) return;
+    let active = true;
+    void supabase.rpc('admin_lost_authors', { p_ids: feed.items.map((x) => x.id) }).then(({ data, error }) => {
+      if (!active) return;
+      setAdminError(!!error);
+      setAuthors(error ? [] : (data ?? []) as Author[]);
+    });
+    return () => { active = false; };
+  }, [showIdentity, feed.items]);
 
   if (!ready) {
     return (
@@ -47,7 +65,7 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
   }
 
   const all = feed.items ?? [];
-  const list = tab === 'mine' ? all.filter((x) => x.mine || x.i_responded) : tab === 'all' ? all : all.filter((x) => x.type === tab);
+  const list = tab === 'mine' ? all.filter((x) => x.mine || x.i_responded) : all;
 
   return (
     <Screen topInset={!inStack} onRefresh={feed.reload}>
@@ -56,14 +74,21 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
           분실물
         </AppText>
       ) : null}
+      {role === 'admin' && uid ? (
+        <Button label={showIdentity ? '실명·학번 숨기기' : '관리자 보기 (실명·학번)'} accessibilityLabel="관리자 실명 및 학번 보기"
+          variant="ghost" style={{ alignSelf: 'flex-end' }} onPress={() => {
+            setAuthors([]);
+            setAdminError(false);
+            setAdminUid(showIdentity ? undefined : uid);
+          }} />
+      ) : null}
+      {role === 'admin' && adminError ? <AppText variant="caption" color={color.danger}>작성자 정보를 불러오지 못했어요.</AppText> : null}
       <Segmented
         label="보기"
         value={tab}
         onChange={setTab}
         options={[
           { value: 'all', label: '전체' },
-          { value: 'found', label: `주운 물건 ${all.filter((x) => x.type === 'found' && x.status === 'open').length}` },
-          { value: 'lost', label: `찾는 물건 ${all.filter((x) => x.type === 'lost' && x.status === 'open').length}` },
           { value: 'mine', label: '내 글' },
         ]}
       />
@@ -80,7 +105,7 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
       )) : list.length === 0 ? (
         <Card>
           <AppText variant="body" color={color.inkMuted}>
-            {tab === 'all' ? '최근 30일 동안 올라온 게시물이 없어요.' : tab === 'found' ? '최근 30일 동안 올라온 주운 물건이 없어요.' : tab === 'lost' ? '찾는 물건이 없어요.' : '내가 올리거나 응답한 글이 없어요.'}
+            {tab === 'all' ? '최근 30일 동안 올라온 게시물이 없어요.' : '내가 올리거나 응답한 글이 없어요.'}
           </AppText>
         </Card>
       ) : (
@@ -88,6 +113,9 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
           <LostCard
             key={x.id}
             x={x}
+            commentsKey={uid ?? ''}
+            showIdentity={showIdentity}
+            author={showIdentity ? authors.find((a) => a.item_id === x.id) : undefined}
             onRespond={(on) => feed.respond(x.id, on)}
             onResolve={async () => {
               const r = await feed.resolve(x.id);
@@ -108,11 +136,17 @@ export function LostScreen({ inStack = false }: { inStack?: boolean }) {
 
 function LostCard({
   x,
+  commentsKey,
+  showIdentity,
+  author,
   onRespond,
   onResolve,
   onClose,
 }: {
   x: LostItem;
+  commentsKey: string;
+  showIdentity: boolean;
+  author?: Author;
   onRespond: (on: boolean) => Promise<{ ok: boolean; message?: string }>;
   onResolve: () => Promise<{ ok: boolean; message?: string; info?: string }>;
   onClose: () => Promise<{ ok: boolean; message?: string }>;
@@ -150,6 +184,11 @@ function LostCard({
           </AppText>
         </View>
       </View>
+      {showIdentity ? (
+        <AppText variant="caption" color={color.inkMuted}>
+          작성자 {author?.name ?? '학적 정보 없음'} {author?.student_no ?? ''}
+        </AppText>
+      ) : null}
       {x.description ? <AppText variant="body">{x.description}</AppText> : null}
       {found && x.keep_at ? (
         <AppText variant="label" color={color.navy}>
@@ -208,6 +247,7 @@ function LostCard({
           {info}
         </AppText>
       ) : null}
+      <LostComments key={`${commentsKey}:${showIdentity}`} itemId={x.id} admin={showIdentity} />
     </Card>
   );
 }

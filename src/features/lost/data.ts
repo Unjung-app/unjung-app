@@ -95,6 +95,9 @@ export function useLostFeed(enabled: boolean) {
 export type LostDraft = { type: LostType; item: string; place: string; happenedOn: Ymd; description: string; keepAt: string | null; photo: Blob | null };
 
 export async function postLostItem(d: LostDraft, userId: string): Promise<Result> {
+  const allowed = await supabase.rpc('can_post_lost_today');
+  if (allowed.error) return res(allowed.error);
+  if (!allowed.data) return { ok: false, message: '분실물 게시물은 하루에 한 번만 올릴 수 있어요.' };
   let path: string | null = null;
   if (d.photo) {
     path = `${userId}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -110,6 +113,7 @@ export async function postLostItem(d: LostDraft, userId: string): Promise<Result
     p_keep_at: d.keepAt,
     p_photo_path: path,
   });
+  if (error?.code === 'P0001' && path) await supabase.storage.from('lost-photos').remove([path]);
   return res(error);
 }
 

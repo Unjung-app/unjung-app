@@ -147,6 +147,7 @@ export function LostComposeScreen() {
         </AppText>
       </Card>
 
+      <AppText variant="caption" color={color.inkMuted}>분실물 게시물은 계정당 하루에 한 번 올릴 수 있어요.</AppText>
       {error ? (
         <AppText variant="label" weight="regular" color={color.danger}>
           {error}
