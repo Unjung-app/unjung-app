@@ -4,7 +4,7 @@
 -- 교육활동부(관리자)가 앱에서 마감일을 바꿀 수 있다(연장 등).
 
 alter table public.study_groups add column if not exists join_until date;
-update public.study_groups set join_until = '2026-11-08' where name in ('1학년 스터디 윗미', '2학년 스터디 윗미');
+update public.study_groups set join_until = '2026-11-08' where name in ('1학년 스터디 윗미', '2학년 스터디 윗미') and join_until is null; -- 다시 실행해도 교육활동부가 바꾼 마감을 덮지 않게
 
 create or replace function public.join_study_group(p_id bigint, p_password text)
 returns void language plpgsql security definer set search_path = public as $$
