@@ -233,8 +233,8 @@ function LostCard({
             {found ? <Button label="받았어요" onPress={() => run(onResolve)} /> : null}
             <Button label="응답 취소" variant="ghost" onPress={() => run(() => onRespond(false))} />
           </View>
-        ) : !x.has_response ? (
-          <Button label={found ? '🙋 제 거예요' : '🙌 제가 찾았어요'} variant="soft" onPress={() => run(() => onRespond(true))} />
+        ) : found && !x.has_response ? (
+          <Button label="🙋 제 거예요" accessibilityLabel="제 거예요" variant="soft" onPress={() => run(() => onRespond(true))} />
         ) : null
       ) : null}
       {err ? (

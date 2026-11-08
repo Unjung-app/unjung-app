@@ -82,7 +82,7 @@ export function MoreScreen() {
         전체
       </AppText>
 
-      <AccountCard />
+      <AccountCard isDeveloper={status === 'ready' && dept.dev} />
 
       {hasTools ? (
         <>
