@@ -9,6 +9,7 @@ import { stampLabel } from '@/lib/date';
 import { supabase } from '@/lib/supabase';
 import { useStaffAccess } from '@/features/admin/access';
 import { GAMES } from '@/features/games/catalog';
+import { AiRelay } from './AiRelay';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 import { KIND_LABEL, STATUS_LABEL, STATUS_TONE, type FeedbackKind, type FeedbackStatus } from './FeedbackScreen';
@@ -58,6 +59,7 @@ export function FeedbackAdminScreen() {
 
   return (
     <Screen topInset={false} onRefresh={load}>
+      {admin ? <AiRelay onApplied={load} /> : null}
       <Segmented
         label="보기"
         value={filter}
