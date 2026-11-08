@@ -13,7 +13,7 @@ import { CouncilSection, QuickGrid, QuoteLine } from '@/features/today/HomeParts
 import { NicknamePrompt } from '@/features/settings/NicknamePrompt';
 import { FirstMissions } from '@/features/launch/FirstMissions';
 import { useWallet } from '@/state/wallet';
-import { LaunchBanner, TeamCard, useLaunchEvent } from '@/features/launch/Launch';
+import { LaunchBanner, useLaunchEvent } from '@/features/launch/Launch';
 import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
 import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
@@ -137,7 +137,6 @@ export function TodayScreen() {
           <LaunchBanner />
           {!wide ? <StudyEventRow today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} /> : null}
           <DailyMissions today={now.ymd} />
-          <TeamCard homeOnly />
         </View>
       </View>
     </Screen>
