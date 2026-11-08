@@ -86,13 +86,13 @@ function Root() {
         <Stack.Screen name="wallet" options={{ title: '토큰·출석' }} />
         <Stack.Screen name="shop" options={{ title: '꾸미기 상점' }} />
         <Stack.Screen name="feedback" options={{ title: '의견 보내기' }} />
-        <Stack.Screen name="admin/feedback" options={{ title: '의견 관리 (관리자)' }} />
+        <Stack.Screen name="admin/feedback" options={{ title: '의견 관리' }} />
         <Stack.Screen name="game/[id]" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="notice/new" options={{ title: '공지 올리기' }} />
         <Stack.Screen name="lost/new" options={{ title: '분실물 올리기' }} />
         <Stack.Screen name="review" options={{ title: '검토하기 (검토위원)' }} />
         <Stack.Screen name="admin/staff" options={{ title: '학생 관리 (관리자)' }} />
-        <Stack.Screen name="admin/usage" options={{ title: '앱 사용 현황 (관리자)' }} />
+        <Stack.Screen name="admin/usage" options={{ title: '앱 사용 현황' }} />
         <Stack.Screen name="gallery/[id]" options={{ title: '행사 사진' }} />
         <Stack.Screen name="gallery/new" options={{ title: '행사 사진 올리기' }} />
         <Stack.Screen name="voice/survey/[id]" options={{ title: '설문' }} />

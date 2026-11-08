@@ -230,6 +230,7 @@ export function HtmlPlayScreen() {
                 {error}
               </AppText>
             ) : null}
+            {ready ? <GameFeedbackLink id={id} /> : null}
             {Platform.OS !== 'web' ? (
               <AppText variant="caption" color={F.sub} align="center">
                 게임은 웹 앱(unjung-app.vercel.app)에서 열려요.
@@ -256,6 +257,7 @@ export function HtmlPlayScreen() {
             ) : null}
             <Big label={status?.next_cost === null ? '오늘 10판을 다 했어요' : '한 판 더'} disabled={status?.next_cost === null} onPress={start} />
             <Big label="나가기" secondary onPress={exit} />
+            <GameFeedbackLink id={id} />
           </Overlay>
         ) : null}
 
@@ -311,6 +313,22 @@ function Big({ label, onPress, disabled, secondary }: { label: string; onPress: 
       })}>
       <AppText variant="bodyStrong" color={secondary ? F.ink : F.onAccent}>
         {label}
+      </AppText>
+    </Pressable>
+  );
+}
+
+/** 이 게임에 대한 의견(버그·아이디어) → 의견 화면. 개발자가 '게임 의견'으로 모아 본다 */
+function GameFeedbackLink({ id }: { id: string }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="이 게임에 의견 보내기"
+      onPress={() => router.push(`/feedback?from=game:${id}`)}
+      style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: space.md }}>
+      <AppText variant="label" color={F.sub}>
+        💬 이 게임에 의견 보내기 (버그·아이디어)
       </AppText>
     </Pressable>
   );

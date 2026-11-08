@@ -23,12 +23,12 @@ const FUN = ['study', 'games', 'ranking'];
 
 /** 부서 권한(소통홍보부·교육활동부). 서버 함수가 없거나 실패하면 false */
 function useDeptFlags(enabled: boolean) {
-  const [flags, setFlags] = useState({ comm: false, study: false });
+  const [flags, setFlags] = useState({ comm: false, study: false, dev: false });
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
-    Promise.all([supabase.rpc('is_comm'), supabase.rpc('is_study_manager')]).then(([c, m]) => {
-      if (alive) setFlags({ comm: c.data === true, study: m.data === true });
+    Promise.all([supabase.rpc('is_comm'), supabase.rpc('is_study_manager'), supabase.rpc('is_developer')]).then(([c, m, d]) => {
+      if (alive) setFlags({ comm: c.data === true, study: m.data === true, dev: d.data === true });
     });
     return () => {
       alive = false;
@@ -49,7 +49,7 @@ export function MoreScreen() {
   const soon = FEATURES.filter((f) => f.status === 'soon');
   const isAdmin = role === 'admin';
   const reviewer = signedIn && role !== 'student';
-  const hasTools = status === 'ready' && (isAdmin || reviewer || planner || dept.comm || dept.study);
+  const hasTools = status === 'ready' && (isAdmin || reviewer || planner || dept.comm || dept.study || dept.dev);
 
   const group = (children: React.ReactNode) => (
     <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>{children}</View>
@@ -93,8 +93,10 @@ export function MoreScreen() {
             planner && <ListRow icon="voice" title="설문·찬반 투표 만들기" subtitle="기획행정부 · 참여한 학생은 토큰을 받아요" onPress={() => router.push('/voice/survey/new')} />,
             planner && <ListRow icon="check" title="익명 건의 확인" subtitle="기획행정부 · 확인 표시·숨기기" onPress={() => openFeature('voice')} />,
             dept.study && <ListRow icon="study" title="스터디 윗미 관리" subtitle="교육활동부 · 그룹 → 관리자 보기" onPress={() => openFeature('study')} />,
+ !isAdmin && dept.dev && <ListRow icon="ranking" title="앱 사용 현황 · 게임별" subtitle="개발자 · 내 게임을 몇 명이 하는지" onPress={() => router.push('/admin/usage')} />,
+            !isAdmin && dept.dev && <ListRow icon="settings" title="의견 관리" subtitle="개발자 · 학생 의견 확인·답변 (게임 의견만 보기 가능)" onPress={() => router.push('/admin/feedback')} />,
             reviewer && <ListRow icon="check" title="검토하기" subtitle="공지 승인·신고 처리·분실물 사진 (검토위원)" onPress={() => router.push('/review')} />,
-            isAdmin && <ListRow icon="ranking" title="앱 사용 현황" subtitle="가입·매일 접속·기능별 사용 (관리자)" onPress={() => router.push('/admin/usage')} />,
+            isAdmin && <ListRow icon="ranking" title="앱 사용 현황" subtitle="가입·매일 접속·기능별·게임별 사용 (관리자)" onPress={() => router.push('/admin/usage')} />,
             isAdmin && <ListRow icon="user" title="학생 관리" subtitle="학적 정정 요청·직책·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />,
             isAdmin && <ListRow icon="settings" title="의견 관리" subtitle="학생이 보낸 앱 의견 (관리자)" onPress={() => router.push('/admin/feedback')} />,
           ])}

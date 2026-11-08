@@ -912,6 +912,20 @@ await sub(B, CB, 'a7');
   await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
 }
 
+{ // 개발자 권한: 사용 현황·의견 보기, '확인 중'만 가능
+  const D = '99999999-9999-9999-9999-999999999954', CD = 'dev@unjung.hs.kr'; await q(`insert into auth.users values ('${D}','${CD}')`);
+  await as(D, CD, `select public.register_enrollment('20702','개발')`);
+  const isd = await as(D, CD, `select public.is_developer() ok`); expect('개발자 명단 학번 → 개발자', isd.rows[0]?.ok === true);
+  const nb = await as(B, CB, `select public.is_developer() ok`); expect('일반 학생은 개발자 아님', nb.rows[0]?.ok === false);
+  const u = await as(D, CD, `select public.admin_usage() r`); expect('개발자는 사용 현황(게임별 포함) 조회', u.ok && Array.isArray(u.rows[0]?.r?.games_week));
+  const ub = await as(B, CB, `select public.admin_usage() r`); expect('일반 학생은 사용 현황 불가', !ub.ok);
+  const fl = await as(D, CD, `select id from public.feedback_admin order by id limit 1`); expect('개발자는 의견 목록 조회', fl.ok && fl.rows.length === 1);
+  const fid = fl.rows[0]?.id;
+  const seen = await as(D, CD, `select public.admin_update_feedback(${fid}, 'seen', '확인했어요')`); expect('개발자 확인 중·답변 가능', seen.ok);
+  const done = await as(D, CD, `select public.admin_update_feedback(${fid}, 'done', '')`); expect('개발자는 반영 완료(토큰 지급) 불가', !done.ok);
+  const fb = await as(B, CB, `select count(*)::int n from public.feedback_admin`); expect('일반 학생은 의견 목록 0', fb.rows[0]?.n === 0);
+}
+
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
 if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
