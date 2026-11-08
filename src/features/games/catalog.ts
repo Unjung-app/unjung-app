@@ -35,6 +35,14 @@ export const GAMES: Record<GameId, GameInfo> = {
     by: '송현우',
     how: '20초 안에 선택지를 눌러요. 엔딩을 모아 도감을 채워 보세요',
   },
+  runner: {
+    title: '수행 러너',
+    emoji: '📄',
+    desc: '날아간 수행평가지를 쫓아 학교를 달려라',
+    tag: '타이밍',
+    by: '김현석',
+    how: '노란 표시에서 탭하면 꺾기·점프, 파란 띠는 꾹 누르고 끝에서 떼요. 한 번 실수하면 끝',
+  },
   defense: {
     title: '운중 디펜스',
     emoji: '🛡️',
