@@ -67,7 +67,7 @@ export function FocusScreen() {
     }, [s.back, s.leave]),
   );
 
-  const running = s.phase === 'running' || s.phase === 'away';
+  const running = s.phase === 'running' || s.phase === 'away' || s.phase === 'check';
   const ended = s.phase === 'idle' && started.current && !!s.notice;
   const group = dash.data?.groups?.[0];
   const subjectSeconds = (base.current?.subject ?? 0) + s.elapsed;
@@ -114,6 +114,8 @@ export function FocusScreen() {
               ? '시작하는 중…'
               : s.phase === 'away'
                 ? '일시정지 · 60초 안에 돌아오면 이어져요'
+                : s.phase === 'check'
+                  ? '새벽 확인 중 · 아래 버튼을 눌러 주세요'
                 : s.phase === 'stopping'
                   ? '저장하는 중…'
                   : running
@@ -143,6 +145,23 @@ export function FocusScreen() {
           <Big label={s.phase === 'stopping' ? '저장하는 중…' : '■  그만하기'} disabled={!running} onPress={close} />
         )}
       </View>
+
+      {s.phase === 'check' ? (
+        <View
+          accessibilityViewIsModal
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: F.scrim, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.md }}>
+          <View style={{ width: '100%', maxWidth: 420, gap: space.md, alignItems: 'center' }}>
+            <AppText style={{ fontSize: 48, lineHeight: 58 }}>🌙</AppText>
+            <AppText variant="heading" color={F.ink} align="center">
+              아직 공부 중인가요?
+            </AppText>
+            <AppText variant="body" color={F.sub} align="center">
+              새벽에는 2시간마다 확인해요. 90초 안에 누르지 않으면 지금까지만 기록하고 끝나요.
+            </AppText>
+            <Big label="네, 계속 공부할게요" primary onPress={() => s.confirmAlive()} />
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

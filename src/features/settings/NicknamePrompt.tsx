@@ -83,7 +83,7 @@ export function NicknamePrompt({ onDone }: { onDone?: () => void }) {
             }}
           />
           <AppText variant="caption" color={error || (v && !valid) ? color.danger : color.inkMuted}>
-            {error ?? (v && !valid ? '띄어쓰기·기호 없이 한글·영문·숫자·_ 로 2~10자예요' : '한글·영문·숫자·_ 로 2~10자 · 정하면 30일 동안 바꿀 수 없어요')}
+            {error ?? (v && !valid ? '띄어쓰기·기호 없이 한글·영문·숫자·_ 로 2~10자예요' : '한글·영문·숫자·_ 로 2~10자 · 정한 뒤 한 번은 바로 다시 바꿀 수 있어요')}
           </AppText>
           <Button label={busy ? '저장하는 중…' : '이 닉네임으로 하기'} disabled={!valid || busy} onPress={save} />
           <Button label="나중에 정할게요" variant="ghost" onPress={close} />

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { appHidden } from '@/lib/date';
+import { appHidden, seoulNow } from '@/lib/date';
 import { supabase } from '@/lib/supabase';
 
 // 집중 모드 공부 세션.
@@ -11,11 +11,15 @@ import { supabase } from '@/lib/supabase';
 //  · 공부하는 동안 화면이 꺼지지 않게 한다(Wake Lock).
 
 export type StudyToday = { day: string; ranked_seconds: number; class_seconds: number; tokens: number; week_ranked_seconds: number };
-export type Phase = 'idle' | 'starting' | 'running' | 'away' | 'stopping';
+export type Phase = 'idle' | 'starting' | 'running' | 'away' | 'check' | 'stopping';
 
 const BEAT_MS = 60_000;
 const AWAY_LIMIT_MS = 60_000;
 const WAKE_TAG = 'unjung-study';
+// 새벽(00~06시) 확인(학생 의견 #11, 호원 결정 11-08): 2시간마다 묻고, 90초 안에 답이 없으면 물은 때까지만 기록하고 끝낸다
+const NIGHT_EVERY_MS = 2 * 3600_000;
+const NIGHT_ANSWER_MS = 90_000;
+const isNight = () => seoulNow().minutes < 6 * 60;
 
 const friendly = (m?: string) => (m && /[가-힣]/.test(m) ? m : '잠시 뒤 다시 시도해 주세요.');
 
@@ -34,6 +38,10 @@ export function useStudySession(enabled: boolean) {
   const runningSince = useRef<number | null>(null);
   const banked = useRef(0);
   const leaving = useRef<Promise<void> | null>(null);
+  const lastConfirm = useRef(0);
+  const checkAt = useRef<number | null>(null);
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const askRef = useRef<() => void>(() => {});
 
   const applyResult = useCallback((r: { ended?: boolean; reason?: string; in_class?: boolean; today?: StudyToday } | null) => {
     if (!r) return;
@@ -69,12 +77,16 @@ export function useStudySession(enabled: boolean) {
     tickTimer.current = setInterval(() => {
       const live = runningSince.current !== null ? Math.floor((Date.now() - runningSince.current) / 1000) : 0;
       setElapsed(banked.current + live);
+      if (runningSince.current !== null && isNight() && Date.now() - lastConfirm.current >= NIGHT_EVERY_MS) askRef.current();
     }, 1000);
   };
 
   const finish = useCallback(
     async (message: string | null) => {
       clearTimers();
+      if (checkTimer.current) clearTimeout(checkTimer.current);
+      checkTimer.current = null;
+      checkAt.current = null;
       pauseClock();
       deactivateKeepAwake(WAKE_TAG).catch(() => {});
       const sid = id.current;
@@ -129,6 +141,7 @@ export function useStudySession(enabled: boolean) {
       id.current = data.id;
       applyResult(data);
       banked.current = 0;
+      lastConfirm.current = Date.now();
       setElapsed(0);
       activateKeepAwakeAsync(WAKE_TAG).catch(() => {});
       runClock();
@@ -143,7 +156,7 @@ export function useStudySession(enabled: boolean) {
   // 화면을 떠남(다른 앱·다른 탭·알림창) → 떠나기 직전까지를 바로 기록하고 일시정지.
   // (예전엔 마지막 신호 뒤 화면을 보던 시간까지 버려져, 알림창을 자주 내리면 오래 공부할수록 시간이 줄었다 · 의견 #16)
   const leave = useCallback(() => {
-    if (!id.current || awayAt.current !== null) return;
+    if (!id.current || awayAt.current !== null || checkAt.current !== null) return;
     awayAt.current = Date.now();
     clearTimers();
     pauseClock();
@@ -155,7 +168,7 @@ export function useStudySession(enabled: boolean) {
 
   // 돌아옴 → 60초 안이면 이어서(떠난 시간은 서버가 세지 않게 skip), 넘었으면 종료
   const back = useCallback(async () => {
-    if (!id.current || awayAt.current === null) return;
+    if (!id.current || awayAt.current === null || checkAt.current !== null) return;
     const away = Date.now() - awayAt.current;
     awayAt.current = null;
     if (leaving.current) await leaving.current;
@@ -171,6 +184,36 @@ export function useStudySession(enabled: boolean) {
     startBeating();
     setPhase('running');
   }, [beat, finish, startBeating]);
+
+  // 새벽 확인: 그 순간까지 기록하고 멈춘 뒤 묻는다
+  const askAlive = useCallback(() => {
+    if (!id.current || checkAt.current !== null || awayAt.current !== null) return;
+    checkAt.current = Date.now();
+    clearTimers();
+    pauseClock();
+    setPhase('check');
+    leaving.current = beat(false).finally(() => {
+      leaving.current = null;
+    });
+    checkTimer.current = setTimeout(() => {
+      finish('새벽 공부 확인에 답이 없어서, 확인을 물은 때까지만 기록했어요. 다시 공부하려면 시작해 주세요.');
+    }, NIGHT_ANSWER_MS);
+  }, [beat, finish]);
+  askRef.current = askAlive;
+
+  const confirmAlive = useCallback(async () => {
+    if (!id.current || checkAt.current === null) return;
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    checkTimer.current = null;
+    checkAt.current = null;
+    if (leaving.current) await leaving.current;
+    await beat(true);
+    if (!id.current) return;
+    lastConfirm.current = Date.now();
+    runClock();
+    startBeating();
+    setPhase('running');
+  }, [beat, startBeating]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
@@ -197,7 +240,7 @@ export function useStudySession(enabled: boolean) {
     [],
   );
 
-  return { phase, today, inClass, elapsed, notice, error, start, stop, end: finish, leave, back, reloadToday: loadToday, dismissNotice: () => setNotice(null) };
+  return { phase, today, inClass, elapsed, notice, error, start, stop, end: finish, leave, back, confirmAlive, reloadToday: loadToday, dismissNotice: () => setNotice(null) };
 }
 
 /** 지금 집중 중인 인원 (30초마다) */

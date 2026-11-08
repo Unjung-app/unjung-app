@@ -128,7 +128,11 @@ console.log('B 토큰 변화:', before, '→', await bal(B));
 { const r = await as(B, CB, `select public.set_nickname('Cloud_9') w`, 'B 닉네임 설정'); expect('B 닉네임 설정', r.ok); }
 const C = '44444444-4444-4444-4444-444444444444'; await q(`insert into auth.users values ('${C}','third@unjung.hs.kr')`);
 { const r = await as(C, 'third@unjung.hs.kr', `select public.set_nickname('CLOUD_9')`, 'C 대소문자만 다른 중복(막혀야 함)'); expect('대소문자 무시 중복 불가', /이미 다른 학생/.test(r.err ?? '')); }
-{ const r = await as(A, CA, `select public.set_nickname('구름아래')`, '30일 안에 변경(막혀야 함)'); expect('30일 변경 제한', /30일/.test(r.err ?? '')); }
+{ const C3 = 'third@unjung.hs.kr';
+  const r0 = await as(C, C3, `select public.set_nickname('셋째학생')`, 'C 처음 정하기'); expect('처음 닉네임 정하기', r0.ok);
+  const r = await as(C, C3, `select public.set_nickname('셋째학생2')`, '처음 정한 뒤 첫 변경은 바로'); expect('첫 변경은 대기 없이', r.ok);
+  const r2 = await as(C, C3, `select public.set_nickname('셋째학생3')`, '두 번째 변경(막혀야 함)'); expect('두 번째부터 14일 제한', /14일/.test(r2.err ?? ''));
+  const st = await as(C, C3, `select public.nickname_status() s`); expect('닉네임 상태: 다음 가능일', st.rows[0]?.s?.free === false && !!st.rows[0]?.s?.until); }
 { const r = await as(A, CA, `update public.profiles set nickname='직접수정' where id='${A}' returning nickname`, '프로필 직접 수정(0행)'); expect('프로필 직접 수정 불가', !r.ok || r.rows.length === 0); }
 { const r = await as(B, CB, `select nickname, equip_emoji from public.profile_cards order by nickname`, 'B가 본 카드(꾸미기 포함)'); expect('카드에 꾸미기 보임', r.ok && r.rows.some((x) => x.equip_emoji === 'e_cat')); }
 { const r = await as(B, CB, `select public.admin_adjust_tokens('${B}', 999, '셀프')`, 'B 관리자 보정(막혀야 함)'); expect('관리자 보정은 관리자만', !r.ok); }
