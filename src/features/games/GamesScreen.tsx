@@ -64,7 +64,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
   }
 
   const left = status ? status.max_plays - status.plays_today : null;
-  const costLabel = !status ? '' : status.next_cost === null ? '오늘 10판을 다 했어요' : '무료! 잘할수록 토큰을 더 받아요';
+  const costLabel = !status ? '' : status.next_cost === null ? `오늘 ${status.max_total ?? status.max_plays}판을 다 했어요` : status.plays_today >= status.max_plays ? `무료 판 끝 · 다음 판은 🪙${status.next_cost}로 연장(할수록 비싸져요)` : '무료! 잘할수록 토큰을 더 받아요';
 
   return (
     <Screen topInset={!inStack} onRefresh={() => (reload(), ranking.reload())}>
