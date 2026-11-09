@@ -996,6 +996,8 @@ await sub(B, CB, 'a7');
   const rj = await as(A, CA, `select public.review_game_build('${s3.rows[0]?.id}', false, '부적절한 그림')`);
   const rs = await as(D, CD, `select public.game_builds_list() r`);
   expect('반려 사유가 개발자에게 보임', rj.ok && rs.rows[0]?.r?.some((b) => b.status === 'rejected' && b.reject_reason === '부적절한 그림'));
+}
+
 { // 업무 알림: 게임 의견 → 그 게임 개발자, 익명 건의 → 기획행정부, 30분 묶음
   const D = '99999999-9999-9999-9999-999999999954', P = '99999999-9999-9999-9999-999999999940';
   await q(`insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ('${D}','https://x/d','k','a'), ('${P}','https://x/p','k','a') on conflict do nothing`);
