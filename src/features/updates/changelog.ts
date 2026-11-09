@@ -5,6 +5,17 @@ export type ChangeEntry = { version: string; date: string; title: string; items:
 
 export const CHANGELOG: ChangeEntry[] = [
   {
+    version: '1.1.1',
+    date: '2026-11-09',
+    title: '보내 주신 의견으로 고쳤어요',
+    items: [
+      '🌙 운중의 밤 테마에서도 내가 고른 닉네임 색이 보여요 (어두운 배경에 맞게 밝게)',
+      '💬 의견은 하루 10개까지, 밤 12시에 다시 보낼 수 있어요',
+      '🏠 설정에서 개인정보 처리방침을 보고 돌아와도 홈 버튼이 보여요',
+      '📝 수행평가·숙제 과목 목록에서 재량휴업일·수능 같은 일정을 뺐어요',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-11-09',
     title: '업데이트 소식 · 학생회 업무 알림',

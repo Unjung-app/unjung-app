@@ -18,7 +18,7 @@ export type Feature = {
 export const FEATURES: Feature[] = [
   { id: 'timetable', title: '시간표', short: '시간표', desc: '내 반 주간 시간표와 지금 수업', icon: 'timetable', status: 'live' },
   { id: 'meal', title: '급식', short: '급식', desc: '이번 주 식단과 한줄평', icon: 'meal', status: 'live' },
-  { id: 'tasks', title: '수행평가·숙제', short: '과제', desc: '우리 반 마감을 친구들과 함께 챙겨요', icon: 'task', status: 'live' },
+  { id: 'tasks', title: '수행평가·숙제', short: '과제', desc: '우리 반 수행평가·숙제를 친구들과 함께 챙겨요', icon: 'task', status: 'live' },
   { id: 'calendar', title: '학사일정', short: '일정', desc: '시험·행사·휴업일과 D-day', icon: 'calendar', status: 'live' },
   { id: 'library', title: '도서관', short: '도서관', desc: '학교 도서관 장서 검색', icon: 'library', status: 'live' },
   { id: 'study', title: '스터디 윗미', short: '스터디', desc: '과목별 공부 시간 재기 · 친구들과 그룹 순위', icon: 'study', status: 'live' },

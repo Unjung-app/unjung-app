@@ -46,6 +46,18 @@ export const nameColor: Record<string, string> = {
   forest: '#166534',
 };
 
+/** 어두운 배경(운중의 밤·남색 카드) 위 닉네임 색: 같은 색의 밝은 버전(#0E2748 위 대비 4.5:1 이상) */
+export const nameColorOnDark: Record<string, string> = {
+  sky: '#7CC4F5',
+  mint: '#5EE0C0',
+  coral: '#FDA47A',
+  violet: '#C4B5FD',
+  gold: '#F5C04A',
+  rose: '#F9A8D4',
+  ocean: '#93B4FF',
+  forest: '#86E0A0',
+};
+
 /** 꾸미기 상점: 프로필 카드 배경 테마 (bg 위 ink/sub 대비 4.5:1 이상) */
 export const profileTheme: Record<string, { bg: string; ink: string; sub: string; edge: string }> = {
   plain: { bg: '#FFFFFF', ink: '#0B1B33', sub: '#4A5872', edge: '#DDE3EE' },
