@@ -96,6 +96,7 @@ export function MoreScreen() {
             dept.study && <ListRow icon="study" title="스터디 윗미 관리" subtitle="교육활동부 · 그룹 → 관리자 보기" onPress={() => openFeature('study')} />,
  !isAdmin && dept.dev && <ListRow icon="ranking" title="앱 사용 현황 · 게임별" subtitle="개발자 · 내 게임을 몇 명이 하는지" onPress={() => router.push('/admin/usage')} />,
             !isAdmin && dept.dev && <ListRow icon="settings" title="의견 관리" subtitle="개발자 · 내 게임에 온 학생 의견 확인·답변" onPress={() => router.push('/admin/feedback')} />,
+            (isAdmin || dept.dev) && <ListRow icon="plus" title="게임 올리기 · 제출함" subtitle={isAdmin ? '개발자가 올린 게임 미리 플레이·승인 (관리자)' : '개발자 · 전체 코드를 붙여 넣으면 관리자 승인 뒤 반영'} onPress={() => router.push('/admin/games')} />,
             reviewer && <ListRow icon="check" title="검토하기" subtitle="공지 승인·신고 처리·분실물 사진 (검토위원)" onPress={() => router.push('/review')} />,
             isAdmin && <ListRow icon="ranking" title="앱 사용 현황" subtitle="가입·매일 접속·기능별·게임별 사용 (관리자)" onPress={() => router.push('/admin/usage')} />,
             isAdmin && <ListRow icon="user" title="학생 관리" subtitle="학적 정정 요청·직책·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />,

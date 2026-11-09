@@ -974,6 +974,30 @@ await sub(B, CB, 'a7');
   const fb = await as(B, CB, `select count(*)::int n from public.feedback_admin`); expect('일반 학생은 의견 목록 0', fb.rows[0]?.n === 0);
 }
 
+{ // 게임 제출함: 개발자가 붙여 넣어 제출 → 관리자 승인 → 반영, 되돌리기
+  const D = '99999999-9999-9999-9999-999999999954', CD = 'dev@unjung.hs.kr';
+  const H = '<!doctype html><html><body><canvas></canvas><script>UnjungGame.submitScore(1)</script></body></html>';
+  const nb = await as(B, CB, `select public.submit_game_build('tower', '${H}', '{}', '')`); expect('일반 학생은 게임 제출 불가', !nb.ok);
+  const s1 = await as(D, CD, `select public.submit_game_build('tower', '${H}', '{"title":"타워"}', '버그 수정') id`); expect('개발자 제출', s1.ok);
+  const id1 = s1.rows[0]?.id;
+  const bad = await as(D, CD, `select public.submit_game_build('Tower!', '${H}', '{}', '')`); expect('잘못된 게임 id 거부', !bad.ok);
+  const hb = await as(B, CB, `select public.game_build_html('${id1}') h`); expect('대기 중 코드는 다른 학생이 못 봄', !hb.ok);
+  const ap = await as(D, CD, `select public.review_game_build('${id1}', true, '')`); expect('개발자는 승인 불가', !ap.ok);
+  const ok = await as(A, CA, `select public.review_game_build('${id1}', true, '')`); expect('관리자 승인', ok.ok);
+  const lv = await as(B, CB, `select public.live_game_builds() r`); expect('반영된 게임 목록', lv.rows[0]?.r?.length === 1 && lv.rows[0].r[0].game === 'tower');
+  const hl = await as(B, CB, `select public.game_build_html('${id1}') h`); expect('반영된 코드는 누구나 실행', hl.ok && hl.rows[0]?.h === H);
+  const s2 = await as(D, CD, `select public.submit_game_build('tower', '${H} ', '{}', 'v2') id`); const id2 = s2.rows[0]?.id;
+  await as(A, CA, `select public.review_game_build('${id2}', true, '')`);
+  const st = await q(`select id, status from public.game_builds where game = 'tower' order by created_at`);
+  expect('새 버전 반영 → 이전 버전 보관', st.rows.map((r) => r.status).join(',') === 'old,live');
+  await as(A, CA, `select public.review_game_build('${id1}', true, '')`);
+  const back = await q(`select status from public.game_builds where id = '${id1}'`); expect('예전 버전으로 되돌리기', back.rows[0]?.status === 'live');
+  const s3 = await as(D, CD, `select public.submit_game_build('newgame', '${H}', '{}', '') id`);
+  const rj = await as(A, CA, `select public.review_game_build('${s3.rows[0]?.id}', false, '부적절한 그림')`);
+  const rs = await as(D, CD, `select public.game_builds_list() r`);
+  expect('반려 사유가 개발자에게 보임', rj.ok && rs.rows[0]?.r?.some((b) => b.status === 'rejected' && b.reject_reason === '부적절한 그림'));
+}
+
 { // 업무 알림: 게임 의견 → 그 게임 개발자, 익명 건의 → 기획행정부, 30분 묶음
   const D = '99999999-9999-9999-9999-999999999954', P = '99999999-9999-9999-9999-999999999940';
   await q(`insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ('${D}','https://x/d','k','a'), ('${P}','https://x/p','k','a') on conflict do nothing`);

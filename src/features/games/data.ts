@@ -80,9 +80,9 @@ export async function finishHtmlGame(id: string, score: number): Promise<FinishR
   return error ? null : (data as FinishResult);
 }
 
-/** 이어하기 저장(게임별 10KB). 성공하면 true */
+/** 이어하기 저장. 성공하면 true. 게임 저장(UnjungGame.save, 10KB) + localStorage 대신 저장(50KB)을 한 칸에 담는다 */
 export async function saveGame(game: GameId, data: string): Promise<boolean> {
-  if (typeof data !== 'string' || data.length > 10000) return false;
+  if (typeof data !== 'string' || data.length > 70000) return false;
   const { error } = await supabase.rpc('save_game', { p_game: game, p_data: data });
   return !error;
 }
@@ -99,3 +99,66 @@ export async function loadGame(game: GameId): Promise<string | null> {
   const { data, error } = await supabase.rpc('load_game', { p_game: game });
   return error ? null : ((data as string | null) ?? null);
 }
+
+/* ---------------- 게임 제출함(개발자가 붙여 넣어 제출 → 관리자 승인) ---------------- */
+export type GameMeta = { title?: string; emoji?: string; desc?: string; tag?: string; how?: string; by?: string };
+export type LiveBuild = { id: string; game: string; meta: GameMeta; author_name: string | null; updated_at: string };
+export type BuildRow = {
+  id: string; game: string; status: 'pending' | 'live' | 'old' | 'rejected'; meta: GameMeta; note: string | null;
+  author_name: string | null; mine: boolean; size: number; reject_reason: string | null; created_at: string; reviewed_at: string | null;
+};
+
+let liveCache: { at: number; rows: LiveBuild[] } | null = null;
+export async function liveBuilds(force = false): Promise<LiveBuild[]> {
+  if (!force && liveCache && Date.now() - liveCache.at < 5 * 60_000) return liveCache.rows;
+  const { data, error } = await supabase.rpc('live_game_builds');
+  if (error) return liveCache?.rows ?? [];
+  liveCache = { at: Date.now(), rows: (data as LiveBuild[]) ?? [] };
+  return liveCache.rows;
+}
+/** 반영된 게임 목록. null = 아직 불러오는 중 */
+export function useLiveBuilds(enabled: boolean) {
+  const [rows, setRows] = useState<LiveBuild[] | null>(liveCache?.rows ?? null);
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    liveBuilds().then((r) => alive && setRows(r));
+    return () => { alive = false; };
+  }, [enabled]);
+  return rows;
+}
+
+/** 게임 코드(반영본은 기기에 보관해 다시 받지 않는다) */
+export async function buildHtml(id: string): Promise<string | null> {
+  const key = 'ujgame:' + id;
+  try { const c = localStorage.getItem(key); if (c) return c; } catch { /* */ }
+  const { data, error } = await supabase.rpc('game_build_html', { p_id: id });
+  if (error || typeof data !== 'string') return null;
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.startsWith('ujgame:') && k !== key) localStorage.removeItem(k); }
+    localStorage.setItem(key, data);
+  } catch { /* 기기 저장 공간 부족 → 다음에 다시 받음 */ }
+  return data;
+}
+
+export async function submitBuild(game: string, html: string, meta: GameMeta, note: string) {
+  const { data, error } = await supabase.rpc('submit_game_build', { p_game: game, p_html: html, p_meta: meta, p_note: note });
+  return error ? { ok: false as const, message: error.message } : { ok: true as const, id: data as string };
+}
+export async function listBuilds(): Promise<BuildRow[] | null> {
+  const { data, error } = await supabase.rpc('game_builds_list');
+  return error ? null : ((data as BuildRow[]) ?? []);
+}
+export async function reviewBuild(id: string, ok: boolean, reason = '') {
+  const { error } = await supabase.rpc('review_game_build', { p_id: id, p_ok: ok, p_reason: reason });
+  liveCache = null;
+  return error ? error.message : null;
+}
+export async function unpublishBuild(game: string) {
+  const { error } = await supabase.rpc('unpublish_game_build', { p_game: game });
+  liveCache = null;
+  return error ? error.message : null;
+}
+
+/** 미리 플레이할 코드(제출 전·검토 중). 화면 사이에 잠깐 들고 있는다 */
+export const preview: { html: string | null; title: string } = { html: null, title: '' };

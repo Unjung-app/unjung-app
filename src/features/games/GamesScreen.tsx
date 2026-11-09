@@ -8,7 +8,8 @@ import { NameTag } from '@/components/NameTag';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
-import { GAME_IDS, GAMES, settleLastWeek, useGameRanking, useGameStatus, type GameId } from './data';
+import { GAME_IDS, GAMES, settleLastWeek, useGameRanking, useGameStatus, useLiveBuilds, type GameId } from './data';
+import type { GameInfo } from './catalog';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
@@ -21,6 +22,14 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
   const { status, reload } = useGameStatus(ready);
   const [board, setBoard] = useState<GameId>(GAME_IDS[0]);
   const ranking = useGameRanking(board, ready);
+  // 개발자가 제출해 반영된 게임: 이름·소개 바꾼 것 + 새 게임
+  const lives = useLiveBuilds(ready) ?? [];
+  const META: Record<string, GameInfo> = { ...GAMES };
+  for (const b of lives) {
+    const m = b.meta ?? {};
+    META[b.game] = { title: m.title ?? META[b.game]?.title ?? b.game, emoji: m.emoji ?? META[b.game]?.emoji ?? '🎮', desc: m.desc ?? META[b.game]?.desc ?? '', tag: m.tag ?? META[b.game]?.tag ?? '새 게임', by: m.by ?? META[b.game]?.by ?? b.author_name ?? '', how: m.how ?? META[b.game]?.how ?? '' };
+  }
+  const IDS = [...GAME_IDS, ...lives.map((b) => b.game).filter((g) => !GAMES[g])];
   const settled = useRef(false);
 
   // 지난주 정산(한 번). 내가 1~3위였다면 지갑 알림으로 '+n 토큰'이 뜬다
@@ -93,8 +102,8 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
         </View>
       )}
 
-      {GAME_IDS.map((g) => {
-        const m = GAMES[g];
+      {IDS.map((g) => {
+        const m = META[g];
         const best = status?.best?.[g];
         return (
           <Pressable
@@ -139,8 +148,8 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
         이번 주 게임 랭킹
       </AppText>
       <View accessibilityRole="radiogroup" accessibilityLabel="게임 선택" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-        {GAME_IDS.map((id) => {
-          const game = GAMES[id];
+        {IDS.map((id) => {
+          const game = META[id];
           const selected = id === board;
           return (
             <Pressable key={id} accessibilityRole="radio" accessibilityLabel={game.title} accessibilityState={{ checked: selected }}
