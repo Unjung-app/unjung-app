@@ -996,6 +996,23 @@ await sub(B, CB, 'a7');
   const rj = await as(A, CA, `select public.review_game_build('${s3.rows[0]?.id}', false, '부적절한 그림')`);
   const rs = await as(D, CD, `select public.game_builds_list() r`);
   expect('반려 사유가 개발자에게 보임', rj.ok && rs.rows[0]?.r?.some((b) => b.status === 'rejected' && b.reject_reason === '부적절한 그림'));
+{ // 업무 알림: 게임 의견 → 그 게임 개발자, 익명 건의 → 기획행정부, 30분 묶음
+  const D = '99999999-9999-9999-9999-999999999954', P = '99999999-9999-9999-9999-999999999940';
+  await q(`insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ('${D}','https://x/d','k','a'), ('${P}','https://x/p','k','a') on conflict do nothing`);
+  const U2 = '99999999-9999-9999-9999-999999999955', C2 = 'staffpush@unjung.hs.kr'; await q(`insert into auth.users values ('${U2}','${C2}')`);
+  await as(U2, C2, `select public.register_enrollment('30606','알림')`);
+  await as(U2, C2, `select public.submit_feedback('bug', '디펜스 몬스터가 멈춰요', 'game:defense', '', '')`);
+  await as(U2, C2, `select public.submit_feedback('bug', '디펜스 점수가 안 올라가요', 'game:defense', '', '')`);
+  await as(U2, C2, `select public.post_suggestion('facility', '사물함 고장', '3층 사물함 문이 안 닫혀요 고쳐 주세요')`);
+  const dn = await q(`select count(*)::int n from public.push_outbox where user_id='${D}' and kind='staff'`);
+  const pn = await q(`select count(*)::int n from public.push_outbox where user_id='${P}' and kind='staff' and ref like 'sugg:%'`);
+  expect('게임 의견 → 담당 개발자 알림(30분 묶음 1개)', dn.rows[0]?.n === 1);
+  expect('익명 건의 → 기획행정부 알림', pn.rows[0]?.n === 1);
+  await as(U2, C2, `select public.submit_feedback('idea', '급식 사진 기능 원해요', '', '', '')`);
+  const dn2 = await q(`select count(*)::int n from public.push_outbox where user_id='${D}' and kind='staff'`);
+  expect('앱 기능 의견은 개발자에게 안 감', dn2.rows[0]?.n === 1);
+  const pr = await as(P, 'p@unjung.hs.kr', `select public.set_push_prefs(true, true, true, false, false) r`);
+  expect('업무 알림 끄기 + 내 업무 종류 표시', pr.rows[0]?.r?.staff === false && (pr.rows[0]?.r?.staff_roles ?? []).some((x) => x.includes('기획행정부')));
 }
 
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db

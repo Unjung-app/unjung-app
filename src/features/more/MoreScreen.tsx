@@ -10,6 +10,7 @@ import { classLabel, useOpenFeature } from '@/features/hooks';
 import { DEV_TEAM, DEV_TEAM_NAME, FEATURE_BY_ID, FEATURES } from '@/features/registry';
 import { TeamCard, useLaunchEvent } from '@/features/launch/Launch';
 import { supabase } from '@/lib/supabase';
+import { APP_VERSION } from '@/lib/build';
 import { LAB_FEATURES, labVisible } from '@/lab/registry';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
@@ -141,6 +142,7 @@ export function MoreScreen() {
         <ListRow icon="notice" title="알림 설정" subtitle="마감 전날·아침 급식·내 글 소식" onPress={() => router.push('/settings/notifications')} />,
         <ListRow icon="settings" title="하단 탭 설정" subtitle="자주 쓰는 기능을 아래 탭에 고정해요" onPress={() => router.push('/settings/tabs')} />,
         <ListRow icon="plus" title="홈 화면에 추가" subtitle="앱처럼 바로 열고 알림 받기" onPress={() => router.push('/settings/install')} />,
+        <ListRow icon="notice" title="업데이트 소식" subtitle={`v${APP_VERSION} · 업데이트마다 바뀐 점`} onPress={() => router.push('/settings/updates')} />,
       ])}
 
       <AppText variant="heading" style={{ marginTop: space.sm }}>
