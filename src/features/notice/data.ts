@@ -25,6 +25,8 @@ export type Notice = {
   created_at: string;
   author_nickname: string | null;
   author_grade: number | null;
+  /** 선생님이 올린 공지면 선생님 이름 */
+  author_teacher?: string | null;
   mine: boolean;
   reported: boolean;
 };

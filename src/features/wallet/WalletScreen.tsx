@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui/Screen';
 import { ProfileCard } from '@/components/NameTag';
 import { LoginPrompt } from '@/features/wallet/LoginPrompt';
 import { stampLabel } from '@/lib/date';
+import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { ledgerLabel, useWallet, type LedgerRow } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
@@ -30,7 +31,7 @@ const EARN: { what: string; amount: string; limit: string }[] = [
 
 export function WalletScreen() {
   const router = useRouter();
-  const { status, enrollment } = useAuth();
+  const { status, enrollment, teacher } = useAuth();
   const { wallet, itemById, refresh, loadLedger } = useWallet();
   const [ledger, setLedger] = useState<LedgerRow[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,6 +48,7 @@ export function WalletScreen() {
   }, [status, reload]);
 
   if (status === 'signedOut') return <LoginPrompt what="토큰과 출석" />;
+  if (teacher) return <StudentOnly what="토큰과 출석" />;
 
   return (
     <Screen topInset={false} refreshing={refreshing} onRefresh={reload}>

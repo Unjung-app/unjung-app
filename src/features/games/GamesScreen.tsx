@@ -5,6 +5,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { ProfileName } from '@/features/profile/ProfileName';
+import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
@@ -15,7 +16,7 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 /** 게임 모음: 학생이 만든 게임 목록 + 게임별 주간 랭킹 */
 export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
-  const { status: auth } = useAuth();
+  const { status: auth, teacher } = useAuth();
   const { wallet, itemById, refresh } = useWallet();
   const ready = auth === 'ready';
   const { status, reload } = useGameStatus(ready);
@@ -39,6 +40,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
     }, [reload, ranking.reload]),
   );
 
+  if (teacher) return <StudentOnly what="놀이터" topInset={!inStack} />;
   if (!ready) {
     return (
       <Screen topInset={!inStack}>

@@ -9,6 +9,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useWeekTimetable } from '@/features/data';
 import { classLabel, useNow } from '@/features/hooks';
 import { addDays, dDayLabel, diffDays, shortLabel, type Ymd } from '@/lib/date';
+import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { useWallet } from '@/state/wallet';
@@ -38,7 +39,7 @@ export function dueLabel(today: Ymd, due: Ymd) {
 export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
   const now = useNow();
-  const { status, enrollment } = useAuth();
+  const { status, enrollment, teacher } = useAuth();
   const { myClass } = usePrefs();
   const { refresh: refreshWallet } = useWallet();
   const ready = status === 'ready';
@@ -79,6 +80,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
     </>
   );
 
+  if (teacher) return <StudentOnly what="수행평가·숙제" topInset={!inStack} />;
   if (status !== 'ready') {
     return (
       <Screen topInset={!inStack}>
