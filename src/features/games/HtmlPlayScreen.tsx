@@ -7,8 +7,19 @@ import { Button, Card } from '@/components/ui/primitives';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { focus as F, radius, space } from '@/theme/tokens';
-import { gameUrl } from './catalog';
-import { finishHtmlGame, GAMES, isExtra, loadGame, saveGame, startGame, studyMinutesToday, useGameStatus, type FinishResult } from './data';
+import { buildHtml, finishHtmlGame, GAMES, isExtra, loadGame, preview, saveGame, startGame, studyMinutesToday, useGameStatus, useLiveBuilds, type FinishResult } from './data';
+import { buildGameDoc } from './inject';
+
+/** 저장 칸: 게임이 직접 저장한 것(g, UnjungGame.save) + localStorage 대신 저장한 것(ls) */
+type Slot = { g: string | null; ls: Record<string, string> };
+function parseSlot(raw: string | null): Slot {
+  if (!raw) return { g: null, ls: {} };
+  try {
+    const o = JSON.parse(raw);
+    if (o && o.v === 2) return { g: typeof o.g === 'string' ? o.g : null, ls: o.ls && typeof o.ls === 'object' ? o.ls : {} };
+  } catch { /* 예전 저장 */ }
+  return { g: raw, ls: {} };
+}
 
 type Phase = 'intro' | 'starting' | 'playing' | 'result' | 'class';
 type Msg = { unjung: 1; id?: number; type: string; data?: unknown };
@@ -22,10 +33,20 @@ type Msg = { unjung: 1; id?: number; type: string; data?: unknown };
 export function HtmlPlayScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  const { id: rawId, preview: rawPreview } = useLocalSearchParams<{ id: string; preview?: string }>();
   const id = String(rawId ?? '');
-  const info = GAMES[id];
+  const isPreview = rawPreview === '1' && !!preview.html;
   const { status: auth, enrollment } = useAuth();
+  const lives = useLiveBuilds(auth === 'ready');
+  const live = lives?.find((b) => b.game === id);
+  const base = GAMES[id];
+  const info = isPreview
+    ? { title: preview.title || id, emoji: '🧪', desc: '미리 플레이 — 점수·토큰·저장이 기록되지 않아요', tag: '', by: '', how: '앱 안에서 어떻게 보이는지 확인해요' }
+    : base
+      ? { ...base, ...(live?.meta ?? {}) }
+      : live
+        ? { title: live.meta.title ?? id, emoji: live.meta.emoji ?? '🎮', desc: live.meta.desc ?? '', tag: live.meta.tag ?? '', by: live.meta.by ?? live.author_name ?? '', how: live.meta.how ?? '' }
+        : undefined;
   const { wallet, refresh } = useWallet();
   const ready = auth === 'ready';
   const { status, reload } = useGameStatus(ready);
@@ -33,6 +54,8 @@ export function HtmlPlayScreen() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<(FinishResult & { cost: number }) | null>(null);
   const [frameKey, setFrameKey] = useState(0);
+  const [doc, setDoc] = useState<string | null>(null);
+  const slot = useRef<Slot>({ g: null, ls: {} });
   const frame = useRef<HTMLIFrameElement | null>(null);
   const run = useRef<{ id: string; cost: number } | null>(null);
   const best = useRef(0);
@@ -44,11 +67,11 @@ export function HtmlPlayScreen() {
 
   // 수업 시간이 시작되면 멈추고 막는다
   useEffect(() => {
-    if (phase === 'playing' && status?.in_class) {
+    if (phase === 'playing' && status?.in_class && !isPreview) {
       post({ type: 'pause' });
       setPhase('class');
     }
-  }, [status?.in_class, phase, post]);
+  }, [status?.in_class, phase, post, isPreview]);
 
   // 게임 → 앱 메시지
   useEffect(() => {
@@ -68,7 +91,7 @@ export function HtmlPlayScreen() {
         if (!r) return reply({ best: best.current });
         run.current = null;
         held.current.busy = true;
-        const res = await finishHtmlGame(r.id, score);
+        const res = r.id === 'preview' ? null : await finishHtmlGame(r.id, score);
         if (res) best.current = Math.max(best.current, res.best);
         reply({ best: res?.best ?? Math.max(best.current, score) });
         if (res?.reward) refresh(res.score_reward ? `게임 점수 보상 +${res.score_reward}` : '이번 주 최고 기록 갱신');
@@ -99,35 +122,65 @@ export function HtmlPlayScreen() {
         else lastShow.current?.(); // 이미 기록한 판이면 그 결과를 연다
       } else if (m.type === 'study') {
         reply(await studyMinutesToday());
-      } else if (m.type === 'save') {
-        reply(await saveGame(id, String(m.data ?? 'null')));
+      } else if (m.type === 'save' || m.type === 'lsave') {
+        const raw = String(m.data ?? 'null');
+        if (m.type === 'save') slot.current.g = raw.length <= 10000 ? raw : slot.current.g;
+        else if (raw.length <= 50000) { try { slot.current.ls = JSON.parse(raw) ?? {}; } catch { /* */ } }
+        reply(isPreview ? true : await saveGame(id, JSON.stringify({ v: 2, g: slot.current.g, ls: slot.current.ls })));
       } else if (m.type === 'load') {
-        reply(await loadGame(id));
+        reply(slot.current.g);
       } else if (m.type === 'exit') {
         router.back();
       }
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, [post, wallet?.nickname, enrollment?.grade, id, refresh, reload, router]);
+  }, [post, wallet?.nickname, enrollment?.grade, id, refresh, reload, router, isPreview]);
 
   // 화면을 떠나면(뒤로 가기 등) 게임도 멈춘다
   useEffect(() => () => void post({ type: 'pause' }), [post]);
 
+  /** 게임 코드 + 저장 칸을 준비해 앱 연결 코드를 끼운 문서를 만든다 */
+  const prepare = async (): Promise<string | null> => {
+    let html: string | null = null;
+    let baseHref: string | undefined;
+    if (isPreview) html = preview.html;
+    else if (live) html = await buildHtml(live.id);
+    if (!html) {
+      const res = await fetch(`/games/${id}/index.html`).catch(() => null);
+      html = res && res.ok ? await res.text() : null;
+      if (typeof location !== 'undefined') baseHref = `${location.origin}/games/${id}/`;
+    }
+    if (!html) return null;
+    slot.current = isPreview ? { g: null, ls: {} } : parseSlot(await loadGame(id));
+    return buildGameDoc(html, { ls: slot.current.ls, base: baseHref, player: { nickname: wallet?.nickname ?? '', grade: enrollment?.grade ?? null } });
+  };
+
   const start = async () => {
     setError(null);
     setPhase('starting');
-    const r = await startGame(id, isExtra(status) ? (status?.next_cost ?? undefined) : undefined);
-    if (!r.ok) {
-      setError(r.message);
+    const d = await prepare();
+    if (!d) {
+      setError('게임을 불러오지 못했어요. 잠시 뒤 다시 해 주세요');
       setPhase('intro');
-      reload();
       return;
     }
-    run.current = { id: r.data.id, cost: r.data.cost };
+    if (isPreview) {
+      run.current = { id: 'preview', cost: 0 };
+    } else {
+      const r = await startGame(id, isExtra(status) ? (status?.next_cost ?? undefined) : undefined);
+      if (!r.ok) {
+        setError(r.message);
+        setPhase('intro');
+        reload();
+        return;
+      }
+      run.current = { id: r.data.id, cost: r.data.cost };
+      if (r.data.cost) refresh();
+    }
+    setDoc(d);
     held.current = { show: null, done: false, busy: false };
     lastShow.current = null;
-    if (r.data.cost) refresh();
     reload();
     setResult(null);
     setFrameKey((k) => k + 1);
@@ -140,6 +193,13 @@ export function HtmlPlayScreen() {
     else router.replace('/games');
   };
 
+  if (!info && !isPreview && lives === null && !base) {
+    return (
+      <Center insetTop={insets.top}>
+        <AppText variant="body" color={F.sub}>불러오는 중…</AppText>
+      </Center>
+    );
+  }
   if (!info) {
     return (
       <Center insetTop={insets.top}>
@@ -184,7 +244,7 @@ export function HtmlPlayScreen() {
           ? createElement('iframe', {
               key: frameKey,
               ref: frame,
-              src: gameUrl(id),
+              srcDoc: doc ?? '',
               title: info.title,
               allow: 'vibrate; fullscreen',
               // 다른 출처처럼 격리: 게임 코드가 앱의 로그인 정보(저장소)에 손대지 못한다
@@ -219,6 +279,8 @@ export function HtmlPlayScreen() {
               <AppText variant="body" color={F.sub} align="center">
                 로그인하고 학번을 등록하면 할 수 있어요.
               </AppText>
+            ) : isPreview ? (
+              <Big label={phase === 'starting' ? '여는 중…' : '🧪  미리 플레이'} disabled={phase === 'starting'} onPress={start} />
             ) : status?.in_class ? (
               <AppText variant="bodyStrong" color={F.accent} align="center">
                 📚 지금은 수업 시간이에요. 쉬는 시간에 만나요!
@@ -261,7 +323,7 @@ export function HtmlPlayScreen() {
                 +{result.reward} 토큰
               </AppText>
             ) : null}
-            <Big label={playLabel('한 판 더')} disabled={doneAll} onPress={start} />
+            {isPreview ? <Big label="🧪 다시 미리 플레이" onPress={start} /> : <Big label={playLabel('한 판 더')} disabled={doneAll} onPress={start} />}
             <Big label="나가기" secondary onPress={exit} />
             <GameFeedbackLink id={id} />
           </Overlay>
