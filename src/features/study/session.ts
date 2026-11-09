@@ -245,7 +245,7 @@ export function useStudySession(enabled: boolean) {
 
 /** 지금 집중 중인 인원 (30초마다) */
 export function useStudyLive(enabled: boolean) {
-  const [live, setLive] = useState<{ all: number; g1: number; g2: number; g3: number } | null>(null);
+  const [live, setLive] = useState<{ all: number; g1: number; g2: number; g3: number; my_class?: number } | null>(null);
   useEffect(() => {
     if (!enabled) return;
     let alive = true;

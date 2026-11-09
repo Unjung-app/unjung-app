@@ -120,6 +120,17 @@ function useRpc<T>(fn: string, args: Record<string, unknown> | undefined, enable
 export type MonthRecord = { month: string; days: Record<string, number>; by_subject: Record<string, Record<string, number>> };
 export const useMonth = (firstIso: string) => useRpc<MonthRecord>('my_study_month', { p_month: firstIso }, true);
 export const useDashboard = (enabled: boolean, pollMs = 0) => useRpc<Dashboard>('my_study_dashboard', undefined, enabled, pollMs);
+export type ClassRow = {
+  rank: number;
+  week_seconds: number;
+  today_seconds: number;
+  mine: boolean;
+  nickname: string | null;
+  hidden: boolean;
+  equip: { emoji?: string; name_color?: string; theme?: string; badge?: string } | null;
+};
+export type ClassBoard = { grade: number; class_no: number; week_start: string; week_end: string; members: number; studied: number; rows: ClassRow[] };
+export const useClassBoard = (enabled: boolean) => useRpc<ClassBoard>('study_class_board', undefined, enabled, 60_000);
 export const useGroupList = (enabled: boolean) => useRpc<GroupInfo[]>('study_group_list', undefined, enabled);
 export const useGroupBoard = (id: number, enabled: boolean) => useRpc<Board>('study_group_board', { p_id: id }, enabled && id > 0, 30_000);
 export const useGroupAdmin = (id: number, enabled: boolean) => useRpc<AdminBoard>('study_group_admin', { p_id: id }, enabled && id > 0, 60_000);

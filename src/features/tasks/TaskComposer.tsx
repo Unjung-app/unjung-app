@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { REWARD } from '@/lib/rewards';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Button, Card } from '@/components/ui/primitives';
 import { Segmented } from '@/components/ui/Segmented';
 import { addDays, isWeekend, parseYmd, weekdayLabel, type Ymd } from '@/lib/date';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
+import { pickPhotos } from '@/lib/photos';
 import { KIND_LABEL, KINDS, type TaskDraft, type TaskKind } from './data';
 
 const OTHER = '__other__';
@@ -23,9 +24,15 @@ export function TaskComposer({
   today,
   subjects,
   initial,
+  initialPhotoUrl,
+  myClassNo,
   onSubmit,
   onCancel,
 }: {
+  /** 고칠 때 지금 붙어 있는 사진 */
+  initialPhotoUrl?: string | null;
+  /** 내 반(공유할 반 고르기에서 뺀다) */
+  myClassNo?: number | null;
   today: Ymd;
   /** 우리 반 시간표에 나오는 과목 이름 */
   subjects: string[];
@@ -39,6 +46,9 @@ export function TaskComposer({
   const [kind, setKind] = useState<TaskKind>(initial?.kind ?? 'assessment');
   const [due, setDue] = useState<Ymd | null>(initial?.due ?? null);
   const [body, setBody] = useState(initial?.body ?? '');
+  const [share, setShare] = useState<number[]>(initial?.share ?? []);
+  const [photo, setPhoto] = useState<{ blob: Blob; preview: string } | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +70,7 @@ export function TaskComposer({
     if (!ready || !due) return;
     setBusy(true);
     setError(null);
-    const r = await onSubmit({ subject, kind, due, body: body.trim() });
+    const r = await onSubmit({ subject, kind, due, body: body.trim(), share, photo: photo?.blob ?? null, removePhoto: removePhoto && !photo });
     setBusy(false);
     if (!r.ok) setError(r.message);
   };
@@ -134,6 +144,63 @@ export function TaskComposer({
         multiline
         style={{ ...input, minHeight: 72, paddingVertical: space.sm, textAlignVertical: 'top' }}
       />
+      {Platform.OS === 'web' ? (
+        <>
+          <AppText variant="label">사진 (선택 · 1장)</AppText>
+          {photo || (initialPhotoUrl && !removePhoto) ? (
+            <View style={{ gap: space.sm }}>
+              <Image
+                source={{ uri: photo?.preview ?? initialPhotoUrl ?? '' }}
+                style={{ width: '100%', aspectRatio: 4 / 3, borderRadius: radius.control, backgroundColor: color.surfaceMuted }}
+                resizeMode="contain"
+                accessibilityLabel="붙일 사진"
+              />
+              <Button label="사진 빼기" variant="ghost" onPress={() => (setPhoto(null), setRemovePhoto(true))} />
+            </View>
+          ) : (
+            <Button
+              label="📷 사진 고르기 (안내문·칠판 사진)"
+              variant="soft"
+              onPress={async () => {
+                const [p] = await pickPhotos(1, 1280, 300_000);
+                if (p) setPhoto({ blob: p.blob, preview: p.preview });
+              }}
+            />
+          )}
+        </>
+      ) : null}
+
+      {myClassNo ? (
+        <>
+          <AppText variant="label">같은 수업을 듣는 반에도 알리기 (선택)</AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8]
+              .filter((c) => c !== myClassNo)
+              .map((c) => {
+                const on = share.includes(c);
+                return (
+                  <Pressable
+                    key={c}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={`${c}반에도 알리기`}
+                    onPress={() => setShare((xs) => (on ? xs.filter((x) => x !== c) : [...xs, c].sort()))}
+                    style={{ minHeight: 44, minWidth: 52, paddingHorizontal: space.md, borderRadius: radius.round, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color.navy : color.surfaceMuted }}>
+                    <AppText variant="label" color={on ? color.onNavy : color.ink}>
+                      {c}반
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+          </View>
+          {share.length ? (
+            <AppText variant="caption" color={color.inkMuted}>
+              {share.join('·')}반 게시판에도 함께 보이고, 그 반 친구도 확인할 수 있어요
+            </AppText>
+          ) : null}
+        </>
+      ) : null}
+
       <AppText variant="caption" color={color.inkMuted}>
         {body.length}/200 · 같은 반 친구 2명이 '확인했어요'를 누르면 +{REWARD.taskConfirmed} 토큰
         {initial ? ' · 내용을 바꾸면 확인을 다시 받아요' : ''}

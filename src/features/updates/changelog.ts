@@ -5,6 +5,17 @@ export type ChangeEntry = { version: string; date: string; title: string; items:
 
 export const CHANGELOG: ChangeEntry[] = [
   {
+    version: '1.2.0',
+    date: '2026-11-09',
+    title: '설문 신청 · 우리 반 순위 · 프로필',
+    items: [
+      '🗳️ 나도 설문을 신청할 수 있어요. 기획행정부가 승인하면 \'학생 설문\'으로 올라가요 (운중 보이스)',
+      '🏫 스터디 윗미에 우리 반 이번 주 공부 순위, 공부 중에는 지금 함께 공부하는 인원(우리 반 포함)',
+      '👤 랭킹에서 닉네임을 누르면 프로필: 꾸미기 테마, 연속 출석, 공부 시간, 게임 기록',
+      '📷 수행평가·숙제에 사진 1장, 같은 수업을 듣는 다른 반에도 한 번에 알리기',
+    ],
+  },
+  {
     version: '1.1.1',
     date: '2026-11-09',
     title: '보내 주신 의견으로 고쳤어요',

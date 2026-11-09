@@ -5,7 +5,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
-import { NameTag } from '@/components/NameTag';
+import { ProfileName } from '@/features/profile/ProfileName';
 import { useNow, useOpenFeature } from '@/features/hooks';
 import { durationLabel, useStudyLive } from '@/features/study/session';
 import { addDays, appHidden, mondayOf, parseYmd, ymdToIso } from '@/lib/date';
@@ -244,9 +244,7 @@ export function RankingScreen({ inStack = false }: { inStack?: boolean }) {
               <AppText variant="bodyStrong" style={{ width: 30 }}>
                 {t.rank <= 3 ? MEDAL[t.rank - 1] : t.rank}
               </AppText>
-              <View style={{ flex: 1 }}>
-                <NameTag nickname={t.hidden ? null : t.nickname} equip={t.equip ?? {}} itemById={itemById} fallback={`익명의 ${grade}학년${t.mine ? ' (나)' : ''}`} />
-              </View>
+              <ProfileName style={{ flex: 1 }} nickname={t.hidden ? null : t.nickname} equip={t.equip ?? {}} itemById={itemById} fallback={`익명의 ${grade}학년${t.mine ? ' (나)' : ''}`} />
               <AppText variant="label">{scoreLabel(kind, t.score)}</AppText>
             </View>
           ))

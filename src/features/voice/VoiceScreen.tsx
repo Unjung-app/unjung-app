@@ -18,6 +18,8 @@ import {
   useSuggestionFeed,
   useSuggestionModQueue,
   useSurveyFeed,
+  useSurveyRequests,
+  type SurveyRequest,
   type ModSuggestion,
   type Suggestion,
   type SuggestionCategory,
@@ -33,16 +35,18 @@ export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
   const ready = status === 'ready';
   const [tab, setTab] = useState<'survey' | 'suggest'>(params.tab === 'suggest' ? 'suggest' : 'survey');
   const surveys = useSurveyFeed(ready);
+  const requests = useSurveyRequests(ready);
   const suggestions = useSuggestionFeed(ready);
   const modQueue = useSuggestionModQueue(ready && planner);
 
   useFocusEffect(
     useCallback(() => {
       surveys.reload();
+      requests.reload();
       suggestions.reload();
       modQueue.reload();
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [surveys.reload, suggestions.reload, modQueue.reload]),
+    }, [surveys.reload, requests.reload, suggestions.reload, modQueue.reload]),
   );
 
   const header = !inStack ? (
@@ -85,7 +89,7 @@ export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
         ]}
       />
       {tab === 'survey' ? (
-        <SurveyList items={surveys.items} planner={planner} onOpen={(id) => router.push(`/voice/survey/${id}`)} onCreate={() => router.push('/voice/survey/new')} />
+        <SurveyList items={surveys.items} requests={requests.items} planner={planner} onOpen={(id) => router.push(`/voice/survey/${id}`)} onCreate={() => router.push('/voice/survey/new')} />
       ) : (
         <SuggestionList feed={suggestions} planner={planner} mod={modQueue} onWrite={() => router.push('/voice/suggest')} />
       )}
@@ -93,19 +97,56 @@ export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
   );
 }
 
-function SurveyList({ items, planner, onOpen, onCreate }: { items: SurveyItem[] | null; planner: boolean; onOpen: (id: number) => void; onCreate: () => void }) {
+function SurveyList({
+  items,
+  requests,
+  planner,
+  onOpen,
+  onCreate,
+}: {
+  items: SurveyItem[] | null;
+  requests: SurveyRequest[] | null;
+  planner: boolean;
+  onOpen: (id: number) => void;
+  onCreate: () => void;
+}) {
   const now = useNow();
+  const reqs = requests ?? [];
   return (
     <>
       {planner ? (
-        <>
-          <Button label="＋ 설문 만들기 (기획행정부)" onPress={onCreate} />
-        </>
+        <Button label="＋ 설문 만들기 (기획행정부)" onPress={onCreate} />
       ) : (
-        <AppText variant="caption" color={color.inkMuted} align="center">
-          학생자치회 기획행정부가 올리는 설문이에요 · 참여하면 +3 토큰
-        </AppText>
+        <>
+          <AppText variant="caption" color={color.inkMuted} align="center">
+            참여하면 +3 토큰 · 나도 설문을 신청할 수 있어요 (기획행정부 승인 후 공개)
+          </AppText>
+          <Button label="＋ 설문 신청하기" variant="soft" onPress={onCreate} />
+        </>
       )}
+      {reqs.length ? (
+        <Card tone="muted" style={{ gap: space.sm }}>
+          <AppText variant="label">{planner ? `검토할 설문 신청 ${reqs.length}` : '내 설문 신청'}</AppText>
+          {reqs.map((q) => (
+            <Pressable
+              key={q.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${q.title}. ${q.status === 'requested' ? '검토 중' : '반려됨'}`}
+              onPress={() => onOpen(q.id)}
+              style={({ pressed }) => ({ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.sm, borderRadius: radius.control, backgroundColor: pressed ? color.surfaceMuted : color.surface })}>
+              <Badge label={q.status === 'requested' ? (planner ? '검토하기' : '검토 중') : '반려됨'} tone={q.status === 'requested' ? undefined : 'muted'} />
+              <AppText variant="body" style={{ flex: 1 }} numberOfLines={1}>
+                {q.title}
+              </AppText>
+              {planner && q.author_grade ? (
+                <AppText variant="caption" color={color.inkFaint}>
+                  {q.author_grade}학년
+                </AppText>
+              ) : null}
+            </Pressable>
+          ))}
+        </Card>
+      ) : null}
       {items === null ? (
         <AppText variant="body" color={color.inkMuted}>
           불러오는 중…
@@ -127,6 +168,7 @@ function SurveyList({ items, planner, onOpen, onCreate }: { items: SurveyItem[] 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
               {s.responded ? <Badge label="✓ 참여함" tone="success" /> : s.is_open ? <Badge label="참여하기 +3" /> : <Badge label="마감됨" tone="muted" />}
               {s.scope_grade ? <Badge label={`${s.scope_grade}학년`} tone="muted" /> : null}
+              {s.from_student ? <Badge label="학생 설문" tone="muted" /> : null}
               <AppText variant="caption" weight="semibold" color={s.is_open ? color.navy : color.inkFaint}>
                 {closesLabel(s.closes_at, s.is_open, now.ymd)}
               </AppText>
