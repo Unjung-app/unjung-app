@@ -11,6 +11,7 @@ import { WalletStrip } from '@/features/today/WalletStrip';
 import { DailyMissions } from '@/features/today/DailyMissions';
 import { CouncilSection, QuickGrid, QuoteLine } from '@/features/today/HomeParts';
 import { NicknamePrompt } from '@/features/settings/NicknamePrompt';
+import { UpdateNotesCard } from '@/features/updates/UpdateNotes';
 import { FirstMissions } from '@/features/launch/FirstMissions';
 import { useWallet } from '@/state/wallet';
 import { LaunchBanner, useLaunchEvent } from '@/features/launch/Launch';
@@ -107,6 +108,7 @@ export function TodayScreen() {
 
       <QuoteLine today={now.ymd} />
       <WalletStrip />
+      <UpdateNotesCard />
       <InstallBanner />
       {anySample ? <SampleNotice /> : null}
       <NicknamePrompt onDone={() => setNickDone(true)} />
