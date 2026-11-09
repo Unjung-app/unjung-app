@@ -94,6 +94,13 @@ canvas{position:fixed;left:0;top:0;display:block}button{touch-action:manipulatio
 #kn{position:absolute;left:36px;top:36px;width:48px;height:48px;border-radius:50%;background:#ffffffaa}
 .ab{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 34px);width:78px;height:78px;border-radius:50%;text-align:center;padding:0;font-weight:800;font-size:15px;touch-action:none}
 #ba{right:20px;background:var(--ac);color:#fff}#bc{right:112px;width:64px;height:64px;font-size:13px}#bc.on{background:#f59e0b;color:#000}
+body{-webkit-touch-callout:none}
+.tc .tl{width:46px;height:46px}.tc .lk{width:46px;height:46px}
+.tc #pn .b{min-height:50px;font-size:16px}.tc #pn p{font-size:15px}
+.tc #pr{font-size:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 128px)}
+#ba.rdy{box-shadow:0 0 0 4px #fde68a,0 0 22px #fde68acc;animation:rdy 1s ease-in-out infinite}
+@keyframes rdy{50%{transform:scale(1.07)}}
+.tc #js{opacity:.75}
 #ov{z-index:50;position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:16px}
 #pn{touch-action:pan-y;background:var(--pn);color:var(--fg);border-radius:16px;padding:20px;max-width:440px;width:100%;max-height:90%;overflow:auto;display:flex;flex-direction:column;gap:10px;line-height:1.55}
 #pn h2{margin:0;font-size:22px}#pn p{margin:0;font-size:14px;word-break:keep-all}.mu{color:var(--mu)}
@@ -187,7 +194,8 @@ nvent:['환기를 위해 환기구를 열자 방사성 낙진이 대피소로 �
 nout:['낙진 수치가 아직 위험한데 밖으로 나갔다가 피폭되었습니다.','실내에 머물며 정부의 공식 안내를 따르세요. 확인되지 않은 소문을 믿고 움직이면 안 됩니다.'],
 nrumor:['그 소문은 과학이 아니었습니다. 밖으로 나갔다가 낙진에 피폭되었습니다.','방사능이 3시간이면 사라진다는 말은 사실이 아닙니다. 공식 안내를 따르세요.']};
 const CL={FIRE_CLEAR:'옥상에서 헬기 구조',RAPPEL:'[히든] 완강기 탈출',QCLEAR:'운동장 집결 생존',HQ:'[히든] PS실 창고 대피 후 잔해 돌파',TCLEAR:'태풍 속 실내 생존',HT2:'[히든] 방송실 스튜디오 대피',ZCLEAR:'재활용장으로 탈출',HZ:'[히든] 창고에 숨어 구조 대기',HB:'[히든] 후문 탈출',HROPE:'[히든] 로프를 타고 별관 옥상으로',HDE:'[히든] 교장실의 데저트 이글',RCLEAR:'지하 대피소 생존',HR:'[히든] 창고 내부 대피'};let seen=[];try{seen=JSON.parse(localStorage.getItem('uj')||'[]')}catch(e){}let sm={};try{sm=JSON.parse(localStorage.getItem('ujm')||'{}')}catch(e){}
-const CT='PC: WASD·방향키 이동 / E·Space 행동 / Shift 또는 Ctrl(설정에서 선택)·C 숙이기 / Esc 설정 / M 소리\n모바일: 왼쪽 조이스틱 이동, 행동 버튼, 숙이기 버튼(누르면 켜짐/꺼짐), ⚙ 설정';
+const TCH=matchMedia('(pointer:coarse)').matches||'ontouchstart'in window;
+const CT=TCH?'👆 왼쪽 아래 화면을 누르고 끌면 이동\n🔴 행동 버튼: 문·물건 사용(꾹 누르기도 돼요). 쓸 수 있는 게 있으면 버튼이 빛나요\n⚪ 숙이기 버튼: 누를 때마다 켜짐/꺼짐\n⚙ 설정: 잠깐 멈추기':'PC: WASD·방향키 이동 / E·Space 행동 / Shift 또는 Ctrl(설정에서 선택)·C 숙이기 / Esc 설정 / M 소리\n모바일: 왼쪽 조이스틱 이동, 행동 버튼, 숙이기 버튼(누르면 켜짐/꺼짐), ⚙ 설정';
 /* ---------- 상태 ---------- */
 let P,S={st:'title',p:true},keys={},jx=0,jy=0,tc=false,near=null,ch=[],tm=0,fs=0,cg=0;
 function reset(){CP=null;P={f:3,x:100,y:215};S={st:'play',p:false,sm:0,hyd:0,plan:'',key:0,bash:0}}
@@ -256,7 +264,7 @@ function ask(t,c,sh){if(S.st=='play'){try{CP={P:JSON.parse(JSON.stringify(P)),S:
 function pick(i){const c=ch[i];hide();S.p=false;bp(520,.08);c[1]&&c[1]()}
 function setCk(v){ck=v;try{localStorage.setItem('ujk',v)}catch(e){}}
 function sets(){if(S.st=='set')return closeS();if(S.st!='play'||S.p)return;S.pst=S.st;S.st='set';S.p=true;
-show(`<h2>설정</h2><label><input type="checkbox" ${snd?'checked':''} onchange="snd=this.checked"> 소리 켜기</label><label>볼륨 <input type="range" min="0" max="100" value="${vol*100}" oninput="vol=this.value/100"></label><label>숙이기 키 <select onchange="setCk(this.value)"><option value="shift" ${ck=='shift'?'selected':''}>Shift</option><option value="control" ${ck=='control'?'selected':''}>Ctrl</option></select></label><p class="mu">Ctrl 사용 시 Ctrl+W 같은 브라우저 단축키와 겹칠 수 있어요. C 키도 항상 숙이기로 쓸 수 있습니다.</p><p class="mu" style="white-space:pre-line">${CT}</p><button class="b" onclick="closeS()">계속하기</button><button class="b" onclick="closeS();start()">처음부터 다시</button>`)}
+show(`<h2>설정</h2><label><input type="checkbox" ${snd?'checked':''} onchange="snd=this.checked"> 소리 켜기</label><label>볼륨 <input type="range" min="0" max="100" value="${vol*100}" oninput="vol=this.value/100"></label>${TCH?'':`<label>숙이기 키 <select onchange="setCk(this.value)"><option value="shift" ${ck=='shift'?'selected':''}>Shift</option><option value="control" ${ck=='control'?'selected':''}>Ctrl</option></select></label><p class="mu">Ctrl 사용 시 Ctrl+W 같은 브라우저 단축키와 겹칠 수 있어요. C 키도 항상 숙이기로 쓸 수 있습니다.</p>`}<p class="mu" style="white-space:pre-line">${CT}</p><button class="b" onclick="closeS()">계속하기</button><button class="b" onclick="closeS();start()">처음부터 다시</button>`)}
 function closeS(){S.st='play';S.p=false;hide()}
 function end(win,k,h){S.st='end';S.p=true;const d=win?k:D[k];const id=win?(h||(d[1][0]=='완'?'RAPPEL':S.sc=='quake'?'QCLEAR':S.sc=='typhoon'?'TCLEAR':S.sc=='zombie'?'ZCLEAR':S.sc=='raid'?'RCLEAR':'FIRE_CLEAR')):k;let nw=0;try{if(win&&window.UnjungGame&&UnjungGame.inApp&&!S.ujSent){S.ujSent=1;UnjungGame.submitScore(Math.max(100,Math.round(1500-(S.t||0)*6-(S.sm||0)*4+(id[0]=='H'||id=='RAPPEL'?300:0)-(S.rt||0)*150)),{hold:true})}}catch(e){}sm[id]=d;try{localStorage.setItem('ujm',JSON.stringify(sm))}catch(e){}if(!seen.includes(id)){seen.push(id);nw=1;try{localStorage.setItem('uj',JSON.stringify(seen))}catch(e){}}
 if(win)[523,659,784,1047].forEach((f,i)=>bp(f,.25,'triangle',.2,i*.15));else[300,220,150].forEach((f,i)=>bp(f,.3,'sawtooth',.2,i*.2));
@@ -329,8 +337,8 @@ function mv(e){const r=js.getBoundingClientRect(),R=r.width/2;let dx=e.clientX-r
 const jz=$('jz');jz.addEventListener('pointerdown',e=>{A();jid=e.pointerId;jz.setPointerCapture(jid);js.style.left=Math.max(8,Math.min(e.clientX-60,innerWidth-128))+'px';js.style.bottom=Math.max(8,innerHeight-e.clientY-60)+'px';js.style.opacity=1;mv(e)});
 jz.addEventListener('pointermove',e=>{if(e.pointerId==jid)mv(e)});
 ['pointerup','pointercancel'].forEach(n=>jz.addEventListener(n,()=>{jid=null;jx=jy=0;kn.style.transform='';js.style.opacity=.5}));
-$('ba').addEventListener('pointerdown',e=>{e.preventDefault();ab=true;interact()});['pointerup','pointercancel','pointerleave'].forEach(n=>$('ba').addEventListener(n,()=>ab=false));
-$('bc').addEventListener('pointerdown',e=>{e.preventDefault();tc=!tc;$('bc').classList.toggle('on',tc)});
+$('ba').addEventListener('pointerdown',e=>{e.preventDefault();ab=true;vb(10);interact()});['pointerup','pointercancel','pointerleave'].forEach(n=>$('ba').addEventListener(n,()=>ab=false));
+$('bc').addEventListener('pointerdown',e=>{e.preventDefault();tc=!tc;vb(10);$('bc').classList.toggle('on',tc);$('bc').textContent=tc?'숙이는 중':'숙이기'});
 /* ---------- 업데이트 ---------- */
 const inW=(x,y)=>WK(P.f).some(r=>x>=r[0]&&x<=r[2]&&y>=r[1]&&y<=r[3]);
 const okp=(x,y)=>[[-7,-7],[7,-7],[-7,7],[7,7]].every(d=>inW(x+d[0],y+d[1]));
@@ -406,6 +414,7 @@ atmo(t);if(S.sc=='typhoon'){g.strokeStyle='#bfdbfe66';g.lineWidth=1;g.beginPath(
 const a=S.sm/100;g.fillStyle=`rgba(90,90,90,${a*.6})`;g.fillRect(0,0,W,H);
 const hb=FX.env*FX.dg,jx=(Math.random()-.5)*hb*10,jy=(Math.random()-.5)*hb*10,v=g.createRadialGradient(W/2+jx,H/2+jy,H*(.3-hb*.08),W/2+jx,H/2+jy,H*.95);v.addColorStop(0,'#0000');v.addColorStop(1,`rgba(220,38,38,${.1+a*.45+FX.dg*.1+hb*.38})`);g.fillStyle=v;g.fillRect(0,0,W,H);
 $('fl').textContent=P.f==6?'🏢 옥상':P.f==8?'🏢 별관 옥상':P.f==0?'🏫 운동장·후문':P.f==7?'🏫 별관 1층':P.f==9?'🕳️ 지하 대피소':'🏫 운중고 '+((P.y<24||(P.x<390&&P.y<62&&P.f==2))&&P.f<5?'별관 ':'본관 ')+P.f+'층';$('ob').textContent='🎯 '+OT()+(S.mopc>0?'  🧹×'+S.mopc:'');$('sm').style.width=S.sm+'%';$('sm').style.background=S.sm>70?'#dc2626':S.sm>40?'#d97706':'#a3a3a3';
+{const r=!!(near&&!S.p);if(r!==window.__baR){window.__baR=r;const ba=$('ba');ba&&ba.classList.toggle('rdy',r);if(r)vb(12)}}
 $('pr').textContent=near&&!S.p?(('ontouchstart'in window)?'':'[E] ')+near.t:''}
 function loop(t){const dt=Math.min(.05,(t-tm)/1000);tm=t;if(S.st=='play'&&!S.p)upd(dt);draw(t);requestAnimationFrame(loop)}
 addEventListener('pointerdown',()=>window.focus());document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');b&&b.blur()});window.onerror=m=>{try{toast('오류: '+m)}catch(e){}};reset();S.st='title';toTitle();requestAnimationFrame(loop);
