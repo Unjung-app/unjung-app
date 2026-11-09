@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import type { Equip, ShopItem } from '@/state/wallet';
-import { color, nameColor, profileTheme, radius, space } from '@/theme/tokens';
+import { color, nameColor, nameColorOnDark, profileTheme, radius, space } from '@/theme/tokens';
 
 type Props = {
   nickname: string | null;
@@ -19,7 +19,7 @@ export function NameTag({ nickname, equip, itemById, fallback = '닉네임 없�
   const emoji = equip.emoji ? itemById[equip.emoji]?.value : null;
   const colorKey = equip.name_color ? itemById[equip.name_color]?.value : null;
   const badge = equip.badge ? itemById[equip.badge]?.value : null;
-  const ink = onDark ? color.onNavy : colorKey ? nameColor[colorKey] ?? color.ink : color.ink;
+  const ink = onDark ? (colorKey ? nameColorOnDark[colorKey] ?? color.onNavy : color.onNavy) : colorKey ? nameColor[colorKey] ?? color.ink : color.ink;
   const big = size === 'lg';
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

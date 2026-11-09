@@ -14,6 +14,8 @@ import { seoulNow } from '@/lib/date';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { injectWebFont, NATIVE_FONTS, fontStyle } from '@/theme/fonts';
 import { color } from '@/theme/tokens';
+import { Pressable } from 'react-native';
+import { AppText } from '@/components/ui/AppText';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 injectWebFont();
@@ -65,14 +67,16 @@ function Root() {
       <StatusBar style="dark" />
       <AuthGate />
       <Stack
-        screenOptions={{
+        screenOptions={({ navigation }) => ({
           headerShadowVisible: false,
           headerStyle: { backgroundColor: color.bg },
           headerTintColor: color.navy,
           headerTitleStyle: { ...fontStyle('bold'), fontSize: 17, color: color.ink },
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: color.bg },
-        }}>
+          // 새로고침·바깥 페이지(개인정보 처리방침 등)에서 돌아와 뒤로 갈 곳이 없으면 '홈' 버튼(학생 의견 #45)
+          headerLeft: navigation.canGoBack() ? undefined : () => <HomeButton />,
+        })}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="feature/[id]" options={{ title: '' }} />
         <Stack.Screen name="+not-found" options={{ title: '페이지 없음' }} />
@@ -122,5 +126,16 @@ export default function RootLayout() {
         </AuthProvider>
       </PrefsProvider>
     </SafeAreaProvider>
+  );
+}
+
+function HomeButton() {
+  const router = useRouter();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="홈으로" onPress={() => router.replace('/')} hitSlop={8} style={{ minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 8 }}>
+      <AppText variant="label" color={color.navy}>
+        ‹ 홈
+      </AppText>
+    </Pressable>
   );
 }

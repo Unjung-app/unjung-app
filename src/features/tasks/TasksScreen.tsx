@@ -17,6 +17,9 @@ import { color, radius, space } from '@/theme/tokens';
 import { KIND_LABEL, loadSuggestions, useClassTasks, type ClassTask, type Suggestion, type TaskDraft, type TaskKind } from './data';
 import { TaskComposer } from './TaskComposer';
 
+
+// 시간표에 과목처럼 끼어 오는 학사 일정(학생 의견 #48)
+const NOT_SUBJECT = /휴업|휴일|방학|수능|수학능력|시험|고사|행사|체험|축제|개교|졸업|입학|토요|자율|창체|창의적|재량/;
 export const KIND_TONE: Record<TaskKind, { bg: string; fg: string }> = {
   assessment: { bg: color.accentSoft, fg: color.accentInk },
   homework: { bg: color.surfaceMuted, fg: color.navy },
@@ -49,7 +52,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
   const tt2 = useWeekTimetable(addDays(now.ymd, 7), myClass);
   const subjects = useMemo(() => {
     const count = new Map<string, number>();
-    for (const l of [...tt1.items, ...tt2.items]) if (l.subject) count.set(l.subject, (count.get(l.subject) ?? 0) + 1);
+    for (const l of [...tt1.items, ...tt2.items]) if (l.subject && !NOT_SUBJECT.test(l.subject)) count.set(l.subject, (count.get(l.subject) ?? 0) + 1);
     return [...count.entries()].sort((a, b) => b[1] - a[1]).map(([s]) => s);
   }, [tt1.items, tt2.items]);
 
@@ -71,7 +74,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
         </AppText>
       ) : null}
       <AppText variant="body" color={color.inkMuted}>
-        {enrollment ? `${enrollment.grade}학년 ${enrollment.class_no}반` : classLabel(myClass)} 친구들끼리만 보는 마감 게시판이에요.
+        {enrollment ? `${enrollment.grade}학년 ${enrollment.class_no}반` : classLabel(myClass)} 친구들끼리만 보는 수행평가·숙제 게시판이에요.
       </AppText>
     </>
   );
@@ -137,7 +140,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
         <Card>
           <AppText variant="body" color={color.inkMuted}>
             {tab === 'next'
-              ? '아직 올라온 마감이 없어요. 선생님이 말한 수행평가나 숙제를 먼저 올려 보세요!'
+              ? '아직 올라온 글이 없어요. 선생님이 말한 수행평가나 숙제를 먼저 올려 보세요!'
               : '지난 30일 동안의 항목이 없어요.'}
           </AppText>
         </Card>
