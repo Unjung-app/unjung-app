@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { REWARD } from '@/lib/rewards';
-import { Pressable, TextInput, View } from 'react-native';
+import { Image, Pressable, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
@@ -44,7 +44,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
   const ready = status === 'ready';
   const board = useClassTasks(now.ymd, ready);
   const [tab, setTab] = useState<'next' | 'past'>('next');
-  const [composing, setComposing] = useState<null | { id?: number; draft?: TaskDraft }>(null);
+  const [composing, setComposing] = useState<null | { id?: number; draft?: TaskDraft; photoPath?: string | null; photoUrl?: string | null }>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   // 과목 목록: 이번 주 + 다음 주 우리 반 시간표에서
@@ -99,7 +99,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
   }
 
   const submit = async (d: TaskDraft) => {
-    const r = composing?.id ? await board.update(composing.id, d) : await board.create(d);
+    const r = composing?.id ? await board.update(composing.id, d, composing.photoPath) : await board.create(d);
     if (r.ok) {
       setComposing(null);
       setNotice(composing?.id ? '고쳤어요' : `올렸어요! 친구 2명이 확인하면 +${REWARD.taskConfirmed} 토큰`);
@@ -112,7 +112,15 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
       {header}
 
       {composing ? (
-        <TaskComposer today={now.ymd} subjects={subjects} initial={composing.draft} onSubmit={submit} onCancel={() => setComposing(null)} />
+        <TaskComposer
+          today={now.ymd}
+          subjects={subjects}
+          initial={composing.draft}
+          initialPhotoUrl={composing.photoUrl}
+          myClassNo={enrollment?.class_no ?? null}
+          onSubmit={submit}
+          onCancel={() => setComposing(null)}
+        />
       ) : (
         <Button label="＋ 수행평가·숙제 올리기" onPress={() => (setComposing({}), setNotice(null))} />
       )}
@@ -158,8 +166,16 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
                 key={t.id}
                 t={t}
                 past={tab === 'past'}
+                myClassNo={enrollment?.class_no ?? null}
                 board={board}
-                onEdit={() => setComposing({ id: t.id, draft: { subject: t.subject, kind: t.kind, due: t.due, body: t.body } })}
+                onEdit={() =>
+                  setComposing({
+                    id: t.id,
+                    draft: { subject: t.subject, kind: t.kind, due: t.due, body: t.body, share: t.share_classes ?? [] },
+                    photoPath: t.photo_path ?? null,
+                    photoUrl: t.photoUrl ?? null,
+                  })
+                }
                 onConfirmed={refreshWallet}
               />
             ))}
@@ -167,7 +183,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
         ))
       )}
       <AppText variant="caption" color={color.inkFaint}>
-        우리 반 학생만 볼 수 있어요. 틀린 내용은 '정정 제안'으로 알려 주세요. 장난 글은 검토위원이 지울 수 있어요.
+        우리 반 학생(과 공유받은 반)만 볼 수 있어요. 틀린 내용은 '정정 제안'으로 알려 주세요. 장난 글은 검토위원이 지울 수 있어요.
       </AppText>
     </Screen>
   );
@@ -176,12 +192,14 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
 function TaskCard({
   t,
   past,
+  myClassNo,
   board,
   onEdit,
   onConfirmed,
 }: {
   t: ClassTask;
   past: boolean;
+  myClassNo: number | null;
   board: ReturnType<typeof useClassTasks>;
   onEdit: () => void;
   onConfirmed: () => void;
@@ -229,8 +247,18 @@ function TaskCard({
           {t.open_suggestions > 0 ? <Badge label={`정정 ${t.open_suggestions}`} tone="accent" /> : null}
         </View>
         {t.body ? <AppText variant="body">{t.body}</AppText> : null}
+        {t.photoUrl ? (
+          <Image
+            source={{ uri: t.photoUrl }}
+            style={{ width: '100%', aspectRatio: open ? 3 / 4 : 16 / 9, borderRadius: radius.control, backgroundColor: color.surfaceMuted }}
+            resizeMode={open ? 'contain' : 'cover'}
+            accessibilityLabel={`${t.subject} 첨부 사진${open ? '' : ', 눌러서 크게 보기'}`}
+          />
+        ) : null}
         <AppText variant="caption" color={color.inkFaint}>
-          {t.mine ? '내가 올림' : t.author_nickname ?? '우리 반 친구'} · 확인 {Math.min(t.confirm_count, 99)}명
+          {t.mine ? '내가 올림' : t.author_nickname ?? '친구'}
+          {myClassNo && t.from_class && t.from_class !== myClassNo ? ` · ${t.from_class}반에서 공유` : ''}
+          {t.mine && t.share_classes?.length ? ` · ${t.share_classes.join('·')}반에도 공유` : ''} · 확인 {Math.min(t.confirm_count, 99)}명
         </AppText>
       </Pressable>
 

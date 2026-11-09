@@ -993,6 +993,76 @@ await sub(B, CB, 'a7');
   expect('업무 알림 끄기 + 내 업무 종류 표시', pr.rows[0]?.r?.staff === false && (pr.rows[0]?.r?.staff_roles ?? []).some((x) => x.includes('기획행정부')));
 }
 
+
+{ // 11-09: 학생 설문 신청 → 기획행정부 승인/반려
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr';
+  const U2 = '99999999-9999-9999-9999-999999999955', C2 = 'staffpush@unjung.hs.kr';
+  const QS2 = JSON.stringify([{ kind: 'single', prompt: '야자 간식 뭐가 좋아?', options: ['빵', '과자'] }, { kind: 'text', prompt: '하고 싶은 말', required: false }]);
+  const req = (t) => as(U2, C2, `select public.request_survey('${t}', '', null, 3, 'after_vote', '${QS2}'::jsonb) id`);
+  await as(P, CP, `select public.set_push_prefs(true, true, true, false, true)`); // 위에서 끈 업무 알림 다시 켜기
+  const r1 = await req('간식 조사'); expect('학생이 설문 신청', r1.ok);
+  const R1 = r1.rows[0]?.id;
+  const st = await q(`select status, from_student from public.surveys where id=${R1}`); expect('신청은 검토 중 상태', st.rows[0]?.status === 'requested' && st.rows[0]?.from_student === true);
+  const f0 = await as(B, CB, `select count(*)::int n from public.survey_feed where id=${R1}`); expect('검토 중 신청은 목록에 안 보임', f0.rows[0]?.n === 0);
+  const g0 = await as(B, CB, `select public.get_survey(${R1})`); expect('다른 학생은 검토 중 신청을 못 봄', !g0.ok);
+  const g1 = await as(U2, C2, `select public.get_survey(${R1}) s`); expect('신청자는 내 신청을 봄', g1.ok && g1.rows[0]?.s?.status === 'requested');
+  const sp = await q(`select count(*)::int n from public.push_outbox where kind='staff' and ref like 'survey-req:%'`); expect('설문 신청 → 기획행정부 업무 알림', sp.rows[0]?.n >= 1);
+  const sv = await q(`select count(*)::int n from public.push_outbox where ref = 'survey:${R1}'`); expect('검토 중에는 전체 설문 알림 없음', sp.ok && sv.rows[0]?.n === 0);
+  const s0 = await as(B, CB, `select public.submit_survey(${R1}, '[]'::jsonb)`); expect('검토 중 설문은 참여 불가', !s0.ok);
+  const r2 = await req('두번째 신청'); const r3 = await req('세번째 신청'); expect('검토 중 신청은 2개까지', r2.ok && !r3.ok);
+  const rl = await as(P, CP, `select public.survey_requests() r`); expect('기획행정부는 검토할 신청 목록을 봄', (rl.rows[0]?.r ?? []).length >= 2);
+  const ns = await as(B, CB, `select public.review_survey(${R1}, true, null)`); expect('일반 학생은 승인 불가', !ns.ok);
+  const nr = await as(P, CP, `select public.review_survey(${r2.rows[0]?.id}, false, '')`); expect('반려는 사유 필수', !nr.ok);
+  const rj = await as(P, CP, `select public.review_survey(${r2.rows[0]?.id}, false, '비슷한 설문이 이미 있어요')`); const mine = await as(U2, C2, `select public.survey_requests() r`);
+  expect('반려 → 신청자 목록에 사유와 함께', rj.ok && (mine.rows[0]?.r ?? []).some((x) => x.status === 'rejected' && x.review_note === '비슷한 설문이 이미 있어요'));
+  const ok = await as(P, CP, `select public.review_survey(${R1}, true, null)`); const f1 = await as(B, CB, `select from_student, is_open from public.survey_feed where id=${R1}`);
+  expect('승인 → 학생 설문으로 공개', ok.ok && f1.rows[0]?.from_student === true && f1.rows[0]?.is_open === true);
+  const qid = (await q(`select id from public.survey_questions where survey_id=${R1} order by ord`)).rows.map((r) => Number(r.id));
+  const sb = await as(B, CB, `select public.submit_survey(${R1}, '${JSON.stringify([{ q: qid[0], choices: [1] }, { q: qid[1], text: '과자 최고' }])}'::jsonb)`); expect('승인된 학생 설문 참여', sb.ok);
+  const own = await as(U2, C2, `select public.get_survey(${R1}) s`); const so = own.rows[0]?.s;
+  expect('신청자는 참여 안 해도 결과·주관식을 봄', so?.can_see_results === true && so?.questions?.[1]?.texts?.[0] === '과자 최고');
+  const oth = await as(E, CE, `select public.get_survey(${R1}) s`); expect('다른 학생은 주관식 못 봄', oth.ok && oth.rows[0]?.s?.questions?.[1]?.texts == null);
+}
+
+
+{ // 11-09: 우리 반 공부 순위 · 지금 공부 중(우리 반) · 프로필 (A=20818 구름위, B는 다른 반)
+  const live = await as(A, CA, `select public.study_live() r`); expect('공부 중 인원에 우리 반 포함', live.ok && 'my_class' in (live.rows[0]?.r ?? {}));
+  await q(`insert into public.study_daily (user_id, day, school_year, grade, class_no, ranked_seconds, class_seconds) values ('${A}', public.seoul_today(), public.current_school_year(), 2, 8, 1500, 0)
+           on conflict (user_id, day) do update set ranked_seconds = public.study_daily.ranked_seconds + 1500`);
+  const cb = await as(A, CA, `select public.study_class_board() r`); const r = cb.rows[0]?.r;
+  expect('우리 반 순위: 내 기록 1위', cb.ok && r?.rows?.[0]?.mine === true && r?.rows?.[0]?.week_seconds >= 1500 && r?.class_no === 8);
+  expect('우리 반 순위에 실명·학번 없음', !JSON.stringify(r).includes('이호원') && !JSON.stringify(r).includes('20818'));
+  const ob = await as(B, CB, `select public.study_class_board() r`); expect('다른 반 학생 순위에는 안 나옴', ob.ok && !(ob.rows[0]?.r?.rows ?? []).some((x) => x.nickname === '구름위'));
+  const nx = await as(X, 'someone@gmail.com', `select public.study_class_board()`); expect('외부 계정 반 순위 불가', !nx.ok);
+  const pp = await as(B, CB, `select public.public_profile('구름위') r`); const pr = pp.rows[0]?.r;
+  expect('프로필 조회: 공부·게임·꾸미기', pp.ok && pr?.nickname === '구름위' && Number(pr?.study_week_seconds) >= 1500 && pr?.games?.length >= 1 && !JSON.stringify(pr).includes('이호원') && !JSON.stringify(pr).includes(A));
+  await q(`update public.profiles set hide_in_ranking = true where id='${A}'`);
+  const ph = await as(B, CB, `select public.public_profile('구름위')`); expect('랭킹 숨김이면 프로필 비공개', !ph.ok);
+  const pm = await as(A, CA, `select public.public_profile('구름위') r`); expect('내 프로필은 숨김이어도 봄', pm.ok && pm.rows[0]?.r?.mine === true);
+  const cb2 = await as(A, CA, `select public.study_class_board() r`); expect('반 순위에서도 숨김은 익명', cb2.rows[0]?.r?.rows?.[0]?.nickname == null);
+  await q(`update public.profiles set hide_in_ranking = false where id='${A}'`);
+}
+
+{ // 11-09: 수행평가 사진 · 같은 수업 반에 공유
+  const S7 = '99999999-9999-9999-9999-999999998871', C7 = 'share7@unjung.hs.kr', S6 = '99999999-9999-9999-9999-999999998861', C6 = 'share6@unjung.hs.kr';
+  await q(`insert into auth.users values ('${S7}','${C7}'), ('${S6}','${C6}')`);
+  await as(S7, C7, `select public.register_enrollment('20707','칠반')`, '7반 등록'); await as(S6, C6, `select public.register_enrollment('20606','육반')`);
+  const bad = await as(A, CA, `select public.create_class_task('물리', 'assessment', public.seoul_today() + 3, '보고서', '${B}/abcdef12.jpg', null)`); expect('남의 폴더 사진 경로 거부', !bad.ok);
+  const mk = await as(A, CA, `select public.create_class_task('물리', 'assessment', public.seoul_today() + 3, '실험 보고서', '${A}/abcdef12.jpg', array[7, 8, 7, 9]) id`); expect('사진·공유 반 넣어 올리기', mk.ok);
+  const T = mk.rows[0]?.id;
+  const sh = await q(`select share_classes from public.class_tasks where id=${T}`); expect('공유 반 정리(내 반·중복·없는 반 제외)', JSON.stringify(sh.rows[0]?.share_classes) === '[7]');
+  const f7 = await as(S7, C7, `select from_class, photo_path from public.class_task_feed where id=${T}`); expect('공유받은 7반에 보임(어느 반 글인지·사진)', f7.rows[0]?.from_class === 8 && f7.rows[0]?.photo_path === `${A}/abcdef12.jpg`);
+  const f6 = await as(S6, C6, `select count(*)::int n from public.class_task_feed where id=${T}`); expect('공유 안 한 6반에는 안 보임', f6.rows[0]?.n === 0);
+  const c7 = await as(S7, C7, `select public.confirm_class_task(${T})`); expect('공유받은 반도 확인 가능', c7.ok);
+  const c6 = await as(S6, C6, `select public.confirm_class_task(${T})`); expect('다른 반은 확인 불가', !c6.ok);
+  const up = await as(A, CA, `select public.update_class_task(${T}, '물리', 'assessment', public.seoul_today() + 3, '실험 보고서', null, false, array[6])`);
+  const f6b = await as(S6, C6, `select count(*)::int n from public.class_task_feed where id=${T}`); const cc = await q(`select confirm_count from public.class_tasks where id=${T}`);
+  expect('공유 반만 바꾸면 확인 유지 + 6반에 보임', up.ok && f6b.rows[0]?.n === 1 && cc.rows[0]?.confirm_count === 1);
+  const up2 = await as(A, CA, `select public.update_class_task(${T}, '물리', 'assessment', public.seoul_today() + 3, '실험 보고서', null, true, null)`); const cc2 = await q(`select confirm_count, photo_path from public.class_tasks where id=${T}`);
+  expect('사진 빼면 확인 다시', up2.ok && cc2.rows[0]?.confirm_count === 0 && cc2.rows[0]?.photo_path === null);
+  const dl = await q(`select public.push_enqueue_deadlines(public.seoul_today() + 2) n`); expect('마감 알림 함수(공유 포함) 동작', dl.ok);
+}
+
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
 if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
