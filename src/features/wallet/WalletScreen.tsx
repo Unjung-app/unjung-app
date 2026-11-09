@@ -60,6 +60,9 @@ export function WalletScreen() {
         <Button label="꾸미기 상점" icon="bag" style={{ flex: 1 }} onPress={() => router.push('/shop')} />
         <Button label={wallet?.nickname ? '닉네임 바꾸기' : '닉네임 정하기'} variant="soft" style={{ flex: 1 }} onPress={() => router.push('/settings/nickname')} />
       </View>
+      {wallet?.nickname ? (
+        <Button label="내 프로필 보기 (랭킹에서 다른 학생에게 보이는 모습)" variant="ghost" onPress={() => router.push({ pathname: '/profile/[nickname]', params: { nickname: wallet.nickname! } })} />
+      ) : null}
 
       <View style={{ flexDirection: 'row', gap: space.md }}>
         <Card tone="navy" style={{ flex: 1, gap: 4 }}>

@@ -12,8 +12,9 @@ import { REWARD } from '@/lib/rewards';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { color, radius, space, subjectColor } from '@/theme/tokens';
-import { call, hm, hms, isoDayToYmd, useDashboard, useGroupList, type GroupInfo, type Subject } from './api';
+import { call, hm, hms, isoDayToYmd, useClassBoard, useDashboard, useGroupList, type GroupInfo, type Subject } from './api';
 import { useStudyLive } from './session';
+import { ClassBoardCard } from './ClassBoardCard';
 import { StudyCalendar } from './StudyCalendar';
 
 const COLORS = Object.keys(subjectColor);
@@ -31,6 +32,7 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
   const dash = useDashboard(ready);
   const groups = useGroupList(ready);
   const live = useStudyLive(ready);
+  const classBoard = useClassBoard(ready);
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
 
@@ -39,8 +41,9 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
     useCallback(() => {
       dash.reload();
       groups.reload();
+      classBoard.reload();
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dash.reload, groups.reload]),
+    }, [dash.reload, groups.reload, classBoard.reload]),
   );
 
   const tt = useWeekTimetable(now.ymd, myClass);
@@ -84,7 +87,7 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: color.surface, borderRadius: radius.round, paddingHorizontal: space.md, paddingVertical: 6 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: live?.all ? color.success : color.inkFaint }} />
           <AppText variant="label" color={color.inkMuted}>
-            지금 {live?.all ?? 0}명 공부 중
+            지금 {live?.all ?? 0}명 공부 중{live?.my_class ? ` · 우리 반 ${live.my_class}` : ''}
           </AppText>
         </View>
       </View>
@@ -148,6 +151,7 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
       {joinable.map((g) => (
         <JoinCard key={g.id} g={g} onJoined={() => (dash.reload(), groups.reload())} />
       ))}
+      <ClassBoardCard board={classBoard.data} />
       {manager ? (
         <Card tone="muted" style={{ gap: space.sm }}>
           <AppText variant="label">교육활동부 관리</AppText>

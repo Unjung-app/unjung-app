@@ -14,7 +14,7 @@ const SECTIONS: { kind: ShopKind; title: string; hint: string }[] = [
   { kind: 'shield', title: '스트릭 보호권', hint: '학교 가는 날을 빠져도 연속 출석이 이어져요. 최대 2개' },
   { kind: 'emoji', title: '닉네임 이모지', hint: '닉네임 앞에 붙어요' },
   { kind: 'name_color', title: '닉네임 색', hint: '랭킹과 프로필에서 닉네임 색이 바뀌어요' },
-  { kind: 'theme', title: '프로필 테마', hint: '프로필 카드 배경. 운중의 밤에서는 닉네임이 흰색으로 보여요' },
+  { kind: 'theme', title: '프로필 테마', hint: '프로필 카드 배경. 운중의 밤에서는 닉네임 색이 밝은 색으로 바뀌어 보여요' },
   { kind: 'badge', title: '시즌 배지', hint: '기간 한정. 기간이 지나면 다시 살 수 없어요' },
 ];
 

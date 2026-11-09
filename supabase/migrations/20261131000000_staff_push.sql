@@ -12,7 +12,7 @@ alter table public.push_prefs add column if not exists staff boolean not null de
 
 -- 게임별 담당 개발자(학번). 새 게임을 넣을 때 함께 적는다
 insert into public.app_config values ('game_owners',
-  '{"patrol":"20513","disaster":"20612","runner":"20505","unjungil":"20818","defense":"20702","tower":"20516,20505","campus_walk":"10718"}')
+  '{"patrol":"20513","disaster":"20612","runner":"20505","unjungil":"20818","defense":"20702","tower":"20516","campus_walk":"10718"}')
 on conflict (key) do update set value = excluded.value;
 
 create or replace function public.push_wants(p_user uuid, p_kind text)
