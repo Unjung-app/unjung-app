@@ -12,7 +12,7 @@ const ROLE_LABEL = { student: '학생', reviewer: '검토위원', admin: '관리
 /** 전체·설정 화면 맨 위의 계정 카드 */
 export function AccountCard({ isDeveloper = false }: { isDeveloper?: boolean } = {}) {
   const router = useRouter();
-  const { status, email, enrollment, role, signOut } = useAuth();
+  const { status, email, enrollment, role, teacher, signOut } = useAuth();
   const [confirmOut, setConfirmOut] = useState(false);
 
   if (status === 'signedOut' || status === 'loading') {
@@ -29,13 +29,13 @@ export function AccountCard({ isDeveloper = false }: { isDeveloper?: boolean } =
     );
   }
 
-  const badges = [role !== 'student' ? ROLE_LABEL[role] : null, isDeveloper ? '개발자' : null];
+  const badges = [teacher ? '👩‍🏫 선생님' : null, role !== 'student' ? ROLE_LABEL[role] : null, isDeveloper ? '개발자' : null];
 
   return (
     <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
       <View style={{ padding: space.lg, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm }}>
-          <AppText variant="heading">{enrollment?.name ?? '학번 등록 필요'}</AppText>
+          <AppText variant="heading">{teacher ? `${teacher} 선생님` : enrollment?.name ?? '학번 등록 필요'}</AppText>
           {badges.map((label) => label ? (
             <View key={label} style={{ backgroundColor: color.accentSoft, borderRadius: radius.round, paddingHorizontal: 8, paddingVertical: 2 }}>
               <AppText variant="caption" weight="semibold" color={color.accentInk}>
