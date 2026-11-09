@@ -64,7 +64,7 @@ export const GAMES: Record<GameId, GameInfo> = {
     emoji: '🏫',
     desc: '운중고 건물을 하늘 끝까지 쌓아 올려라',
     tag: '캐주얼',
-    by: '안현준, 김현석',
+    by: '안현준',
     how: '화면을 탭해서 층을 떨어뜨려요. 딱 맞추면 콤보 보너스',
   },
   campus_walk: {

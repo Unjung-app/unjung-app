@@ -59,7 +59,7 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
           <WeekGrid monday={monday} lessons={lessons} today={now.ymd} minutes={now.minutes} grade={myClass!.grade} marks={marks} />
         </>
       ) : <DayList anchor={anchor} setAnchor={setAnchor} lessons={lessons} today={now.ymd} minutes={now.minutes} grade={myClass!.grade} marks={marks} />}
-      {marks.size ? <AppText variant="caption" color={color.inkFaint}>주황 점은 우리 반 게시판에 올라온 마감이에요.</AppText> : null}
+      {marks.size ? <AppText variant="caption" color={color.inkFaint}>주황 점은 우리 반 게시판에 올라온 수행평가·숙제예요.</AppText> : null}
     </>
   );
 
@@ -148,7 +148,7 @@ function WeekGrid({ monday, lessons, today, minutes, grade, marks }: { monday: s
               <View key={d} style={{ flex: 1, padding: 2 }}>
                 <View
                   accessible
-                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lesson.subject + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}${mark ? `, ${mark} 마감` : ''}`}
+                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lesson.subject + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}${mark ? `, ${mark} 있음` : ''}`}
                   style={{
                     flex: 1,
                     borderRadius: 10,
@@ -251,7 +251,7 @@ function DayList({
                 <AppText variant="bodyStrong" style={{ flex: 1 }} color={done ? color.inkFaint : color.ink}>
                   {l.subject}
                 </AppText>
-                {marks.get(`${l.date}|${l.subject}`) ? <Badge label={`${marks.get(`${l.date}|${l.subject}`)} 마감`} /> : null}
+                {marks.get(`${l.date}|${l.subject}`) ? <Badge label={marks.get(`${l.date}|${l.subject}`)!} /> : null}
                 {l.tags.map((t) => (
                   <Badge key={t} label={t} />
                 ))}

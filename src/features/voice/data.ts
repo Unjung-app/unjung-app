@@ -30,6 +30,8 @@ export type SurveyItem = {
   response_count: number;
   question_count: number;
   can_see_results: boolean;
+  /** 학생이 신청해서 기획행정부가 승인한 설문 */
+  from_student?: boolean;
 };
 
 export type QuestionKind = 'single' | 'multi' | 'text';
@@ -44,10 +46,47 @@ export type SurveyQuestion = {
   answered: number | null;
   texts: string[] | null;
 };
+export type SurveyStatus = 'requested' | 'rejected' | 'open' | 'closed';
 export type SurveyDetail = Omit<SurveyItem, 'question_count'> & {
   questions: SurveyQuestion[];
   by_grade: Record<string, number> | null;
+  status?: SurveyStatus;
+  /** 내가 신청한 학생 설문 */
+  owner?: boolean;
+  review_note?: string | null;
+  req_days?: number | null;
 };
+
+export type SurveyRequest = {
+  id: number;
+  title: string;
+  status: 'requested' | 'rejected';
+  review_note: string | null;
+  req_days: number | null;
+  scope_grade: number | null;
+  created_at: string;
+  mine: boolean;
+  author_grade: number | null;
+};
+
+/** 설문 신청: 기획행정부는 검토할 것, 학생은 내 신청 */
+export function useSurveyRequests(enabled: boolean) {
+  const [items, setItems] = useState<SurveyRequest[] | null>(null);
+  const load = useCallback(async () => {
+    if (!enabled) return setItems(null);
+    const { data } = await supabase.rpc('survey_requests');
+    setItems((data as SurveyRequest[]) ?? []);
+  }, [enabled]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  return { items, reload: load };
+}
+
+export async function reviewSurvey(id: number, ok: boolean, note: string): Promise<Result> {
+  const { error } = await supabase.rpc('review_survey', { p_id: id, p_ok: ok, p_note: note.trim() || null });
+  return res(error);
+}
 
 export function useSurveyFeed(enabled: boolean) {
   const [items, setItems] = useState<SurveyItem[] | null>(null);
@@ -108,8 +147,8 @@ export type SurveyDraft = {
   questions: QuestionDraft[];
 };
 
-export async function createSurvey(d: SurveyDraft): Promise<{ ok: true; id: number } | { ok: false; message: string }> {
-  const { data, error } = await supabase.rpc('create_survey', {
+export async function createSurvey(d: SurveyDraft, asRequest = false): Promise<{ ok: true; id: number } | { ok: false; message: string }> {
+  const { data, error } = await supabase.rpc(asRequest ? 'request_survey' : 'create_survey', {
     p_title: d.title.trim(),
     p_description: d.description.trim(),
     p_scope_grade: d.scopeGrade,

@@ -7,7 +7,7 @@ import { AppText } from '@/components/ui/AppText';
 import { useWallet } from '@/state/wallet';
 import { focus as F, radius, space, subjectColor } from '@/theme/tokens';
 import { hm, hms, useDashboard } from './api';
-import { useStudySession } from './session';
+import { useStudyLive, useStudySession } from './session';
 
 /**
  * 열품타식 집중 화면: 검은 바탕에 이 과목 오늘 시간이 크게 올라간다.
@@ -22,6 +22,7 @@ export function FocusScreen() {
   const { refresh: refreshWallet } = useWallet();
   const s = useStudySession(true);
   const dash = useDashboard(true, 60_000);
+  const live = useStudyLive(true);
   const started = useRef(false);
   const base = useRef<{ subject: number; total: number } | null>(null);
 
@@ -87,7 +88,11 @@ export function FocusScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: F.live }} />
           <AppText variant="label" color={F.sub} style={{ flex: 1 }} numberOfLines={1}>
-            {group ? `${group.name} · ${group.live}명 공부 중` : '스터디 윗미'}
+            {group
+              ? `${group.name} · ${group.live}명 공부 중`
+              : live?.all
+                ? `지금 ${live.all}명 함께 공부 중${live.my_class ? ` · 우리 반 ${live.my_class}명` : ''}`
+                : '스터디 윗미'}
           </AppText>
           <AppText variant="label" color={F.sub} style={{ fontVariant: ['tabular-nums'] }}>
             오늘 총 {hms(totalSeconds)}

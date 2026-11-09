@@ -10,7 +10,7 @@ import { shortLabel } from '@/lib/date';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
-import { closeSurvey, closesLabel, lastDayOf, RESULTS_LABEL, submitSurvey, useSurvey, type Answer, type SurveyDetail, type SurveyQuestion } from './data';
+import { closeSurvey, closesLabel, lastDayOf, RESULTS_LABEL, reviewSurvey, submitSurvey, useSurvey, type Answer, type SurveyDetail, type SurveyQuestion } from './data';
 import { inputStyle, ResultBar } from './ui';
 
 /** 설문 한 개: 참여 → 결과(공개 방식에 따라). 기획행정부는 주관식 답·학년 분포·마감 버튼도 본다. */
@@ -47,6 +47,8 @@ export function SurveyScreen() {
   }
 
   const canAnswer = data.is_open && !data.responded;
+  const pending = data.status === 'requested' || data.status === 'rejected';
+  const by = data.from_student ? '학생 설문 (기획행정부 승인)' : '학생자치회 기획행정부';
 
   return (
     <Screen topInset={false} onRefresh={reload}>
@@ -54,20 +56,26 @@ export function SurveyScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
           {data.responded ? <Badge label="✓ 참여함" tone="success" /> : null}
           <Badge label={data.scope_grade ? `${data.scope_grade}학년 대상` : '전체 학년'} tone="muted" />
-          <AppText variant="caption" weight="semibold" color={data.is_open ? color.navy : color.inkFaint}>
-            {closesLabel(data.closes_at, data.is_open, now.ymd)} · {shortLabel(lastDayOf(data.closes_at))}까지
-          </AppText>
+          {pending ? (
+            <Badge label={data.status === 'requested' ? '검토 중인 신청' : '반려된 신청'} tone="muted" />
+          ) : (
+            <AppText variant="caption" weight="semibold" color={data.is_open ? color.navy : color.inkFaint}>
+              {closesLabel(data.closes_at, data.is_open, now.ymd)} · {shortLabel(lastDayOf(data.closes_at))}까지
+            </AppText>
+          )}
         </View>
         <AppText variant="title" accessibilityRole="header">
           {data.title}
         </AppText>
         {data.description ? <AppText variant="body">{data.description}</AppText> : null}
         <AppText variant="caption" color={color.inkFaint}>
-          학생자치회 기획행정부 · {data.response_count}명 참여 · 결과 공개: {RESULTS_LABEL[data.results]} · 누가 무엇을 골랐는지는 공개되지 않아요
+          {by} · {data.response_count}명 참여 · 결과 공개: {RESULTS_LABEL[data.results]} · 누가 무엇을 골랐는지는 공개되지 않아요
         </AppText>
       </View>
 
-      {canAnswer ? (
+      {pending ? (
+        <RequestPanel survey={data} planner={planner} onDone={reload} />
+      ) : canAnswer ? (
         <AnswerForm
           survey={data}
           onDone={async () => {
@@ -76,10 +84,10 @@ export function SurveyScreen() {
           }}
         />
       ) : (
-        <Results survey={data} mine={mine} planner={planner} />
+        <Results survey={data} mine={mine} planner={planner || !!data.owner} />
       )}
 
-      {planner ? <PlannerTools survey={data} onChanged={reload} onDeleted={() => router.back()} /> : null}
+      {planner && !pending ? <PlannerTools survey={data} onChanged={reload} onDeleted={() => router.back()} /> : null}
     </Screen>
   );
 }
@@ -117,7 +125,7 @@ function AnswerForm({ survey, onDone }: { survey: SurveyDetail; onDone: () => Pr
             {q.required ? '' : ' (선택)'}
           </AppText>
           <AppText variant="caption" color={color.inkMuted}>
-            {q.kind === 'single' ? '하나만 골라요' : q.kind === 'multi' ? '여러 개 골라도 돼요' : '200자까지 · 기획행정부만 읽어요'}
+            {q.kind === 'single' ? '하나만 골라요' : q.kind === 'multi' ? '여러 개 골라도 돼요' : survey.from_student ? '200자까지 · 신청한 학생과 기획행정부만 읽어요' : '200자까지 · 기획행정부만 읽어요'}
           </AppText>
           {q.kind === 'text' ? (
             <TextInput
@@ -284,5 +292,73 @@ function PlannerTools({ survey, onChanged, onDeleted }: { survey: SurveyDetail; 
         </AppText>
       ) : null}
     </Card>
+  );
+}
+
+/** 검토 중·반려된 설문 신청: 질문 미리 보기 + 기획행정부 승인/반려 */
+function RequestPanel({ survey, planner, onDone }: { survey: SurveyDetail; planner: boolean; onDone: () => void }) {
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const run = async (ok: boolean) => {
+    setBusy(true);
+    setErr(null);
+    const r = await reviewSurvey(survey.id, ok, note);
+    setBusy(false);
+    if (r.ok) onDone();
+    else setErr(r.message);
+  };
+  return (
+    <>
+      {survey.status === 'rejected' ? (
+        <Card tone="muted" style={{ gap: space.xs }}>
+          <AppText variant="bodyStrong">반려된 신청이에요</AppText>
+          <AppText variant="body">{survey.review_note || '사유가 적히지 않았어요.'}</AppText>
+          <AppText variant="caption" color={color.inkMuted}>
+            고쳐서 새로 신청할 수 있어요.
+          </AppText>
+        </Card>
+      ) : !planner ? (
+        <Card tone="muted">
+          <AppText variant="body" color={color.inkMuted}>
+            기획행정부가 확인하고 있어요. 승인되면 알림으로 알려 드리고, 그날부터 {survey.req_days ?? 5}일 동안 열려요.
+          </AppText>
+        </Card>
+      ) : null}
+      {survey.questions.map((q) => (
+        <Card key={q.id} style={{ gap: space.xs }}>
+          <AppText variant="bodyStrong">
+            {q.ord}. {q.prompt}
+            {q.required ? '' : ' (선택)'}
+          </AppText>
+          <AppText variant="caption" color={color.inkMuted}>
+            {q.kind === 'text' ? '주관식' : `${q.kind === 'single' ? '하나 고르기' : '여러 개 고르기'}: ${q.options.join(' / ')}`}
+          </AppText>
+        </Card>
+      ))}
+      {planner && survey.status === 'requested' ? (
+        <Card tone="muted" style={{ gap: space.sm }}>
+          <AppText variant="label">기획행정부 검토 · 신청 기간 {survey.req_days ?? 5}일</AppText>
+          <TextInput
+            accessibilityLabel="반려 사유 또는 한마디"
+            value={note}
+            onChangeText={(t) => setNote(t.slice(0, 200))}
+            placeholder="반려할 때는 사유를 꼭 적어 주세요"
+            placeholderTextColor={color.inkFaint}
+            multiline
+            style={{ ...inputStyle, minHeight: 64, paddingVertical: space.sm, textAlignVertical: 'top' }}
+          />
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            <Button label={busy ? '…' : '승인하고 올리기'} style={{ flex: 1 }} disabled={busy} onPress={() => run(true)} />
+            <Button label="반려" variant="ghost" style={{ flex: 1 }} disabled={busy || note.trim().length < 2} onPress={() => run(false)} />
+          </View>
+          {err ? (
+            <AppText variant="caption" color={color.danger}>
+              {err}
+            </AppText>
+          ) : null}
+        </Card>
+      ) : null}
+    </>
   );
 }

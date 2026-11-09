@@ -14,6 +14,8 @@ import { seoulNow } from '@/lib/date';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { injectWebFont, NATIVE_FONTS, fontStyle } from '@/theme/fonts';
 import { color } from '@/theme/tokens';
+import { Pressable } from 'react-native';
+import { AppText } from '@/components/ui/AppText';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 injectWebFont();
@@ -65,14 +67,16 @@ function Root() {
       <StatusBar style="dark" />
       <AuthGate />
       <Stack
-        screenOptions={{
+        screenOptions={({ navigation }) => ({
           headerShadowVisible: false,
           headerStyle: { backgroundColor: color.bg },
           headerTintColor: color.navy,
           headerTitleStyle: { ...fontStyle('bold'), fontSize: 17, color: color.ink },
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: color.bg },
-        }}>
+          // 새로고침·바깥 페이지(개인정보 처리방침 등)에서 돌아와 뒤로 갈 곳이 없으면 '홈' 버튼(학생 의견 #45)
+          headerLeft: navigation.canGoBack() ? undefined : () => <HomeButton />,
+        })}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="feature/[id]" options={{ title: '' }} />
         <Stack.Screen name="+not-found" options={{ title: '페이지 없음' }} />
@@ -100,6 +104,7 @@ function Root() {
         <Stack.Screen name="voice/survey/[id]" options={{ title: '설문' }} />
         <Stack.Screen name="voice/survey/new" options={{ title: '설문 만들기' }} />
         <Stack.Screen name="voice/suggest" options={{ title: '건의 올리기' }} />
+        <Stack.Screen name="profile/[nickname]" options={{ title: '프로필' }} />
         <Stack.Screen name="study/focus" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="study/group/[id]" options={{ title: '그룹 순위' }} />
         <Stack.Screen name="study/admin/[id]" options={{ title: '스터디 윗미 관리' }} />
@@ -123,5 +128,16 @@ export default function RootLayout() {
         </AuthProvider>
       </PrefsProvider>
     </SafeAreaProvider>
+  );
+}
+
+function HomeButton() {
+  const router = useRouter();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="홈으로" onPress={() => router.replace('/')} hitSlop={8} style={{ minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 8 }}>
+      <AppText variant="label" color={color.navy}>
+        ‹ 홈
+      </AppText>
+    </Pressable>
   );
 }
