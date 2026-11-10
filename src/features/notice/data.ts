@@ -50,6 +50,9 @@ export type NoticeDraft = {
   scope: NoticeScope;
   showFrom: Ymd;
   days: number;
+  /** 선생님만: 학년·반 공지 대상 */
+  grade?: number | null;
+  classNo?: number | null;
 };
 
 type Result = { ok: true } | { ok: false; message: string };
@@ -109,6 +112,8 @@ export async function submitNotice(d: NoticeDraft): Promise<Result> {
     p_scope: d.scope,
     p_show_from: ymdToIso(d.showFrom),
     p_show_days: d.days,
+    p_grade: d.grade ?? null,
+    p_class: d.classNo ?? null,
   });
   return error ? { ok: false, message: friendly(error.message) } : { ok: true };
 }

@@ -32,6 +32,8 @@ export type SurveyItem = {
   can_see_results: boolean;
   /** 학생이 신청해서 기획행정부가 승인한 설문 */
   from_student?: boolean;
+  /** 선생님이 만든 설문이면 선생님 이름 */
+  author_teacher?: string | null;
 };
 
 export type QuestionKind = 'single' | 'multi' | 'text';

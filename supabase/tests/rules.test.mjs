@@ -1063,28 +1063,51 @@ await sub(B, CB, 'a7');
   const dl = await q(`select public.push_enqueue_deadlines(public.seoul_today() + 2) n`); expect('마감 알림 함수(공유 포함) 동작', dl.ok);
 }
 
-{ // 11-09: 선생님 계정(학번 없음 · 배지 · 관리자)
-  const T1 = '99999999-9999-9999-9999-999999997701', CT1 = 'teach.park@unjung.hs.kr';
-  const nb = await as(B, CB, `select public.admin_add_teacher('${CT1}', '박선생', true)`); expect('학생은 선생님 추가 불가', !nb.ok);
-  const st = await as(A, CA, `select public.admin_add_teacher('26105@unjung.hs.kr', '가짜', true)`); expect('숫자 아이디(학생 계정)는 선생님 불가', !st.ok);
-  const en = await as(A, CA, `select public.admin_add_teacher('${CB}', '가짜', true)`); expect('학번 등록된 계정은 선생님 불가', !en.ok);
-  const ad = await as(A, CA, `select public.admin_add_teacher('${CT1}', '박선생', true)`, '선생님 추가'); expect('관리자가 선생님 추가(로그인 전)', ad.ok);
-  await q(`insert into auth.users values ('${T1}','${CT1}')`);
-  const pr = await q(`select role, teacher_name from public.profiles where id='${T1}'`); expect('첫 로그인 때 관리자·선생님 반영', pr.rows[0]?.role === 'admin' && pr.rows[0]?.teacher_name === '박선생');
-  const re = await as(T1, CT1, `select public.register_enrollment('20999','박선생')`); expect('선생님은 학번 등록 안 함', !re.ok);
-  const sf = await as(T1, CT1, `select count(*)::int n from public.admin_list_staff() where teacher`); expect('선생님은 관리자 화면 사용', sf.ok && sf.rows[0]?.n === 1);
-  const tg = await as(T1, CT1, `update public.profiles set teacher_name = '해커' where id='${T1}'`); const tn = await q(`select teacher_name from public.profiles where id='${T1}'`);
-  expect('선생님 이름은 직접 못 바꿈', tn.rows[0]?.teacher_name === '박선생');
-  const gb = await as(B, CB, `update public.profiles set teacher_name = '가짜' where id='${B}'`); const gn = await q(`select teacher_name from public.profiles where id='${B}'`);
-  expect('학생이 스스로 선생님 배지 불가', gn.rows[0]?.teacher_name == null);
-  const nt = await as(T1, CT1, `select public.submit_notice('event', '체육대회 안내', '내일 체육대회가 있어요. 체육복을 챙겨 오세요', null, 'all', public.seoul_today(), 3) id`, '선생님 공지');
-  const nf = await as(B, CB, `select author_teacher from public.notice_feed where id=${nt.rows[0]?.id}`); expect('선생님 공지는 바로 게시 + 선생님 표시', nt.ok && nf.rows[0]?.author_teacher === '박선생');
-  const ng = await as(T1, CT1, `select public.submit_notice('event', '학년 안내', '2학년만 보는 안내입니다', null, 'grade', public.seoul_today(), 3)`); expect('선생님 공지는 전체 대상만', !ng.ok);
-  const lt = await as(A, CA, `select public.admin_list_teachers() r`); expect('선생님 명단 조회', (lt.rows[0]?.r ?? []).some((x) => x.email === CT1 && x.joined));
-  const rm = await as(A, CA, `select public.admin_remove_teacher('${CT1}')`); const pr2 = await q(`select role, teacher_name from public.profiles where id='${T1}'`);
-  expect('명단에서 빼면 권한·배지 회수', rm.ok && pr2.rows[0]?.role === 'student' && pr2.rows[0]?.teacher_name == null);
-  await as(A, CA, `select public.admin_add_teacher('${CT1}', '박선생', false)`); const pr3 = await q(`select role, teacher_name from public.profiles where id='${T1}'`);
-  expect('관리자 아닌 선생님(배지만)', pr3.rows[0]?.role === 'student' && pr3.rows[0]?.teacher_name === '박선생');
+{ // 11-10: 선생님 계정(앞 5자리 숫자가 아니면 교직원 → 이름 쓰면 바로 선생님)
+  const T1 = '99999999-9999-9999-9999-999999997701', CT1 = 'teach.park@unjung.hs.kr';   // 미리 등록(관리자)
+  const T2 = '99999999-9999-9999-9999-999999997702', CT2 = 'kimteacher@unjung.hs.kr';   // 자동
+  const T3 = '99999999-9999-9999-9999-999999997703', CT3 = 'office@unjung.hs.kr';       // 공용 계정 → 해제
+  const N5 = '99999999-9999-9999-9999-999999997705', CN5 = '27101kim@unjung.hs.kr';     // 학생 계정(숫자 5자리)
+  const nb = await as(B, CB, `select public.admin_add_teacher('${CT1}', '박선생', true)`); expect('학생은 선생님 미리 등록 불가', !nb.ok);
+  const ad = await as(A, CA, `select public.admin_add_teacher('${CT1}', '박선생', true)`); expect('관리자가 미리 등록(로그인 전)', ad.ok);
+  await q(`insert into auth.users values ('${T1}','${CT1}'), ('${T2}','${CT2}'), ('${T3}','${CT3}'), ('${N5}','${CN5}')`);
+  const pr = await q(`select role, teacher_name from public.profiles where id='${T1}'`); expect('미리 등록: 첫 로그인 때 관리자·선생님', pr.rows[0]?.role === 'admin' && pr.rows[0]?.teacher_name === '박선생');
+  const cb = await as(T2, CT2, `select public.can_be_teacher() v`); const cs = await as(N5, CN5, `select public.can_be_teacher() v`);
+  expect('교직원 계정 판별(숫자 5자리=학생)', cb.rows[0]?.v === true && cs.rows[0]?.v === false);
+  const rs = await as(N5, CN5, `select public.register_teacher('김학생')`); expect('학생 계정은 선생님 등록 불가', !rs.ok);
+  const bn = await as(T2, CT2, `select public.register_teacher('kim')`); expect('선생님 이름은 한글', !bn.ok);
+  const r2 = await as(T2, CT2, `select public.register_teacher('김선생', 2, 8, '정보 교과')`, '선생님 등록'); const p2 = await q(`select role, teacher_name, teacher_home_class from public.profiles where id='${T2}'`);
+  expect('자동 등록: 바로 선생님(관리자 아님)', r2.ok && p2.rows[0]?.teacher_name === '김선생' && p2.rows[0]?.role === 'student' && p2.rows[0]?.teacher_home_class === 8);
+  const re = await as(T2, CT2, `select public.register_enrollment('20999','김선생')`); expect('선생님은 학번 등록 안 함', !re.ok);
+  const tg = await as(T2, CT2, `update public.profiles set teacher_name = '해커' where id='${T2}'`); const gb = await as(B, CB, `update public.profiles set teacher_name = '가짜' where id='${B}'`);
+  const tn = await q(`select (select teacher_name from public.profiles where id='${T2}') a, (select teacher_name from public.profiles where id='${B}') b`);
+  expect('선생님 항목은 직접 못 바꿈', tn.rows[0]?.a === '김선생' && tn.rows[0]?.b == null);
+  const bs = await as(B, CB, `select public.register_teacher('가짜')`); expect('학번 등록된 계정은 선생님 불가', !bs.ok);
+  // 선생님 권한
+  const nt = await as(T2, CT2, `select public.submit_notice('event', '2학년 체육대회', '내일 체육대회가 있어요. 체육복 챙기기', null, 'grade', public.seoul_today(), 3, 2, null) id`, '선생님 공지');
+  const nf = await as(E, CE, `select author_teacher, scope_grade from public.notice_feed where id=${nt.rows[0]?.id}`); const nf1 = await as(B, CB, `select count(*)::int n from public.notice_feed where id=${nt.rows[0]?.id}`);
+  expect('선생님 공지: 바로 게시·학년 대상·선생님 표시', nt.ok && nf.rows[0]?.author_teacher === '김선생' && nf.rows[0]?.scope_grade === 2 && nf1.rows[0]?.n === 0);
+  const sn = await as(B, CB, `select public.submit_notice('event', '1학년 안내', '1학년만 보는 안내입니다', null, 'grade', public.seoul_today(), 3, 3, null) id`);
+  const sg = await q(`select scope_grade, status from public.notices where id=${sn.rows[0]?.id}`); expect('학생은 학년을 골라도 자기 학년·검토 대기', sg.rows[0]?.scope_grade === 1 && sg.rows[0]?.status === 'pending');
+  const cm = await as(T2, CT2, `select public.is_comm() v`); expect('선생님 행사 사진 올리기 가능', cm.rows[0]?.v === true);
+  const QS = JSON.stringify([{ kind: 'single', prompt: '만족하나요?', options: ['네', '아니요'] }]);
+  const sv = await as(T2, CT2, `select public.create_survey('수업 만족도', '', null, 3, 'planner_only', '${QS}'::jsonb) id`, '선생님 설문');
+  const sf = await as(B, CB, `select author_teacher from public.survey_feed where id=${sv.rows[0]?.id}`); const sr = await as(T2, CT2, `select public.get_survey(${sv.rows[0]?.id}) s`);
+  expect('선생님 설문: 만들기·표시·결과 열람', sv.ok && sf.rows[0]?.author_teacher === '김선생' && sr.rows[0]?.s?.can_see_results === true);
+  const sc = await as(T2, CT2, `select public.close_survey(${sv.rows[0]?.id}, false)`); expect('만든 선생님이 설문 마감', sc.ok);
+  const us = await as(T2, CT2, `select public.admin_usage() r`); expect('선생님 앱 사용 현황 읽기', us.ok);
+  const ov = await as(T2, CT2, `select public.teacher_study_overview() r`); const cl = await as(T2, CT2, `select public.teacher_study_class(2, 8) r`);
+  expect('선생님 스터디 현황: 반별 합계 + 이름별 기록', ov.ok && Array.isArray(ov.rows[0]?.r?.classes) && ov.rows[0]?.r?.daily?.length === 14 && (cl.rows[0]?.r ?? []).some((x) => x.name === '이호원'));
+  const so = await as(A, CA, `select public.teacher_study_class(2, 8)`); expect('학생(관리자여도)은 이름별 기록 못 봄', !so.ok);
+  const sg2 = await as(T2, CT2, `select count(*)::int n from public.suggestion_mod_queue`); expect('관리자 아닌 선생님은 익명 건의 관리 못 함', !sg2.ok || sg2.rows[0]?.n === 0);
+  // 관리자 관리
+  const lt = await as(A, CA, `select public.admin_list_teachers() r`); expect('선생님 계정 목록', (lt.rows[0]?.r?.accounts ?? []).some((x) => x.name === '김선생'));
+  const ga = await as(A, CA, `select public.admin_set_teacher_admin('${T2}', true)`); const ga2 = await q(`select role from public.profiles where id='${T2}'`); expect('선생님에게 관리자 권한', ga.ok && ga2.rows[0]?.role === 'admin');
+  const gs = await as(A, CA, `select public.admin_set_teacher_admin('${B}', true)`); expect('학생은 이 방법으로 관리자 불가', !gs.ok);
+  await as(T3, CT3, `select public.register_teacher('행정실')`);
+  const bk = await as(A, CA, `select public.admin_block_teacher('${T3}', true)`); const b3 = await as(T3, CT3, `select public.is_teacher() v, public.can_be_teacher() c`);
+  expect('공용 계정 선생님 해제 → 다시 등록 불가', bk.ok && b3.rows[0]?.v === false && b3.rows[0]?.c === false && !(await as(T3, CT3, `select public.register_teacher('행정실')`)).ok);
+  const ub = await as(A, CA, `select public.admin_block_teacher('${T3}', false)`); const u3 = await as(T3, CT3, `select public.can_be_teacher() c`); expect('해제 풀기', ub.ok && u3.rows[0]?.c === true);
 }
 
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
