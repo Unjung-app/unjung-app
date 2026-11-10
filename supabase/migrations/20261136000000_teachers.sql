@@ -114,7 +114,7 @@ begin
   if exists (select 1 from public.profiles p join public.enrollments e on e.user_id = p.id where lower(p.email) = em) then
     raise exception '학번이 등록된 학생 계정이에요' using errcode = 'P0001';
   end if;
-  if char_length(nm) < 2 or char_length(nm) > 10 then raise exception '이름은 2~10자예요(예: 박경애)' using errcode = 'P0001'; end if;
+  if char_length(nm) < 2 or char_length(nm) > 10 then raise exception '이름은 2~10자예요(예: 김운중)' using errcode = 'P0001'; end if;
   insert into public.teachers (email, name, admin, added_by) values (em, nm, coalesce(p_admin, true), auth.uid())
   on conflict (email) do update set name = excluded.name, admin = excluded.admin;
 end $$;

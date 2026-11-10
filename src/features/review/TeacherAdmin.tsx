@@ -108,7 +108,7 @@ export function TeacherAdmin({ onChanged }: { onChanged?: () => void }) {
         로그인 전에 관리자 권한 미리 드리기
       </AppText>
       <TextInput accessibilityLabel="선생님 학교 이메일" value={email} onChangeText={(v) => setEmail(v.trim().slice(0, 60))} placeholder="예) teacher@unjung.hs.kr" placeholderTextColor={color.inkFaint} autoCapitalize="none" keyboardType="email-address" style={input} />
-      <TextInput accessibilityLabel="선생님 이름" value={name} onChangeText={(v) => setName(v.slice(0, 10))} placeholder="이름 (예: 박경애)" placeholderTextColor={color.inkFaint} style={input} />
+      <TextInput accessibilityLabel="선생님 이름" value={name} onChangeText={(v) => setName(v.slice(0, 10))} placeholder="이름 (예: 김운중)" placeholderTextColor={color.inkFaint} style={input} />
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: admin }}
