@@ -43,12 +43,12 @@ export function TodayScreen() {
   const now = useNow();
   const router = useRouter();
   const { myClass: preferredClass } = usePrefs();
-  const { enrollment, status, session } = useAuth();
+  const { enrollment, status, session, teacher } = useAuth();
   const personal = status === 'ready' && enrollment?.grade === 2 && !!session;
   const myClass = personal ? { grade: enrollment.grade, classNo: enrollment.class_no } : preferredClass;
   const term = schoolTerm(now.ymd);
   const selection = useSubjectSelection(personal ? session.user.id : null, term.year, term.semester);
-  const nick = givenName(enrollment?.name);
+  const nick = teacher ? `${teacher} 선생님` : givenName(enrollment?.name);
   // 주말에는 다음 주 데이터를 불러와 '다음 수업일'을 보여 준다
   const schoolWeekDay = isWeekend(now.ymd) ? addDays(mondayOf(now.ymd), 7) : now.ymd;
   const timetable = useWeekTimetable(schoolWeekDay, myClass);
@@ -107,12 +107,12 @@ export function TodayScreen() {
       </View>
 
       <QuoteLine today={now.ymd} />
-      <WalletStrip />
+      {teacher ? null : <WalletStrip />}
       <UpdateNotesCard />
       <InstallBanner />
       {anySample ? <SampleNotice /> : null}
-      <NicknamePrompt onDone={() => setNickDone(true)} />
-      <PushPrompt hold={!nickDone && status === 'ready' && !!wallet && !wallet.nickname} />
+      {teacher ? null : <NicknamePrompt onDone={() => setNickDone(true)} />}
+      <PushPrompt hold={!teacher && !nickDone && status === 'ready' && !!wallet && !wallet.nickname} />
 
       {/* 넓은 화면(태블릿·폴드 펼침)에서는 두 줄로. 좁은 화면은 왼쪽 → 오른쪽 순서로 이어진다 */}
       <View style={wide ? { flexDirection: 'row', gap: space.lg, alignItems: 'flex-start' } : { gap: space.md }}>
@@ -127,8 +127,8 @@ export function TodayScreen() {
             holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
           />
           <QuickGrid />
-          <FirstMissions />
-          <DeadlineCard today={now.ymd} />
+          {teacher ? null : <FirstMissions />}
+          {teacher ? null : <DeadlineCard today={now.ymd} />}
           <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
           {wide ? <StudyEventRow today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} /> : null}
         </View>
@@ -136,9 +136,9 @@ export function TodayScreen() {
           {/* 2. 학생회: 공지 · 설문 · 건의 · 행사 사진 · 앱 의견 */}
           <CouncilSection />
           {/* 3. 출시 이벤트 · 공부 · 일정 · 미션 */}
-          <LaunchBanner />
+          {teacher ? null : <LaunchBanner />}
           {!wide ? <StudyEventRow today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} /> : null}
-          <DailyMissions today={now.ymd} />
+          {teacher ? null : <DailyMissions today={now.ymd} />}
         </View>
       </View>
     </Screen>

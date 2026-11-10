@@ -10,14 +10,14 @@ import { usePrefs } from './prefs';
 //  loading          확인 중
 //  signedOut        로그인 안 함 (앱은 둘러볼 수 있음)
 //  needsEnrollment  학교 계정으로 로그인했지만 올해 학번·이름을 아직 안 넣음
-//  ready            모두 완료
+//  ready            모두 완료 (선생님 계정은 학번 없이 바로 ready)
 
 export type Role = 'student' | 'reviewer' | 'admin';
 
 // 학적·역할을 기기에 저장해 둔다: 다음에 열 때 바로 보이고, 학교 와이파이가 끊겨도
 // '학번 등록' 화면으로 잘못 보내지 않는다(서버 확인에 실패하면 저장본을 그대로 쓴다).
 const PROFILE_KEY = 'unjung.profile.v1';
-type ProfileCache = { uid: string; year: number; role: Role; planner: boolean; enrollment: Enrollment | null };
+type ProfileCache = { uid: string; year: number; role: Role; planner: boolean; enrollment: Enrollment | null; teacher?: string | null };
 export type Enrollment = { student_no: string; name: string; grade: 1 | 2 | 3; class_no: number; number: number; school_year: number };
 
 type AuthState = {
@@ -28,6 +28,8 @@ type AuthState = {
   /** 학생자치회 기획행정부(운중 보이스 설문 만들기·건의 확인). 관리자도 true */
   planner: boolean;
   enrollment: Enrollment | null;
+  /** 선생님 계정이면 선생님 이름(관리자가 선생님 명단에 넣은 학교 계정). 학생이면 null */
+  teacher: string | null;
   /** 학교 계정이 아니라서 로그인을 되돌렸을 때 보여 줄 문구 */
   notice: string | null;
   signIn: () => Promise<void>;
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>('student');
   const [planner, setPlanner] = useState(false);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [teacher, setTeacher] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   /** 로그인한 사람의 학적을 서버(또는 저장본)로 확인했는가. 확인 전에는 status를 'loading'으로 둔다 */
   const [profileKnown, setProfileKnown] = useState(false);
@@ -57,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(c.role);
       setPlanner(c.role === 'admin' || c.planner);
       setEnrollment(c.enrollment);
+      setTeacher(c.teacher ?? null);
       if (c.enrollment) setMyClass({ grade: c.enrollment.grade, classNo: c.enrollment.class_no });
       setProfileKnown(true);
     },
@@ -71,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole('student');
         setPlanner(false);
         setEnrollment(null);
+        setTeacher(null);
         setProfileKnown(false);
         return;
       }
@@ -107,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: (p.data?.role as Role) ?? 'student',
         planner: p.data?.is_planner === true,
         enrollment: (e.data as Enrollment | null) ?? null,
+        teacher: (p.data?.teacher_name as string | null | undefined) ?? null,
       };
       applyProfile(fresh);
       AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(fresh)).catch(() => {});
@@ -208,12 +214,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthState>(
     () => ({
-      status: loading ? 'loading' : !session ? 'signedOut' : !profileKnown ? 'loading' : enrollment ? 'ready' : 'needsEnrollment',
+      status: loading ? 'loading' : !session ? 'signedOut' : !profileKnown ? 'loading' : enrollment || teacher ? 'ready' : 'needsEnrollment',
       session,
       email: session?.user.email ?? null,
       role,
       planner,
       enrollment,
+      teacher,
       notice,
       signIn,
       signOut,
@@ -221,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       reload,
       clearNotice: () => setNotice(null),
     }),
-    [loading, session, profileKnown, role, planner, enrollment, notice, signIn, signOut, register, reload],
+    [loading, session, profileKnown, role, planner, enrollment, teacher, notice, signIn, signOut, register, reload],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

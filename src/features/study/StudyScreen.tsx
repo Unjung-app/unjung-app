@@ -9,6 +9,7 @@ import { useNow } from '@/features/hooks';
 import { inputStyle } from '@/features/voice/ui';
 import { dDayLabel, diffDays, longLabel } from '@/lib/date';
 import { REWARD } from '@/lib/rewards';
+import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { color, radius, space, subjectColor } from '@/theme/tokens';
@@ -26,7 +27,7 @@ const COLORS = Object.keys(subjectColor);
 export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
   const now = useNow();
-  const { status } = useAuth();
+  const { status, teacher } = useAuth();
   const { myClass } = usePrefs();
   const ready = status === 'ready';
   const dash = useDashboard(ready);
@@ -54,6 +55,7 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
     return [...set].slice(0, 8);
   }, [tt.items, dash.data?.subjects]);
 
+  if (teacher) return <StudentOnly what="스터디 윗미" topInset />;
   if (!ready) {
     return (
       <Screen topInset={!inStack}>
