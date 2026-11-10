@@ -189,7 +189,7 @@ function NoticeCard({ n, today, onReported }: { n: Notice; today: string; onRepo
           {n.body}
         </AppText>
         <AppText variant="caption" color={color.inkFaint}>
-          {n.mine ? '내가 올림' : n.author_nickname ?? `${n.author_grade ?? ''}학년 학생`} · {shortLabel(n.show_until)}까지 게시
+          {n.author_teacher ? `👩‍🏫 ${n.author_teacher} 선생님` : n.mine ? '내가 올림' : n.author_nickname ?? `${n.author_grade ?? ''}학년 학생`} · {shortLabel(n.show_until)}까지 게시
         </AppText>
       </Pressable>
       {open && !n.mine ? (

@@ -5,6 +5,7 @@ import { Badge, Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { parseStudentNo } from '@/lib/student';
 import { EnrollmentAdmin } from './EnrollmentAdmin';
+import { TeacherAdmin } from './TeacherAdmin';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { fontStyle } from '@/theme/fonts';
@@ -24,7 +25,7 @@ type Found = {
   balance?: number;
   is_study_manager?: boolean;
 };
-type Staff = { user_id: string; name: string | null; student_no: string | null; role: Role; is_planner?: boolean };
+type Staff = { user_id: string; name: string | null; student_no: string | null; role: Role; is_planner?: boolean; teacher?: boolean };
 const ROLE: Record<Role, string> = { student: '학생', reviewer: '검토위원', admin: '관리자' };
 type Msg = { ok: boolean; text: string } | null;
 
@@ -89,6 +90,7 @@ export function StaffScreen() {
         학생을 찾아 직책을 정하거나 학적·닉네임·토큰을 바로잡아요. 검토위원은 공지·신고·분실물 사진을, 기획행정부는 운중 보이스 설문과 건의 확인을 맡아요.
       </AppText>
       <EnrollmentAdmin />
+      <TeacherAdmin onChanged={loadStaff} />
       <Card>
         <AppText variant="label">학번 · 이름 · 닉네임 · 이메일로 찾기</AppText>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -120,7 +122,7 @@ export function StaffScreen() {
       </Card>
 
       <AppText variant="heading" style={{ marginTop: space.sm }}>
-        지금 직책을 맡은 학생
+        지금 직책을 맡은 사람
       </AppText>
       <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
         {(staff ?? []).map((s, i) => (
@@ -128,6 +130,7 @@ export function StaffScreen() {
             <AppText variant="bodyStrong" style={{ flex: 1 }}>
               {s.name ?? '학번 미등록'} {s.student_no ? `· ${s.student_no}` : ''}
             </AppText>
+            {s.teacher ? <Badge label="👩‍🏫 선생님" tone="muted" /> : null}
             {s.role !== 'student' ? <Badge label={ROLE[s.role]} tone={s.role === 'admin' ? 'accent' : 'success'} /> : null}
             {s.is_planner && s.role !== 'admin' ? <Badge label="기획행정부" tone="success" /> : null}
           </View>

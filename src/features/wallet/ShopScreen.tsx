@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { ProfileCard } from '@/components/NameTag';
 import { LoginPrompt } from '@/features/wallet/LoginPrompt';
 import { seoulNow } from '@/lib/date';
+import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { useWallet, type Equip, type ShopItem, type ShopKind } from '@/state/wallet';
 import { color, nameColor, profileTheme, radius, space } from '@/theme/tokens';
@@ -29,7 +30,7 @@ const EQUIP_KEY: Record<Exclude<ShopKind, 'shield'>, keyof Equip> = {
 const md = (d: string) => `${Number(d.slice(5, 7))}월 ${Number(d.slice(8, 10))}일`;
 
 export function ShopScreen() {
-  const { status } = useAuth();
+  const { status, teacher } = useAuth();
   const { wallet, items, itemById, loadItems, buy, equip } = useWallet();
   const [selected, setSelected] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -57,6 +58,7 @@ export function ShopScreen() {
   }, [wallet?.equip, sel]);
 
   if (status === 'signedOut') return <LoginPrompt what="꾸미기 상점" />;
+  if (teacher) return <StudentOnly what="꾸미기 상점" />;
 
   const pick = (id: string) => {
     setSelected(id === selected ? null : id);
