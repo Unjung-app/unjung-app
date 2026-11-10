@@ -57,7 +57,7 @@ export function TeacherForm({ initial, onSaved }: { initial?: TeacherInfo | null
     <Card style={{ gap: space.md }}>
       <View style={{ gap: space.xs }}>
         <AppText variant="label">이름 (실명)</AppText>
-        <TextInput accessibilityLabel="선생님 이름" value={name} onChangeText={(t) => setName(t.slice(0, 5))} placeholder="예) 박경애" placeholderTextColor={color.inkFaint} style={input} />
+        <TextInput accessibilityLabel="선생님 이름" value={name} onChangeText={(t) => setName(t.slice(0, 5))} placeholder="예) 김운중" placeholderTextColor={color.inkFaint} style={input} />
         <AppText variant="caption" color={color.inkMuted}>
           공지·행사 사진·설문에 &apos;👩‍🏫 {nameOk ? name.trim() : '○○○'} 선생님&apos;으로 보여요.
         </AppText>
