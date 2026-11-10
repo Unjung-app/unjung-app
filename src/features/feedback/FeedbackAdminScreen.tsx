@@ -31,7 +31,8 @@ type Row = {
 
 /** 관리자·개발자: 학생 의견 처리(개발자는 확인 중·답변까지). '반영 완료'로 바꾸면 작성자에게 +10 토큰(서버가 한 번만 지급). */
 export function FeedbackAdminScreen() {
-  const { staff, admin, checked } = useStaffAccess();
+  const { admin, developer, checked } = useStaffAccess();
+  const staff = admin || developer; // 선생님(관리자 아님)은 의견 관리 대상 아님
   const [filter, setFilter] = useState<'open' | 'all' | 'game'>('open');
   const [rows, setRows] = useState<Row[] | null>(null);
 

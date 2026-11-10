@@ -85,6 +85,8 @@ function Root() {
         <Stack.Screen name="settings/class" options={{ title: '내 반 설정' }} />
         <Stack.Screen name="settings/install" options={{ title: '홈 화면에 추가' }} />
         <Stack.Screen name="settings/updates" options={{ title: '업데이트 소식' }} />
+        <Stack.Screen name="settings/teacher" options={{ title: '선생님 정보' }} />
+        <Stack.Screen name="study/teacher" options={{ title: '스터디 윗미 · 반별 기록' }} />
         <Stack.Screen name="settings/nickname" options={{ title: '닉네임' }} />
         <Stack.Screen name="settings/notifications" options={{ title: '알림' }} />
         <Stack.Screen name="settings/enrollment" options={{ title: '내 학번·이름' }} />
