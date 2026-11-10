@@ -5,7 +5,7 @@ import { useRemote } from '@/lib/api';
 import type { Lesson, Meal, SchoolEvent } from '@/lib/school';
 import type { MyClass } from '@/state/prefs';
 import { sampleMeals, sampleSchedule, sampleTimetable } from './samples';
-import { writingSection } from './timetable/writingSections';
+import { applyWritingChanges, writingSection } from './timetable/writingSections';
 import { roomLabel, splitTags } from './timetable/subjects';
 
 /** 화면용 수업: '[보강]' 같은 표시는 tags로 떼고, 자기 교실 번호는 숨긴다 */
@@ -22,19 +22,19 @@ export function useWeekTimetable(anyDayInWeek: string, myClass: MyClass | null) 
     ? `/api/timetable?grade=${myClass.grade}&class=${myClass.classNo}&from=${monday}&to=${addDays(monday, 4)}`
     : null;
   const remote = useRemote<Lesson>(path, () => sampleTimetable(monday));
-  const items = useMemo<ClassLesson[]>(
-    () =>
-      remote.items.map((l) => {
+  const items = useMemo<ClassLesson[]>(() => {
+    const isSecondGrade = myClass?.grade === 2 && remote.source !== 'sample';
+    const lessons = isSecondGrade ? applyWritingChanges(remote.items, myClass.classNo) : remote.items;
+    return lessons.map((l) => {
         const { name, tags } = splitTags(l.subject);
         return {
           ...l, subject: name, tags, room: roomLabel(l.room, myClass?.classNo),
-          writingSection: myClass?.grade === 2 && remote.source !== 'sample'
+          writingSection: isSecondGrade
             ? writingSection(l.date, l.period, name, myClass.classNo)
             : undefined,
         };
-      }),
-    [remote.items, remote.source, myClass?.grade, myClass?.classNo],
-  );
+    });
+  }, [remote.items, remote.source, myClass?.grade, myClass?.classNo]);
   return { ...remote, items };
 }
 
