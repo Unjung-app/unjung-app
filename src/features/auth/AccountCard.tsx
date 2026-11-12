@@ -12,7 +12,7 @@ const ROLE_LABEL = { student: '학생', reviewer: '검토위원', admin: '관리
 /** 전체·설정 화면 맨 위의 계정 카드 */
 export function AccountCard({ isDeveloper = false }: { isDeveloper?: boolean } = {}) {
   const router = useRouter();
-  const { status, email, enrollment, role, teacher, signOut } = useAuth();
+  const { status, email, enrollment, role, teacher, teacherInfo, signOut } = useAuth();
   const [confirmOut, setConfirmOut] = useState(false);
 
   if (status === 'signedOut' || status === 'loading') {
@@ -46,6 +46,7 @@ export function AccountCard({ isDeveloper = false }: { isDeveloper?: boolean } =
         </View>
         <AppText variant="caption" color={color.inkMuted}>
           {enrollment ? `${enrollment.grade}학년 ${enrollment.class_no}반 ${enrollment.number}번 · ` : ''}
+          {teacherInfo ? [teacherInfo.homeGrade ? `${teacherInfo.homeGrade}-${teacherInfo.homeClass} 담임` : null, teacherInfo.dept].filter(Boolean).join(' · ') + (teacherInfo.homeGrade || teacherInfo.dept ? ' · ' : '') : ''}
           {email}
         </AppText>
       </View>
@@ -53,6 +54,12 @@ export function AccountCard({ isDeveloper = false }: { isDeveloper?: boolean } =
         <>
           <Divider />
           <ListRow icon="pin" title="학번·이름 등록하기" onPress={() => router.push('/onboarding')} />
+        </>
+      ) : null}
+      {teacher ? (
+        <>
+          <Divider />
+          <ListRow icon="pin" title="선생님 정보 고치기" subtitle="이름 · 담임 반 · 담당" onPress={() => router.push('/settings/teacher')} />
         </>
       ) : null}
       {enrollment ? (

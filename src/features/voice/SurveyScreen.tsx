@@ -48,7 +48,7 @@ export function SurveyScreen() {
 
   const canAnswer = data.is_open && !data.responded;
   const pending = data.status === 'requested' || data.status === 'rejected';
-  const by = data.from_student ? '학생 설문 (기획행정부 승인)' : '학생자치회 기획행정부';
+  const by = data.author_teacher ? `👩‍🏫 ${data.author_teacher} 선생님` : data.from_student ? '학생 설문 (기획행정부 승인)' : '학생자치회 기획행정부';
 
   return (
     <Screen topInset={false} onRefresh={reload}>
@@ -87,7 +87,7 @@ export function SurveyScreen() {
         <Results survey={data} mine={mine} planner={planner || !!data.owner} />
       )}
 
-      {planner && !pending ? <PlannerTools survey={data} onChanged={reload} onDeleted={() => router.back()} /> : null}
+      {(planner || data.owner) && !pending ? <PlannerTools survey={data} onChanged={reload} onDeleted={() => router.back()} /> : null}
     </Screen>
   );
 }

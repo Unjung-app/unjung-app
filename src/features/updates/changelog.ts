@@ -5,6 +5,15 @@ export type ChangeEntry = { version: string; date: string; title: string; items:
 
 export const CHANGELOG: ChangeEntry[] = [
   {
+    version: '1.3.0',
+    date: '2026-11-10',
+    title: '선생님도 함께 써요',
+    items: [
+      '👩‍🏫 선생님도 학교 계정으로 로그인해요. 선생님 공지·행사 사진·설문에는 \'선생님\' 표시가 붙어요',
+      '📢 선생님 공지는 전체·학년·반을 골라 바로 올라와요',
+    ],
+  },
+  {
     version: '1.2.1',
     date: '2026-11-09',
     title: '선생님 계정',

@@ -20,7 +20,7 @@ const DAYS = [1, 3, 5, 7, 14];
 export function SurveyComposeScreen() {
   const router = useRouter();
   const now = useNow();
-  const { planner, status } = useAuth();
+  const { planner, status, teacher } = useAuth();
   const navigation = useNavigation();
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -32,7 +32,7 @@ export function SurveyComposeScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // 기획행정부가 아니면 '신청' (11-09 결정: 학생이 신청 → 기획행정부 승인)
-  const asRequest = !planner;
+  const asRequest = !planner && !teacher;
   useLayoutEffect(() => {
     navigation.setOptions({ title: asRequest ? '설문 신청' : '설문 만들기' });
   }, [navigation, asRequest]);

@@ -126,7 +126,8 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 -- 학생 목록에는 올라간 설문만
-create or replace view public.survey_feed as
+drop view if exists public.survey_feed; -- 열이 바뀌어도 다시 실행할 수 있게
+create view public.survey_feed as
   select s.id, s.title, s.description, s.scope_grade, s.results, s.opens_at, s.closes_at,
          public.survey_is_open(s) as is_open,
          exists (select 1 from public.survey_responses r where r.survey_id = s.id and r.user_id = auth.uid()) as responded,
@@ -138,6 +139,8 @@ create or replace view public.survey_feed as
    where public.is_school_user() and s.status in ('open', 'closed')
      and s.closes_at > now() - interval '30 days'
      and (public.is_planner() or public.survey_for_me(s));
+revoke all on public.survey_feed from public, anon;
+grant select on public.survey_feed to authenticated;
 
 -- 신청 목록: 기획행정부는 검토할 것 전부, 학생은 내 신청(30일)
 create or replace function public.survey_requests()

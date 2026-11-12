@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>판교 개미 투자왕</title>
+<script>
+/* ===================== 앱 연결 코드 (고치지 마세요) =====================
+   앱 안에서 열리면 진짜 앱과 연결되고, 그냥 브라우저·AI 미리보기에서 열면
+   가짜(연습용)로 동작합니다. 그래서 앱 없이도 게임을 끝까지 만들어 볼 수 있어요.
+
+   UnjungGame.player            → { nickname: '닉네임', grade: 2 }  (연습용에선 '테스트')
+   UnjungGame.submitScore(n)    → 게임이 끝날 때 점수(정수)를 보냄. 결과: Promise<{ best }>
+                                  앱은 1.5초 뒤 결과 화면(한 판 더 / 나가기)으로 게임을 덮어요.
+   UnjungGame.submitScore(n, { hold: true }) → 점수만 기록하고, 게임의 결과 화면을 계속 보여 줘요.
+                                  그 화면의 '계속' 버튼에서 UnjungGame.done() 을 부르면 앱 결과 화면이 떠요.
+   UnjungGame.done()            → (hold로 보낸 뒤) 앱 결과 화면 열기
+   UnjungGame.getStudyMinutes() → 오늘 스터디 윗미 공부 시간(분). Promise<number> (연습용에선 0)
+   UnjungGame.save(obj)         → 이어하기용 저장(작은 데이터, 10KB까지). Promise
+   UnjungGame.load()            → 저장한 것 불러오기. Promise<obj | null>
+   UnjungGame.onPause(fn)       → 앱이 게임을 멈출 때(수업 시작 등) 부름
+   UnjungGame.exit()            → 앱으로 돌아가기
+========================================================================== */
+(function () {
+  const inApp = window.parent !== window && /[?&]unjung=1/.test(location.search);
+  const listeners = { pause: [] };
+  let seq = 0; const waiting = {};
+  function ask(type, data) {
+    if (!inApp) return Promise.resolve(null);
+    return new Promise((resolve) => { const id = ++seq; waiting[id] = resolve; window.parent.postMessage({ unjung: 1, id, type, data }, '*'); setTimeout(() => { if (waiting[id]) { delete waiting[id]; resolve(null); } }, 8000); });
+  }
+  window.addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.unjung !== 1) return;
+    if (m.reply && waiting[m.reply]) { waiting[m.reply](m.data); delete waiting[m.reply]; }
+    if (m.type === 'player') Object.assign(api.player, m.data || {});
+    if (m.type === 'pause') listeners.pause.forEach((f) => f());
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) listeners.pause.forEach((f) => f()); });
+  const KEY = 'unjung-game-practice';
+  const api = {
+    inApp,
+    player: { nickname: inApp ? '' : '테스트', grade: 2 },
+    submitScore(n, opts) {
+      n = Math.max(0, Math.floor(Number(n) || 0));
+      if (inApp) return ask('score', { score: n, hold: !!(opts && opts.hold) }).then((r) => r || { best: n });
+      let best = n; try { best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best); } catch (e) {}
+      return Promise.resolve({ best });
+    },
+    save(obj) { const s = JSON.stringify(obj ?? null); if (s.length > 10000) return Promise.reject(new Error('저장 데이터가 너무 커요(10KB까지)'));
+      if (inApp) return ask('save', s); try { localStorage.setItem(KEY + ':save', s); } catch (e) { return Promise.resolve(false); } return Promise.resolve(true); },
+    load() { if (inApp) return ask('load').then((s) => (s ? JSON.parse(s) : null)); try { return Promise.resolve(JSON.parse(localStorage.getItem(KEY + ':save'))); } catch { return Promise.resolve(null); } },
+    onPause(fn) { listeners.pause.push(fn); },
+    exit() { if (inApp) ask('exit'); },
+    done() { if (inApp) ask('done'); },
+    getStudyMinutes() { return inApp ? ask('study').then((m) => Math.max(0, Math.floor(Number(m) || 0))) : Promise.resolve(0); },
+  };
+  window.UnjungGame = api;
+  ask('ready');
+})();
+/* ======================= 앱 연결 코드 끝 ======================= */
+</script>
+<style>
+:root{--bg:#f2f4f6;--card:#fff;--tx:#191f28;--sub:#8b95a1;--bd:#eceef1;--up:#f04452;--dn:#3182f6;--pri:#3182f6;--pl:#e8f3ff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#101114;--card:#1c1e23;--tx:#f2f4f6;--sub:#8b95a1;--bd:#2b2e35;--up:#ff6270;--dn:#5b9bff;--pri:#4a8cff;--pl:#1f2c44;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.app{max-width:1100px;margin:0 auto;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+.wrap{display:block}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px}
+.sub{color:var(--sub);font-size:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.up{color:var(--up)}.dn{color:var(--dn)}
+h3{margin:0 0 8px;font-size:15px}
+button{font:inherit;cursor:pointer;color:var(--tx)}
+.btn{border:0;border-radius:12px;padding:13px;font-weight:700;font-size:15px;color:#fff}
+.btn:disabled{opacity:.4}
+.b-buy{background:var(--up)}.b-sell{background:var(--dn)}
+.chip{background:var(--pl);color:var(--pri);border:0;border-radius:999px;padding:7px 12px;font-weight:600;font-size:13px}
+.chip.on{background:var(--pri);color:#fff}
+.hb{font-size:28px;font-weight:800;letter-spacing:-.5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}
+.two b{display:block;font-size:16px}
+canvas{display:block;width:100%}
+#nw{height:70px;margin:8px 0}
+.gauge{height:6px;border-radius:3px;background:var(--bd);overflow:hidden;margin-top:10px}
+.gauge i{display:block;height:100%;width:0;background:var(--pri);border-radius:3px}
+.ctl{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.nl{padding:8px 0;border-top:1px solid var(--bd);font-size:13px}
+.rw{display:flex;align-items:center;gap:12px;padding:12px 8px;border-top:1px solid var(--bd);cursor:pointer;border-radius:12px}
+.rw:first-child{border-top:0}
+.rw.sel{background:var(--pl)}
+.ic{width:40px;height:40px;border-radius:50%;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.rm{flex:1;min-width:0}.nm{font-weight:700}
+.sp{width:56px;height:28px;flex:none}
+.rp{text-align:right;min-width:92px}.pr{font-weight:700}.cg{font-size:12px;font-weight:600}
+.scb{display:inline-block;font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:6px;color:#fff;vertical-align:middle}
+.scb.b{background:#d63a3f}.scb.s{background:#2557c9}
+#log{font-size:12px;color:var(--sub);max-height:120px;overflow:auto}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.g3 button{border:0;background:var(--pl);color:var(--pri);border-radius:12px;padding:10px;font-weight:700}
+.g3 button .sub{color:var(--pri);opacity:.8}
+.nws{border-top:1px solid var(--bd);padding:10px 0;font-size:13px}
+.bd{display:inline-block;font-size:11px;border:1px solid var(--bd);border-radius:4px;padding:0 5px;margin-right:4px}
+.hold{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hold b{display:block;font-size:15px}
+/* 상세 화면 */
+#det{display:none;position:fixed;inset:0;z-index:10;background:var(--bg);flex-direction:column}
+#det.open{display:flex}
+.dh{display:flex;align-items:center;gap:8px;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));background:var(--card)}
+#back{border:0;background:none;font-size:26px;line-height:1;padding:0 8px}
+.dbody{flex:1;overflow-y:auto;padding:12px}
+.dbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));background:var(--card)}
+#dG{height:170px;margin-top:10px}
+.tag{font-size:11px;color:var(--pri);background:var(--pl);border-radius:6px;padding:1px 7px;font-weight:700}
+/* 거래창 */
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:30}
+#sheet[hidden]{display:none}
+.sh{width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.seg button{border:0;border-radius:10px;padding:10px;font-weight:700;background:var(--bg)}
+.seg button.on{background:var(--pri);color:#fff}
+.qrow{display:flex;gap:8px;align-items:center;justify-content:center;margin:12px 0}
+.qrow button{width:48px;height:46px;font-size:22px;border:0;border-radius:12px;background:var(--bg)}
+#qi{width:130px;height:46px;font-size:20px;font-weight:700;text-align:center;border:0;border-radius:12px;background:var(--bg);color:var(--tx)}
+#sOK{width:100%;margin-top:10px;font-size:16px}
+.x{border:0;background:none;font-size:20px}
+.tip{margin-top:12px;background:var(--pl);color:var(--pri);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600}
+#help{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+#help[hidden],#res[hidden]{display:none!important}
+.hc{background:var(--card);border-radius:20px;padding:20px;max-width:440px;width:100%;max-height:85dvh;overflow:auto}
+.hc ol{padding-left:20px;margin:12px 0}.hc li{margin:9px 0}
+@media (min-width:900px){
+ .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+ #det{display:flex;position:sticky;top:12px;inset:auto;height:calc(100dvh - 24px);border-radius:16px;overflow:hidden;background:var(--bg)}
+ .dh{padding-top:12px}#back{display:none}
+}
+.res h2{margin:4px 0 2px;font-size:30px;letter-spacing:-.5px}.res .big{font-size:15px;margin:6px 0 14px}.res .btn{width:100%;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="app"><div class="wrap">
+<div class="main">
+  <div class="card">
+    <div class="sub">내 총 자산</div><div class="hb" id="net"></div><div id="pl" style="font-weight:600"></div>
+    <div class="two"><div><span class="sub">보유 현금</span><b id="cash"></b></div><div><span class="sub">현재 턴 (1턴 = 20초)</span><b id="date"></b></div></div>
+    <canvas id="nw"></canvas>
+    <div class="gauge"><i id="gf"></i></div><div class="sub" id="gl" style="margin-top:4px"></div>
+    <div class="ctl" id="ctl"></div>
+    <div class="tip" id="tip"></div>
+  </div>
+  <div class="card" id="bn"></div>
+  <div class="card"><h3>투자 종목</h3><div id="list"></div></div>
+  <div class="card"><div class="row"><h3 style="margin:0">이벤트</h3><button class="chip" id="reset">↺ 다시 시작</button></div><div id="log" style="margin-top:8px"></div></div>
+</div>
+<div id="det">
+  <div class="dh"><button id="back">‹</button><b id="dN" style="font-size:17px"></b><span class="tag" id="dT"></span></div>
+  <div class="dbody" id="dbody">
+    <div class="card"><div class="row"><span class="sub">현재가</span><span id="dS"></span></div>
+      <div class="hb" id="dP"></div><div id="dC" style="font-weight:600"></div><canvas id="dG"></canvas></div>
+    <div class="card"><h3>내 보유</h3><div id="dH"></div></div>
+    <div class="card"><h3>📰 뉴스</h3>
+      <div class="sub">힌트를 사면 다음 변동에 대한 소식을 볼 수 있어요. 신뢰도가 높을수록 비싸고 정확해요.</div>
+      <div class="g3" id="dL"></div><div id="dF"></div></div>
+  </div>
+  <div class="dbar"><button class="btn b-sell" id="dSell">매도</button><button class="btn b-buy" id="dBuy">매수</button></div>
+</div>
+</div></div>
+<div id="help" hidden><div class="hc"><h3 style="font-size:18px">📖 게임 방법</h3>
+<ol>
+<li><b>목표</b>: 현금 1억 원으로 주식과 부동산에 투자해 자산을 불려 보세요. <b>30턴(1배속 약 10분)</b>이 지나면 결산해요. 점수는 최종 자산(백만 원 단위)이에요. 🏁 버튼으로 일찍 결산할 수도 있어요.</li>
+<li><b>시간</b>: 1턴은 20초예요. 주식은 <b>매 턴</b>, 부동산은 <b>10턴마다</b> 가격이 바뀌어요. 상단 버튼으로 일시정지·배속을 할 수 있어요.</li>
+<li><b>거래</b>: 종목을 누르면 상세 화면이 열려요. 아래 <b>매수/매도</b>를 누르세요. 거래창이 열려 있는 동안은 시간이 멈춰요.</li>
+<li><b>뉴스</b>: 위쪽 기본 뉴스는 무료지만 애매해요. 종목 상세에서 <b>힌트</b>를 사면 다음 변동에 대한 소식을 볼 수 있고, 신뢰도가 높을수록 비싸고 정확해요.</li>
+<li><b>사이드카</b>: 크게 오르면 매수, 크게 내리면 매도가 잠시 멈추는 안전장치예요.</li>
+<li><b>서킷브레이커</b>: 세 학교 주식의 평균이 한 턴에 20% 이상 떨어지면 모든 주식 거래가 2턴간 멈춰요.</li>
+<li><b>상장폐지</b>: 주가가 처음보다 80% 이상 떨어지면 경고가 뜨고, 그 상태가 3턴 이어지면 상장폐지되어 보유 주식이 사라져요.</li>
+<li><b>비용</b>: 주식은 팔 때 수수료 0.2%, 부동산은 사고팔 때 각각 2%예요. 부동산은 보유하면 월세가 들어와요.</li>
+<li><b>색깔</b>: 빨강은 상승, 파랑은 하락이에요.</li>
+</ol><button class="btn b-buy" id="hOK" style="width:100%;background:var(--pri)">시작하기</button></div></div>
+<div id="res" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px"><div class="hc res" id="resC"></div></div>
+<div id="sheet" hidden><div class="sh">
+  <div class="row"><b id="sT" style="font-size:16px"></b><button class="x" id="sX">✕</button></div>
+  <div class="seg"><button id="mB" class="on">매수</button><button id="mS">매도</button></div>
+  <div class="sub" id="sI" style="margin-top:10px"></div>
+  <div class="qrow"><button id="qm">−</button><input id="qi" type="number" inputmode="numeric" min="0" placeholder="0"><button id="qp">+</button></div>
+  <div class="row" id="chips" style="flex-wrap:wrap;justify-content:center;gap:6px"></div>
+  <div class="sub" id="sE" style="text-align:center;margin-top:10px"></div>
+  <div class="sub" style="text-align:center;margin-top:4px">⏸ 거래창이 열려 있는 동안은 시간이 멈춰요</div>
+  <button id="sOK" class="btn"></button>
+</div></div>
+<script>
+const END=30,START=1e8,DAY=20,SDT=20,RINT=10,RENT=.001,SFEE=.002,RFEE=.02;
+const ST=[[.60,.1,5],[.20,5,10],[.15,10,20],[.04,20,40],[.008,40,100],[.002,100,300]];
+const RT=[[.45,.1,5],[.25,5,10],[.18,10,20],[.08,20,40],[.035,40,100],[.005,100,300]];
+const DEF=[
+ {n:'운중고등학교',t:'s',p:30000},{n:'판교고등학교',t:'s',p:50000},{n:'낙생고등학교',t:'s',p:15000},
+ {n:'판교동',t:'r',p:1500000000},{n:'운중동',t:'r',p:1000000000},{n:'대장동',t:'r',p:800000000}];
+const HP=[125000,750000,2500000],HN=['낮음','중간','높음'],HACC=[.6,.78,.93];
+const NS={s:[
+ {p:['{n} 신축 체육관 건립 추진 소문','{n} 급식 만족도 상승, 학부모 반응 좋다는 후문','{n} 학생회 축제 수익이 예상보다 크다는 소문'],
+  m:['{n} 학생회 예산 횡령 의혹','{n} 재정이 바닥나기 직전이라는 소문','{n} 매점 적자 누적 의혹']},
+ {p:['{n}, 외부 장학금 유치 협의 중인 것으로 알려져','{n} 입학 경쟁률 상승 전망','{n} 동문회 발전기금 증액 논의'],
+  m:['{n}, 감사에서 회계 지적사항 나온 것으로 알려져','{n} 지원 예산 삭감 가능성 제기','{n} 시설 보수 비용 급증 보도']},
+ {p:['[공시] {n}, 발전기금 대규모 확정','[공시] {n} 신축 건물 준공 승인','[속보] {n} 우수학교 선정'],
+  m:['[공시] {n}, 감사 결과 회계 부정 확인','[공시] {n} 재정 적자 확정, 지원 중단','[속보] {n} 시설 사고로 운영 차질']}],
+ r:[
+ {p:['{n} 신규 교통 호재 소문','{n} 재건축 기대감이 돈다는 이야기','{n} 학군 수요 늘었다는 후문'],
+  m:['{n} 주변 공급 과잉 우려 소문','{n} 입주 물량 부담이라는 이야기','{n} 거래가 뜸하다는 후문']},
+ {p:['{n} 인근 개발 계획 논의 중인 것으로 알려져','{n} 전세 수요 증가 보도','{n} 신규 상권 조성 검토'],
+  m:['{n} 대출 규제 영향권이라는 보도','{n} 인근 미분양 증가 보도','{n} 보유세 부담 논의']},
+ {p:['[공고] {n} 개발계획 확정','[공고] {n} 광역 교통망 착공','[속보] {n} 재건축 승인'],
+  m:['[공고] {n} 대규모 입주 물량 확정','[공고] {n} 개발 계획 철회','[속보] {n} 규제지역 지정']}]};
+const BN=[
+ {k:'m',t:'교육청, 학교 지원 방침 조정 검토',p:'지원을 늘리는 쪽으로 이야기가 오간다고 함',m:'지원을 줄이는 쪽 이야기도 거론된다고 함'},
+ {k:'m',t:'전국 학력평가 일정 발표',p:'평가 결과에 대한 기대감이 번지는 분위기',m:'평가 부담에 대한 우려가 번지는 분위기'},
+ {k:'m',t:'학교 급식 단가 조정 논의',p:'단가가 오르는 쪽으로 기운다는 이야기',m:'동결 또는 삭감 쪽 분위기라는 이야기'},
+ {k:'m',t:'학령인구 통계 발표 임박',p:'예상보다 나쁘지 않을 거라는 관측',m:'예상보다 좋지 않을 거라는 관측'},
+ {k:'s',t:'{n} 이사회 비공개 회의 진행',p:'긍정적인 안건이 오갔다는 후문',m:'민감한 안건이 오갔다는 후문'},
+ {k:'s',t:'{n} 인근 공사 소식',p:'편의시설 관련 소식으로 전해짐',m:'소음·민원 관련 소식으로 전해짐'},
+ {k:'s',t:'{n} 교장 면담 일정 포착',p:'학교 발전 논의일 가능성',m:'문제 대응 논의일 가능성'},
+ {k:'s',t:'{n} 졸업생 동향에 관심',p:'동문 쪽 분위기가 좋다는 이야기',m:'동문 쪽 분위기가 무겁다는 이야기'}];
+const SC={s:{th:20,dur:1},r:{th:30,dur:2}};
+let S,speed=1,paused=false,sNext,log=[],T=null,sel=0,nc=false,rs=0,HO=false;
+const $=id=>document.getElementById(id);
+function won(n){n=Math.round(n);const a=Math.abs(n);if(a>=1e8)return(n/1e8).toFixed(2)+'억';if(a>=1e4)return Math.round(n/1e4).toLocaleString('ko-KR')+'만';return n.toLocaleString('ko-KR')+'원'}
+function full(n){return Math.round(n).toLocaleString('ko-KR')+'원'}
+function pct(x){return(x>=0?'+':'')+x.toFixed(2)+'%'}
+function rnd(a,b){return a+Math.random()*(b-a)}
+function pick(l){return l[Math.floor(Math.random()*l.length)]}
+function move(tiers,pu){let r=Math.random(),c=0,t=tiers[tiers.length-1];for(const x of tiers){c+=x[0];if(r<c){t=x;break}}
+ const m=rnd(t[1],t[2]),up=Math.random()<pu;return up?m:-Math.min(m,90)}
+function pu(a){if(a.t==='r')return .65;let p=.65;(S.batch||[]).forEach(b=>{if(b.tg==='all'||b.tg===a.i)p+=b.d});return Math.max(.15,Math.min(.92,p))}
+function init(){
+ S={cash:START,game:0,day:0,nwh:[START],hints:[],a:DEF.map((d,i)=>({...d,i,p0:d.p,low:0,dl:false,prev:d.p,hist:[d.p],qty:0,cost:0,chg:0,next:move(d.t==='s'?ST:RT,.65)}))};
+ sNext=SDT;log=[];T=null;$('sheet').hidden=true;build();newBatch();say('게임 시작! 현금 '+won(START));update();
+}
+function say(t){log.unshift(t);log=log.slice(0,10);$('log').innerHTML=log.map(x=>'<div>'+x+'</div>').join('')}
+function newBatch(){
+ const stocks=S.a.filter(a=>a.t==='s'),pool=[...BN].sort(()=>Math.random()-.5).slice(0,3),used=[];
+ S.batch=pool.map(b=>{let tg='all',nm='';
+  if(b.k==='s'){const c=stocks.filter(a=>!used.includes(a.i)),a=pick(c.length?c:stocks);used.push(a.i);tg=a.i;nm=a.n}
+  const d=(Math.random()<.5?1:-1)*rnd(.10,.22),tone=Math.random()<.75?Math.sign(d):-Math.sign(d);
+  return{title:b.t.replace('{n}',nm),tg,d,body:b[tone>0?'p':'m']}});
+ stocks.forEach(a=>a.next=move(ST,pu(a)));say('📋 새 기본 뉴스가 도착했어요');
+}
+function build(){
+ $('list').innerHTML=S.a.map(a=>`<div class="rw" data-i="${a.i}"><div class="ic" style="background:${a.t==='s'?'#3182f6':'#00b493'}">${a.n[0]}</div><div class="rm"><div class="nm">${a.n}<span id="sc${a.i}"></span></div><div class="sub" id="rs${a.i}"></div></div><canvas class="sp" id="g${a.i}"></canvas><div class="rp"><div class="pr" id="p${a.i}"></div><div class="cg" id="c${a.i}"></div></div></div>`).join('');
+ document.querySelectorAll('.rw').forEach(r=>r.onclick=()=>{sel=+r.dataset.i;$('det').classList.add('open');$('dbody').scrollTop=0;update()});
+}
+$('back').onclick=()=>$('det').classList.remove('open');
+const unitP=a=>a.t==='s'?a.p:a.p/100;
+const held=a=>a.t==='s'?a.qty:Math.round(a.qty*100);
+const fee=(a,m)=>a.t==='r'?RFEE:(m==='s'?SFEE:0);
+const maxQ=(a,m)=>m==='b'?Math.max(0,Math.floor(S.cash/(unitP(a)*(1+fee(a,'b')))+1e-9)):held(a);
+const uname=a=>a.t==='s'?'주':'%';
+const why=(a,m)=>a.dl?'상장폐지된 종목이에요':(S.cb&&a.t==='s')?`서킷브레이커로 주식 거래가 정지 중이에요 (${S.cb.until-S.day}턴)`:(a.sc&&a.sc.t===m)?`${m==='b'?'매수':'매도'} 사이드카로 ${m==='b'?'매수':'매도'}가 정지 중이에요 (${a.sc.until-S.day}턴)`:'';
+const blocked=(a,m)=>!!why(a,m);
+const priceStr=a=>a.dl?'상장폐지':a.t==='s'?a.p.toLocaleString('ko-KR')+'원':won(a.p);
+const badge=a=>(S.cb&&a.t==='s'&&!a.dl?`<span class="scb" style="background:#7b2cbf">서킷브레이커 ${S.cb.until-S.day}턴</span>`:'')+(a.sc&&!a.dl?`<span class="scb ${a.sc.t}">${a.sc.t==='b'?'매수':'매도'} 사이드카 ${a.sc.until-S.day}턴</span>`:'')+(a.low&&!a.dl?`<span class="scb" style="background:#e08a00">상장폐지 경고 ${a.low}/3</span>`:'')+(a.dl?'<span class="scb" style="background:#6b7280">상장폐지</span>':'');
+function buy(a,q){
+ const qty=a.t==='s'?q:q/100,cost=qty*a.p*(1+fee(a,'b'));
+ if(blocked(a,'b')){say(why(a,'b'));return}
+ if(q<=0||cost>S.cash+1e-6){say('현금이 부족합니다');return}
+ S.cash=Math.max(0,Math.round(S.cash-cost));a.qty+=qty;a.cost+=cost;
+ say(`${a.n} ${q}${a.t==='s'?'주':'% 지분'} 매수 (${won(cost)})`);
+}
+function sell(a,q){
+ const h=held(a);
+ if(blocked(a,'s')){say(why(a,'s'));return}
+ if(q<=0||h<=0){say('보유 수량이 없습니다');return}
+ const qty=q>=h?a.qty:(a.t==='s'?q:q/100),get=qty*a.p*(1-fee(a,'s')),basis=a.cost*(qty/a.qty);
+ S.cash=Math.round(S.cash+get);a.cost-=basis;a.qty-=qty;if(a.qty<1e-9){a.qty=0;a.cost=0}
+ const r=(get/basis-1)*100;say(`${a.n} 매도 ${won(get)} <span class="${r>=0?'up':'dn'}">(${pct(r)})</span>`);
+}
+/* 거래창 */
+function openSheet(a,m){T={a,m,q:0};$('sheet').hidden=false;drawSheet();live()}
+function setQ(q){T.q=Math.max(0,Math.min(maxQ(T.a,T.m),Math.floor(q)||0));drawSheet()}
+function drawSheet(skip){
+ if(!T)return;const a=T.a,u=uname(a),mx=maxQ(a,T.m);if(T.q>mx)T.q=mx;
+ $('sT').textContent=a.n+' · '+priceStr(a);
+ $('mB').classList.toggle('on',T.m==='b');$('mS').classList.toggle('on',T.m==='s');
+ $('sI').textContent=`보유 ${held(a)}${u} · 현금 ${full(S.cash)} · 최대 ${mx}${u}`;
+ if(!skip){$('qi').value=T.q||'';
+  const st=a.t==='s'?[1,10,100]:[1,5,10];
+  $('chips').innerHTML=st.map(v=>`<button class="chip" data-c="${v}">+${v}${u}</button>`).join('')+(T.m==='b'?'<button class="chip" data-c="q25">현금 25%</button><button class="chip" data-c="q50">현금 50%</button><button class="chip" data-c="max">전부</button>':'<button class="chip" data-c="half">보유 절반</button><button class="chip" data-c="max">전량</button>')}
+ const g=T.q*unitP(a),f=fee(a,T.m),tot=T.m==='b'?g*(1+f):g*(1-f);
+ $('sE').textContent=(T.m==='b'?'예상 결제금액 ':'예상 수령금액 ')+won(tot)+(f?` (수수료 ${(f*100).toFixed(1)}%)`:'');
+ const ok=$('sOK'),bl=blocked(a,T.m);ok.className='btn '+(T.m==='b'?'b-buy':'b-sell');
+ ok.textContent=bl?'거래 정지 중':`${T.m==='b'?'매수':'매도'} ${T.q}${u}`;ok.disabled=T.q<=0||bl;if(bl)$('sE').textContent=why(a,T.m);
+}
+$('mB').onclick=()=>{T.m='b';T.q=0;drawSheet()};
+$('mS').onclick=()=>{T.m='s';T.q=0;drawSheet()};
+$('qm').onclick=()=>setQ(T.q-1);$('qp').onclick=()=>setQ(T.q+1);
+$('qi').oninput=e=>{T.q=Math.max(0,Math.min(maxQ(T.a,T.m),Math.floor(+e.target.value)||0));drawSheet(true)};
+$('qi').onblur=()=>drawSheet();
+$('chips').onclick=e=>{const c=e.target.dataset.c;if(!c)return;const mx=maxQ(T.a,T.m);
+ setQ(c==='half'?mx/2:c==='q25'?mx/4:c==='q50'?mx/2:c==='max'?mx:T.q+ +c)};
+$('sX').onclick=()=>{T=null;$('sheet').hidden=true;live()};
+$('sheet').onclick=e=>{if(e.target.id==='sheet')$('sX').onclick()};
+$('sOK').onclick=()=>{(T.m==='b'?buy:sell)(T.a,T.q);T=null;$('sheet').hidden=true;update()};
+$('dBuy').onclick=()=>openSheet(S.a[sel],'b');
+$('dSell').onclick=()=>openSheet(S.a[sel],'s');
+/* 뉴스 */
+function bucket(x){return x<5?'5% 이내':x<10?'5~10%':x<20?'10~20%':x<40?'20~40%':x<100?'40% 이상':'100% 이상'}
+function target(a){return a.t==='s'?S.day+1:(Math.floor(S.day/RINT)+1)*RINT}
+function hintCost(a,l){return HP[l]*(a.t==='r'?3:1)}
+function buyHint(l){
+ const a=S.a[sel],tg=target(a),c=hintCost(a,l);
+ if(a.dl){say('상장폐지된 종목이에요');return}
+ if(S.hints.some(h=>h.a===a.i&&h.t===tg&&h.l===l)){say('이미 구매한 뉴스예요');return}
+ if(c>S.cash){say(`현금이 부족합니다 (필요 ${full(c)} / 보유 ${full(S.cash)})`);return}
+ S.cash-=c;const m=a.next,truth=m>=0?1:-1,tone=Math.random()<HACC[l]?truth:-truth;
+ let text=pick(NS[a.t][l][tone>0?'p':'m']).replace('{n}',a.n);
+ if(l===2)text+=` (예상 변동폭 ${bucket(Math.abs(m))})`;
+ if(l===1)text+=Math.abs(m)<5?' · 영향 작음':Math.abs(m)<20?' · 영향 중간':' · 영향 큼';
+ S.hints.unshift({a:a.i,l,tone,text,t:tg,res:null});say(`📰 ${a.n} 뉴스 구매 (${HN[l]}, -${won(c)})`);update();
+}
+function resolve(a,tg,m){S.hints.forEach(h=>{if(h.a===a.i&&h.t===tg&&h.res===null)h.res=m})}
+$('dL').innerHTML=HN.map((n,l)=>`<button data-l="${l}">${n}<br><span class="sub">${['소문 수준','언론 보도','공식 발표'][l]}</span><br><span class="sub" id="hp${l}"></span></button>`).join('');
+$('dL').onclick=e=>{const b=e.target.closest('[data-l]');if(b)buyHint(+b.dataset.l)};
+function renderBasic(){
+ $('bn').innerHTML=`<div class="row" id="bh" style="cursor:pointer"><h3 style="margin:0">📋 기본 뉴스 <span class="sub">무료 · ${5-(S.day%5)}턴 후 갱신</span></h3><span class="sub">${nc?'▸':'▾'}</span></div>`+(nc?'':S.batch.map(b=>`<div class="nl"><b>${b.title}</b><div class="sub">${b.body}</div></div>`).join(''));
+ $('bh').onclick=()=>{nc=!nc;renderBasic()};
+}
+function hintHtml(h){const x=S.a[h.a],ok=h.res!==null&&(h.res>=0)===(h.tone>0);
+ const when=h.res!==null?`결과 ${pct(h.res)} · ${ok?'적중':'빗나감'}`:(x.t==='s'?'다음 턴 반영':`${h.t-S.day}턴 후 반영`);
+ return `<div class="nws"><span class="bd">${HN[h.l]}</span><span class="${h.tone>0?'up':'dn'}">${h.tone>0?'▲':'▼'}</span> ${h.text}<div class="sub">${when}</div></div>`}
+/* 시세 */
+function trig(a,m,base){const c=SC[a.t];if(Math.abs(m)<c.th)return;
+ a.sc={t:m>0?'b':'s',until:base+c.dur};
+ say(`🚨 ${a.n} ${m>0?'매수':'매도'} 사이드카 발동 (${pct(m)}) · ${c.dur}턴간 ${m>0?'매수':'매도'} 정지`)}
+function delist(a){a.dl=true;a.sc=null;a.qty=0;a.cost=0;say(`🪦 ${a.n} 상장폐지! 보유 주식이 모두 사라졌어요.`)}
+function stockTick(){
+ S.a.filter(a=>a.t==='s'&&!a.dl).forEach(a=>{
+  const m=a.next;a.next=move(ST,pu(a));resolve(a,S.day+1,m);
+  a.prev=a.p;a.p=Math.max(100,Math.round(a.p*(1+m/100)));
+  a.chg=(a.p/a.prev-1)*100;a.hist.push(a.p);if(a.hist.length>80)a.hist.shift();
+  trig(a,m,S.day+1);if(Math.abs(m)>=40)say(`⚡ ${a.n} 주가 <span class="${m>0?'up':'dn'}">${pct(m)}</span> 급변동!`);
+  if(a.p<=a.p0*.2){a.low++;if(a.low>=3)delist(a);else say(`⚠️ ${a.n} 상장폐지 경고 ${a.low}/3 · 최초 가격 대비 80% 이상 하락이 3턴 이어지면 상장폐지돼요`)}
+  else if(a.low){a.low=0;say(`✅ ${a.n} 상장폐지 경고 해제`)}
+ });
+ const act=S.a.filter(a=>a.t==='s'&&!a.dl);
+ if(act.length&&!S.cb){const avg=act.reduce((x,a)=>x+a.chg,0)/act.length;
+  if(avg<=-20){S.cb={until:S.day+3};say(`🚨 서킷브레이커 발동! 주식 평균 ${pct(avg)} · 모든 주식 거래가 2턴간 정지돼요`)}}
+}
+function propTick(){
+ S.a.filter(a=>a.t==='r').forEach(a=>{
+  const m=a.next;a.next=move(RT,.65);resolve(a,S.day,m);
+  a.prev=a.p;a.p=Math.max(1e7,Math.round(a.p*(1+m/100)));
+  a.chg=(a.p/a.prev-1)*100;a.hist.push(a.p);if(a.hist.length>80)a.hist.shift();
+  if(a.qty>0)S.cash=Math.round(S.cash+a.qty*a.prev*RENT);
+  trig(a,m,S.day);if(Math.abs(m)>=20)say(`🏠 ${a.n} 집값 <span class="${m>0?'up':'dn'}">${pct(m)}</span>`);
+ });
+ if(S.a.some(a=>a.t==='r'&&a.qty>0))say('월세 수입을 받았습니다');
+}
+function tip(){
+ const n=net(),pos=S.a.map(a=>a.qty*a.p),inv=pos.reduce((x,y)=>x+y,0);
+ if(S.cb)return '🚨 서킷브레이커 발동! 주식 거래가 멈췄어요. 부동산은 거래할 수 있어요.';if(S.a.some(a=>a.low&&!a.dl))return '⚠️ 상장폐지 경고 종목이 있어요. 보유 중이라면 어떻게 할지 고민해 보세요.';if(S.a.some(a=>a.sc))return '🚨 급등락으로 거래가 잠시 멈춘 종목이 있어요. 풀릴 때까지 기다려 봐요.';
+ if(inv===0)return '종목을 눌러 상세 화면을 보고, 소액으로 첫 매수를 해 보세요. 기본 뉴스도 참고해 보세요!';
+ if(S.cash<n*.05)return '현금이 거의 없어요. 오른 종목을 일부 팔아 현금을 확보해 두면 기회가 왔을 때 좋아요.';
+ if(Math.max(...pos)>n*.7)return '한 종목에 자산이 몰려 있어요. 나눠서 투자하면 위험이 줄어요.';
+ const tips=['주식은 매 턴 크게 오르내려요. 짧게 사고파는 단타에 어울려요.','부동산은 10턴마다 변동하고 월세가 들어와요. 길게 보는 투자예요.','기본 뉴스는 무료지만 애매해요. 여러 뉴스를 함께 보고 판단해 보세요.','유료 힌트는 신뢰도가 높을수록 정확해요. 큰 거래 전에 활용해 보세요.','급등한 종목에 사이드카가 걸리면 매수가 잠시 멈춰요.'];
+ return tips[Math.floor(S.day/3)%tips.length];
+}
+function finish(){
+ if(S.over)return;S.over=true;T=null;$('sheet').hidden=true;
+ const n=net(),r=(n/START-1)*100,sc=Math.max(0,Math.round(n/1e6));
+ const cm=r>=200?'🏆 판교 투자의 신! 전설의 개미예요':r>=50?'🚀 수익률 대박! 투자 감각이 남달라요':r>=10?'📈 꾸준히 불렸어요. 훌륭한 개미!':r>=0?'🙂 원금은 지켰어요. 안정형 투자자':r>-50?'📉 아쉬운 결과… 다음엔 뉴스를 더 활용해 봐요':'🪦 깡통 계좌… 분산 투자가 답이에요';
+ const app=!!(window.UnjungGame&&UnjungGame.inApp);
+ try{if(app)UnjungGame.submitScore(sc,{hold:true})}catch(e){}
+ $('resC').innerHTML=`<div class="sub">🏁 ${Math.min(S.day,END)}턴 결산</div><h2>${won(n)}</h2><div class="${r>=0?'up':'dn'}" style="font-weight:700">${n>=START?'+':'-'}${won(Math.abs(n-START))} (${pct(r)})</div><div class="big">${cm}</div><div class="sub">점수 <b style="color:var(--tx);font-size:16px">${sc.toLocaleString('ko-KR')}점</b> · 최종 자산(백만 원 단위)</div>`+
+  (app?'<button class="btn" id="rDone" style="background:var(--pri)">계속 ▶</button>':'<button class="btn" id="rAgain" style="background:var(--pri)">다시 시작</button>');
+ $('res').hidden=false;
+ if($('rDone'))$('rDone').onclick=()=>{$('rDone').disabled=true;try{UnjungGame.done()}catch(e){}};
+ if($('rAgain'))$('rAgain').onclick=()=>{$('res').hidden=true;sel=0;$('det').classList.remove('open');init()};
+}
+function showHelp(){HO=true;$('help').hidden=false}
+function hideHelp(){HO=false;$('help').hidden=true;try{localStorage.setItem('pg_help','1')}catch(e){}}
+$('hOK').onclick=hideHelp;$('help').onclick=e=>{if(e.target.id==='help')hideHelp()};
+function net(){return S.cash+S.a.reduce((s,a)=>s+a.qty*a.p,0)}
+function spark(c,h,col,fill){
+ if(h.length<2)h=[h[0],h[0]];
+ const w=c.width=c.clientWidth*devicePixelRatio,H=c.height=c.clientHeight*devicePixelRatio,x=c.getContext('2d'),d=devicePixelRatio;
+ const mn=Math.min(...h),mx=Math.max(...h),r=(mx-mn)||1,pad=4*d;x.clearRect(0,0,w,H);
+ const pt=(v,i)=>[i/(h.length-1)*w,mx===mn?H/2:H-pad-(v-mn)/r*(H-2*pad)];
+ x.strokeStyle=col;x.lineWidth=2*d;x.lineJoin='round';x.beginPath();
+ h.forEach((v,i)=>{const[X,Y]=pt(v,i);i?x.lineTo(X,Y):x.moveTo(X,Y)});x.stroke();
+ if(fill){x.lineTo(w,H);x.lineTo(0,H);x.closePath();x.globalAlpha=.1;x.fillStyle=col;x.fill();x.globalAlpha=1}
+}
+function update(){
+ const cs=getComputedStyle(document.documentElement),up=cs.getPropertyValue('--up').trim(),dn=cs.getPropertyValue('--dn').trim(),sub=cs.getPropertyValue('--sub').trim();
+ const col=h=>{const f=h[0],l=h[h.length-1];return l===f?sub:(l>f?up:dn)};
+ const n=net(),r=(n/START-1)*100;
+ $('cash').textContent=full(S.cash);$('net').textContent=won(n);
+ $('pl').innerHTML=`<span class="${r>=0?'up':'dn'}">${n>=START?'+':'-'}${won(Math.abs(n-START))} (${pct(r)})</span>`;
+ $('date').textContent=`${Math.min(S.day+1,END)} / ${END}턴`;
+ S.a.forEach(a=>{
+  $('p'+a.i).textContent=priceStr(a);
+  const c=$('c'+a.i);c.textContent=a.dl?'거래 불가':pct(a.chg);c.className='cg '+(a.chg>=0?'up':'dn');
+  $('rs'+a.i).innerHTML=(a.t==='s'?'주식':'부동산')+(a.qty>0?` · <b style="color:var(--pri)">${held(a)}${a.t==='s'?'주':'% 지분'} 보유</b> · 평가 ${won(a.qty*a.p)}`:' · 미보유');
+  spark($('g'+a.i),a.hist,col(a.hist),false);
+ });
+ document.querySelectorAll('.rw').forEach(r=>r.classList.toggle('sel',+r.dataset.i===sel));
+ spark($('nw'),S.nwh,n===START?sub:(n>START?up:dn),true);
+ renderBasic();$('tip').textContent='💡 '+tip();
+ const a=S.a[sel];
+ $('dN').textContent=a.n;$('dT').textContent=a.t==='s'?'주식':'부동산';
+ $('dP').textContent=priceStr(a);
+ $('dC').innerHTML=`<span class="${a.chg>=0?'up':'dn'}">직전 턴 대비 ${pct(a.chg)}</span>`+(a.sc?`<div class="sub" style="margin-top:4px">🚨 ${a.sc.t==='b'?'급등':'급락'}으로 ${a.sc.t==='b'?'매수':'매도'}가 ${a.sc.until-S.day}턴간 잠시 멈췄어요.</div>`:'');
+ $('dC').innerHTML+=(S.cb&&a.t==='s'&&!a.dl?'<div class="sub" style="margin-top:4px">🚨 서킷브레이커: 주식 평균이 크게 떨어져 모든 주식 거래가 정지됐어요.</div>':'')+(a.low&&!a.dl?`<div class="sub" style="margin-top:4px">⚠️ 최초 가격 대비 80% 이상 하락했어요. ${3-a.low}턴 더 이어지면 상장폐지돼요.</div>`:'')+(a.dl?'<div class="sub" style="margin-top:4px">🪦 상장폐지된 종목이에요. 더 이상 거래할 수 없어요.</div>':'');
+ $('dBuy').disabled=$('dSell').disabled=!!a.dl;
+ spark($('dG'),a.hist,col(a.hist),true);
+ const v=a.qty*a.p,pl=a.cost>0?v-a.cost:0,pp=a.cost>0?(v/a.cost-1)*100:0;
+ $('dH').innerHTML=a.qty>0?`<div class="hold"><div><span class="sub">보유</span><b>${held(a)}${a.t==='s'?'주':'% 지분'}</b></div><div><span class="sub">평가금액</span><b>${won(v)}</b></div><div><span class="sub">매수 원금</span><b>${won(a.cost)}</b></div><div><span class="sub">손익</span><b class="${pl>=0?'up':'dn'}">${pl>=0?'+':'-'}${won(Math.abs(pl))} (${pct(pp)})</b></div></div>`:'<div class="sub">아직 보유하지 않았어요. 아래 <b>매수</b> 버튼으로 시작해 보세요.</div>';
+ $('dH').innerHTML+=`<div class="sub" style="margin-top:10px">${a.t==='s'?'💡 주식은 매 턴 가격이 바뀌어요. 매도할 때 수수료 0.2%가 붙어요.':'💡 부동산은 10턴마다 가격이 바뀌고, 보유하면 월세가 들어와요. 사고팔 때 각각 수수료 2%가 붙어요.'}</div>`;
+ HN.forEach((x,l)=>$('hp'+l).textContent=won(hintCost(a,l)));
+ const hs=S.hints.filter(h=>h.a===a.i).slice(0,6);
+ $('dF').innerHTML=hs.length?hs.map(hintHtml).join(''):'<div class="sub" style="padding-top:6px">구매한 뉴스가 없어요.</div>';
+ live();
+}
+function live(){
+ $('gf').style.width=((S.game%DAY)/DAY*100)+'%';
+ $('gl').textContent=`${T?'⏸ 거래 중이라 시간이 멈췄어요 · ':paused?'⏸ 일시정지 중 · ':''}다음 턴까지 ${Math.ceil(DAY-S.game%DAY)}초 · 부동산 갱신 ${RINT-(S.day%RINT)}턴 후`;
+ if(S.cb&&S.day>=S.cb.until){S.cb=null;say('✅ 서킷브레이커 해제 · 주식 거래가 재개돼요')}
+ S.a.forEach(a=>{if(a.sc&&S.day>=a.sc.until){a.sc=null;say(`✅ ${a.n} 사이드카 해제`)}
+  $('sc'+a.i).innerHTML=badge(a)});
+ $('dS').innerHTML=badge(S.a[sel]);
+ if(T)drawSheet(true);
+}
+function step(){
+ if(paused||T||HO||S.over)return;
+ S.game+=0.05*speed;let dirty=false;
+ while(S.game>=sNext){sNext+=SDT;stockTick();dirty=true}
+ const day=Math.floor(S.game/DAY);
+ while(S.day<day){S.day++;S.nwh.push(net());if(S.nwh.length>400)S.nwh.shift();
+  if(S.day%RINT===0)propTick();if(S.day%5===0)newBatch();dirty=true;if(S.day>=END){update();finish();return}}
+ if(dirty)update();live();
+}
+const ctl=$('ctl');
+const pb=document.createElement('button');pb.className='chip';pb.textContent='⏸ 일시정지';
+pb.onclick=()=>{paused=!paused;pb.textContent=paused?'▶ 재개':'⏸ 일시정지';pb.classList.toggle('on',paused);live()};
+ctl.appendChild(pb);
+const fbtn=document.createElement('button');fbtn.className='chip';fbtn.textContent='🏁 결산';let fa=0;fbtn.onclick=()=>{if(!fa){fa=1;fbtn.textContent='🏁 정말 결산?';setTimeout(()=>{fa=0;fbtn.textContent='🏁 결산'},3000)}else finish()};ctl.appendChild(fbtn);
+const hbtn=document.createElement('button');hbtn.className='chip';hbtn.textContent='❓ 방법';hbtn.onclick=()=>showHelp();ctl.appendChild(hbtn);
+[1,2,5,10].forEach(v=>{const b=document.createElement('button');b.className='chip'+(v===1?' on sp1':'');b.dataset.sp=v;b.textContent=v+'배속';
+ b.onclick=()=>{speed=v;ctl.querySelectorAll('[data-sp]').forEach(c=>c.classList.remove('on'));b.classList.add('on')};ctl.appendChild(b)});
+$('reset').onclick=()=>{if(!rs){rs=1;$('reset').textContent='정말 다시 시작?';setTimeout(()=>{rs=0;$('reset').textContent='↺ 다시 시작'},3000)}else{rs=0;$('reset').textContent='↺ 다시 시작';sel=0;$('det').classList.remove('open');init()}};
+addEventListener('resize',()=>update());
+try{UnjungGame.onPause(()=>{if(!paused){paused=true;pb.textContent='▶ 재개';pb.classList.add('on');live()}})}catch(e){}
+init();setInterval(step,50);
+try{if(!localStorage.getItem('pg_help'))showHelp()}catch(e){showHelp()}
+</script>
+</body>
+</html>
