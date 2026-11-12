@@ -9,7 +9,7 @@ import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
-import { GAME_IDS, GAMES, settleLastWeek, useGameRanking, useGameStatus, type GameId } from './data';
+import { GAME_IDS, GAMES, isDoneToday, isExtra, settleLastWeek, useGameRanking, useGameStatus, type GameId } from './data';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 
@@ -21,7 +21,8 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
   const ready = auth === 'ready';
   const { status, reload } = useGameStatus(ready);
   const [board, setBoard] = useState<GameId>(GAME_IDS[0]);
-  const ranking = useGameRanking(board, ready);
+  const [allTime, setAllTime] = useState(false);
+  const ranking = useGameRanking(board, ready, allTime);
   const settled = useRef(false);
 
   // 지난주 정산(한 번). 내가 1~3위였다면 지갑 알림으로 '+n 토큰'이 뜬다
@@ -65,7 +66,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
   }
 
   const left = status ? status.max_plays - status.plays_today : null;
-  const costLabel = !status ? '' : status.next_cost === null ? `오늘 ${status.max_total ?? status.max_plays}판을 다 했어요` : status.plays_today >= status.max_plays ? `무료 판 끝 · 다음 판은 🪙${status.next_cost}로 연장(할수록 비싸져요)` : '무료! 잘할수록 토큰을 더 받아요';
+  const costLabel = !status ? '' : isDoneToday(status) ? `오늘 ${status.max_total ?? status.max_plays}판을 다 했어요. 내일 또 만나요!` : isExtra(status) ? `무료 판 끝 · 게임을 열면 🪙${status.next_cost}토큰으로 바로 이어서 할 수 있어요 (할수록 비싸져요)` : '무료! 잘할수록 토큰을 더 받아요';
 
   return (
     <Screen topInset={!inStack} onRefresh={() => (reload(), ranking.reload())}>
@@ -120,6 +121,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <AppText variant="heading">{m.title}</AppText>
                 <Badge label={m.tag} tone="muted" />
+                {status?.popular?.includes(g) ? <Badge label="🔥 인기" tone="accent" /> : null}
               </View>
               <AppText variant="caption" color={color.inkMuted}>
                 {m.desc}
@@ -137,9 +139,27 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
         );
       })}
 
-      <AppText variant="heading" style={{ marginTop: space.md }}>
-        이번 주 게임 랭킹
-      </AppText>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: space.md }}>
+        <AppText variant="heading" style={{ flex: 1 }}>
+          {allTime ? '역대 최고 기록' : '이번 주 게임 랭킹'}
+        </AppText>
+        {(['이번 주', '역대'] as const).map((label, i) => {
+          const on = allTime === (i === 1);
+          return (
+            <Pressable
+              key={label}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${label} 랭킹`}
+              onPress={() => setAllTime(i === 1)}
+              style={{ minHeight: 44, minWidth: 56, paddingHorizontal: space.md, borderRadius: radius.round, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color.navy : 'transparent' }}>
+              <AppText variant="label" color={on ? color.onNavy : color.inkMuted}>
+                {label}
+              </AppText>
+            </Pressable>
+          );
+        })}
+      </View>
       <View accessibilityRole="radiogroup" accessibilityLabel="게임 선택" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
         {GAME_IDS.map((id) => {
           const game = GAMES[id];
@@ -174,7 +194,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
           </AppText>
         ) : ranking.data.top.length === 0 ? (
           <AppText variant="body" color={color.inkMuted} style={{ padding: space.lg }}>
-            이번 주 첫 기록을 세워 보세요!
+            {allTime ? '아직 기록이 없어요. 첫 기록을 세워 보세요!' : '이번 주 첫 기록을 세워 보세요!'}
           </AppText>
         ) : (
           ranking.data.top.map((t, i) => (
@@ -208,7 +228,7 @@ export function GamesScreen({ inStack = false }: { inStack?: boolean }) {
       <Card tone="muted" style={{ gap: 4 }}>
         <AppText variant="label">게임 규칙</AppText>
         <AppText variant="caption" color={color.inkMuted}>
-          • 모든 게임 무료 · 하루 10판까지{'\n'}• 판마다 점수에 따라 1~5토큰: 그 게임의 이번 주 기록 중 상위일수록 많이 받아요 (게임 점수 보상은 하루 30토큰까지){'\n'}• 수업 시간(우리 반 시간표)에는 게임이 잠겨요{'\n'}• 이번 주 내 최고 기록을 넘기면 +2 토큰 (게임별 하루 1번){'\n'}• 매주 월요일, 게임별 학교 1~3위에게 +30/+20/+10 토큰, 1위는 '주간 게임왕 👑' 배지
+          • 하루 10판 무료 · 다 쓰면 토큰으로 이어서(할수록 비싸져요, 하루 최대 20판){'\n'}• 판마다 점수에 따라 1~5토큰: 그 게임의 이번 주 기록 중 상위일수록 많이 받아요 (게임 점수 보상은 하루 30토큰까지){'\n'}• 수업 시간(우리 반 시간표)에는 게임이 잠겨요{'\n'}• 이번 주 내 최고 기록을 넘기면 +2 토큰 (게임별 하루 1번){'\n'}• 매주 월요일, 게임별 학교 1~3위에게 +30/+20/+10 토큰, 1위는 '주간 게임왕 👑' 배지 (만점이 쉬운 학교 한 바퀴는 제외){'\n'}• 역대 최고 기록은 초기화되지 않아요
         </AppText>
       </Card>
     </Screen>

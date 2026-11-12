@@ -12,6 +12,7 @@ import { TeamCard, useLaunchEvent } from '@/features/launch/Launch';
 import { supabase } from '@/lib/supabase';
 import { APP_VERSION } from '@/lib/build';
 import { LAB_FEATURES, labVisible } from '@/lab/registry';
+import { CountBadge, useTodo } from '@/features/admin/todo';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { useWallet } from '@/state/wallet';
@@ -43,6 +44,7 @@ export function MoreScreen() {
   const openFeature = useOpenFeature();
   const { myClass } = usePrefs();
   const { status, role, planner, teacher } = useAuth();
+  const todo = useTodo();
   const { wallet } = useWallet();
   const { mult } = useLaunchEvent();
   const signedIn = status === 'ready' || status === 'needsEnrollment';
@@ -94,15 +96,15 @@ export function MoreScreen() {
             (dept.comm || planner) && <ListRow icon="notice" title="공지 올리기" subtitle={teacher ? '선생님 · 전체·학년·반 골라 바로 게시' : '검토 없이 바로 게시돼요'} onPress={() => router.push('/notice/new')} />,
             !!teacher && !planner && <ListRow icon="voice" title="설문 만들기" subtitle="선생님 · '선생님 설문'으로 올라가요" onPress={() => router.push('/voice/survey/new')} />,
             !!teacher && !isAdmin && <ListRow icon="ranking" title="앱 사용 현황" subtitle="선생님 · 가입·매일 접속·기능별 사용" onPress={() => router.push('/admin/usage')} />,
-            planner && <ListRow icon="voice" title="설문·찬반 투표 만들기" subtitle="기획행정부 · 참여한 학생은 토큰을 받아요" onPress={() => router.push('/voice/survey/new')} />,
-            planner && <ListRow icon="check" title="익명 건의 확인" subtitle="기획행정부 · 확인 표시·숨기기" onPress={() => openFeature('voice')} />,
+            planner && <ListRow icon="voice" title="설문·찬반 투표 만들기" subtitle="기획행정부 · 학생 설문 신청 승인도 여기서" right={<CountBadge n={todo?.survey_requests} />} onPress={() => router.push('/voice')} />,
+            planner && <ListRow icon="check" title="익명 건의 확인" subtitle="기획행정부 · 확인 표시·숨기기" right={<CountBadge n={(todo?.suggestions_new ?? 0) + (todo?.suggestion_reports ?? 0)} />} onPress={() => router.push('/voice?tab=suggest')} />,
             dept.study && <ListRow icon="study" title="스터디 윗미 관리" subtitle="교육활동부 · 그룹 → 관리자 보기" onPress={() => openFeature('study')} />,
  !isAdmin && dept.dev && <ListRow icon="ranking" title="앱 사용 현황 · 게임별" subtitle="개발자 · 내 게임을 몇 명이 하는지" onPress={() => router.push('/admin/usage')} />,
-            !isAdmin && dept.dev && <ListRow icon="settings" title="의견 관리" subtitle="개발자 · 내 게임에 온 학생 의견 확인·답변" onPress={() => router.push('/admin/feedback')} />,
-            reviewer && <ListRow icon="check" title="검토하기" subtitle="공지 승인·신고 처리·분실물 사진 (검토위원)" onPress={() => router.push('/review')} />,
+            !isAdmin && dept.dev && <ListRow icon="settings" title="의견 관리" subtitle="개발자 · 내 게임에 온 학생 의견 확인·답변" right={<CountBadge n={todo?.feedback} />} onPress={() => router.push('/admin/feedback')} />,
+            reviewer && <ListRow icon="check" title="검토하기" subtitle="공지 승인·신고 처리·분실물 사진 (검토위원)" right={<CountBadge n={(todo?.notices ?? 0) + (todo?.lost_photos ?? 0) + (todo?.meal_reports ?? 0)} />} onPress={() => router.push('/review')} />,
             isAdmin && <ListRow icon="ranking" title="앱 사용 현황" subtitle="가입·매일 접속·기능별·게임별 사용 (관리자)" onPress={() => router.push('/admin/usage')} />,
-            isAdmin && <ListRow icon="user" title="학생 관리" subtitle="학적 정정 요청·직책·닉네임·토큰 (관리자)" onPress={() => router.push('/admin/staff')} />,
-            isAdmin && <ListRow icon="settings" title="의견 관리" subtitle="학생이 보낸 앱 의견 (관리자)" onPress={() => router.push('/admin/feedback')} />,
+            isAdmin && <ListRow icon="user" title="학생 관리" subtitle="학적 정정 요청·직책·닉네임·토큰 (관리자)" right={<CountBadge n={todo?.enrollment} />} onPress={() => router.push('/admin/staff')} />,
+            isAdmin && <ListRow icon="settings" title="의견 관리" subtitle="학생이 보낸 앱 의견 (관리자)" right={<CountBadge n={todo?.feedback} />} onPress={() => router.push('/admin/feedback')} />,
           ])}
         </>
       ) : null}

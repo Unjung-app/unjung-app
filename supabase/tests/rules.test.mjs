@@ -1110,6 +1110,23 @@ await sub(B, CB, 'a7');
   const ub = await as(A, CA, `select public.admin_block_teacher('${T3}', false)`); const u3 = await as(T3, CT3, `select public.can_be_teacher() c`); expect('해제 풀기', ub.ok && u3.rows[0]?.c === true);
 }
 
+{ // 11-12: 처리할 일 개수
+  const ta = await as(A, CA, `select public.my_todo() r`); const r = ta.rows[0]?.r ?? {};
+  expect('관리자 처리할 일: 의견·검토·정정 포함', ta.ok && 'feedback' in r && 'notices' in r && 'enrollment' in r && typeof r.total === 'number');
+  const PL = '99999999-9999-9999-9999-999999996601', CPL = 'plain@unjung.hs.kr';
+  await q(`insert into auth.users values ('${PL}','${CPL}')`); await as(PL, CPL, `select public.register_enrollment('10110','평범')`);
+  const tb = await as(PL, CPL, `select public.my_todo() r`); expect('일반 학생은 처리할 일 없음', tb.ok && tb.rows[0]?.r?.total === 0 && !('feedback' in tb.rows[0].r));
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr';
+  const t1 = await as(P, CP, `select public.my_todo() r`); await as(P, CP, `select public.mark_seen('suggestions')`); const t2 = await as(P, CP, `select public.my_todo() r`);
+  expect('기획행정부: 새 건의는 본 뒤 0', t1.ok && 'suggestions_new' in (t1.rows[0]?.r ?? {}) && t2.rows[0]?.r?.suggestions_new === 0);
+}
+
+{ // 11-12: 인기 게임 · 역대 순위 · 주간 보상 제외
+  const gs = await as(A, CA, `select public.game_status() r`); expect('게임 상태에 인기 게임', gs.ok && Array.isArray(gs.rows[0]?.r?.popular));
+  const ga = await as(A, CA, `select public.game_ranking_all('tower') r`); expect('역대 최고 순위', ga.ok && ga.rows[0]?.r?.all_time === true && Array.isArray(ga.rows[0]?.r?.top));
+  const nr = await q(`select value from public.app_config where key = 'no_weekly_reward'`); expect('학교 한 바퀴 주간 보상 제외', nr.rows[0]?.value === 'campus_walk');
+}
+
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
 if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
