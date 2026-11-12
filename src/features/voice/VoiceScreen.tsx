@@ -31,7 +31,7 @@ import { ChipRow, PickChip } from './ui';
 export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const { status, planner } = useAuth();
+  const { status, planner, teacher } = useAuth();
   const ready = status === 'ready';
   const [tab, setTab] = useState<'survey' | 'suggest'>(params.tab === 'suggest' ? 'suggest' : 'survey');
   const surveys = useSurveyFeed(ready);
@@ -89,7 +89,7 @@ export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
         ]}
       />
       {tab === 'survey' ? (
-        <SurveyList items={surveys.items} requests={requests.items} planner={planner} onOpen={(id) => router.push(`/voice/survey/${id}`)} onCreate={() => router.push('/voice/survey/new')} />
+        <SurveyList items={surveys.items} requests={requests.items} planner={planner} teacher={!!teacher} onOpen={(id) => router.push(`/voice/survey/${id}`)} onCreate={() => router.push('/voice/survey/new')} />
       ) : (
         <SuggestionList feed={suggestions} planner={planner} mod={modQueue} onWrite={() => router.push('/voice/suggest')} />
       )}
@@ -101,12 +101,14 @@ function SurveyList({
   items,
   requests,
   planner,
+  teacher,
   onOpen,
   onCreate,
 }: {
   items: SurveyItem[] | null;
   requests: SurveyRequest[] | null;
   planner: boolean;
+  teacher?: boolean;
   onOpen: (id: number) => void;
   onCreate: () => void;
 }) {
@@ -114,8 +116,8 @@ function SurveyList({
   const reqs = requests ?? [];
   return (
     <>
-      {planner ? (
-        <Button label="＋ 설문 만들기 (기획행정부)" onPress={onCreate} />
+      {planner || teacher ? (
+        <Button label={teacher ? '＋ 설문 만들기 (선생님)' : '＋ 설문 만들기 (기획행정부)'} onPress={onCreate} />
       ) : (
         <>
           <AppText variant="caption" color={color.inkMuted} align="center">
@@ -168,7 +170,7 @@ function SurveyList({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
               {s.responded ? <Badge label="✓ 참여함" tone="success" /> : s.is_open ? <Badge label="참여하기 +3" /> : <Badge label="마감됨" tone="muted" />}
               {s.scope_grade ? <Badge label={`${s.scope_grade}학년`} tone="muted" /> : null}
-              {s.from_student ? <Badge label="학생 설문" tone="muted" /> : null}
+              {s.author_teacher ? <Badge label={`👩‍🏫 ${s.author_teacher} 선생님`} tone="muted" /> : s.from_student ? <Badge label="학생 설문" tone="muted" /> : null}
               <AppText variant="caption" weight="semibold" color={s.is_open ? color.navy : color.inkFaint}>
                 {closesLabel(s.closes_at, s.is_open, now.ymd)}
               </AppText>

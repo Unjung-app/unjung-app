@@ -11,7 +11,7 @@ export function completeChoices(groups: SubjectGroup[], choices: Choices) {
 export function personalize(lessons: ClassLesson[], groups: SubjectGroup[], choices: Choices, classNo: number, year: number, semester: number) {
   return lessons.map((lesson) => {
     const term = schoolTerm(lesson.date);
-    if (term.year !== year || term.semester !== semester || lesson.tags.length || /자율|자치|진로|동아리|창의적체험|행사|휴업|휴일/.test(lesson.subject)) return lesson;
+    if (term.year !== year || term.semester !== semester || lesson.writingSection || lesson.tags.length || /자율|자치|진로|동아리|창의적체험|행사|휴업|휴일/.test(lesson.subject)) return lesson;
     const group = groups.find((g) => g.slots[String(classNo)]?.some(([day, period]) => day === dayOfWeek(lesson.date) && period === lesson.period));
     if (!group || !choices[group.id]) return lesson;
     return { ...lesson, subject: choices[group.id], room: null };

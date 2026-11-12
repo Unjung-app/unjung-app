@@ -9,13 +9,13 @@ import { useNow } from '@/features/hooks';
 import { inputStyle } from '@/features/voice/ui';
 import { dDayLabel, diffDays, longLabel } from '@/lib/date';
 import { REWARD } from '@/lib/rewards';
-import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { color, radius, space, subjectColor } from '@/theme/tokens';
 import { call, hm, hms, isoDayToYmd, useClassBoard, useDashboard, useGroupList, type GroupInfo, type Subject } from './api';
 import { useStudyLive } from './session';
 import { ClassBoardCard } from './ClassBoardCard';
+import { TeacherStudyScreen } from './TeacherStudy';
 import { StudyCalendar } from './StudyCalendar';
 
 const COLORS = Object.keys(subjectColor);
@@ -55,7 +55,7 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
     return [...set].slice(0, 8);
   }, [tt.items, dash.data?.subjects]);
 
-  if (teacher) return <StudentOnly what="스터디 윗미" topInset />;
+  if (teacher) return <TeacherStudyScreen />;
   if (!ready) {
     return (
       <Screen topInset={!inStack}>

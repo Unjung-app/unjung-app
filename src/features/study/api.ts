@@ -118,6 +118,29 @@ function useRpc<T>(fn: string, args: Record<string, unknown> | undefined, enable
 }
 
 export type MonthRecord = { month: string; days: Record<string, number>; by_subject: Record<string, Record<string, number>> };
+export type TeacherClassSum = { grade: number; class_no: number; members: number; studied: number; week_seconds: number; today_seconds: number };
+export type TeacherOverview = {
+  week_start: string;
+  today: string;
+  live: { all: number; g1: number; g2: number; g3: number };
+  classes: TeacherClassSum[];
+  daily: { day: string; students: number; seconds: number }[];
+};
+export type TeacherStudent = {
+  number: number;
+  name: string;
+  nickname: string | null;
+  today_seconds: number;
+  week_seconds: number;
+  month_seconds: number;
+  total_seconds: number;
+  days_30: number;
+  last_day: string | null;
+  live: boolean;
+};
+export const useTeacherOverview = (enabled: boolean) => useRpc<TeacherOverview>('teacher_study_overview', undefined, enabled, 60_000);
+export const useTeacherClass = (grade: number, cls: number, enabled: boolean) =>
+  useRpc<TeacherStudent[]>('teacher_study_class', { p_grade: grade, p_class: cls }, enabled, 60_000);
 export const useMonth = (firstIso: string) => useRpc<MonthRecord>('my_study_month', { p_month: firstIso }, true);
 export const useDashboard = (enabled: boolean, pollMs = 0) => useRpc<Dashboard>('my_study_dashboard', undefined, enabled, pollMs);
 export type ClassRow = {

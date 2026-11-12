@@ -24,6 +24,7 @@ import { Logo } from '@/components/Logo';
 import { givenName, useAuth } from '@/state/auth';
 import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/data';
 import { useSubjectSelection } from '@/features/timetable/selection';
+import { lessonSubject } from '@/features/timetable/writingSections';
 import { personalize } from '@/features/timetable/personal';
 import { classLabel, useNow, useOpenFeature } from '@/features/hooks';
 import { bellFor, lunchOver, phaseAt, type DayPhase } from '@/features/timetable/bell';
@@ -196,7 +197,7 @@ function NowCard({
         </AppText>
         <AppText variant="body" color={color.onNavySub}>
           다음 수업일 {shortLabel(next)}
-          {first ? ` · 1교시 ${first.subject}` : ''}
+          {first ? ` · 1교시 ${lessonSubject(first)}` : ''}
         </AppText>
       </Card>
     );
@@ -238,7 +239,7 @@ function NowCard({
 
       <View style={{ gap: 4 }}>
         <AppText variant="display" color={color.onNavy}>
-          {phase.kind === 'after' ? '수고했어요' : (focus?.subject ?? (loading ? '불러오는 중' : '수업 정보 없음'))}
+          {phase.kind === 'after' ? '수고했어요' : (focus ? lessonSubject(focus) : loading ? '불러오는 중' : '수업 정보 없음')}
         </AppText>
         {focusPeriod ? (
           <AppText variant="body" color={color.onNavySub}>
@@ -248,7 +249,7 @@ function NowCard({
         ) : (
           <AppText variant="body" color={color.onNavySub}>
             {lastPeriod}교시까지 모두 끝났어요
-            {tomorrowFirst ? ` · 내일 1교시 ${tomorrowFirst.subject}` : ''}
+            {tomorrowFirst ? ` · 내일 1교시 ${lessonSubject(tomorrowFirst)}` : ''}
           </AppText>
         )}
       </View>
@@ -277,7 +278,7 @@ function NowCard({
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <AppText variant="label" weight="regular" color={color.onNavySub} style={{ flex: 1 }}>
           {after && afterBell && phase.kind !== 'after'
-            ? `다음 ${afterBell.period}교시 ${after.subject} · ${fmt(afterBell.start)}`
+            ? `다음 ${afterBell.period}교시 ${lessonSubject(after)} · ${fmt(afterBell.start)}`
             : ' '}
         </AppText>
         <Pressable accessibilityRole="link" onPress={() => openFeature('timetable')} hitSlop={12}>

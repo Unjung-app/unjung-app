@@ -24,6 +24,9 @@ export function NoticeComposeScreen() {
   const [body, setBody] = useState('');
   const [eventDate, setEventDate] = useState<Ymd | null>(null);
   const [scope, setScope] = useState<NoticeScope>('all');
+  const { teacherInfo } = useAuth();
+  const [tGrade, setTGrade] = useState<number>(teacherInfo?.homeGrade ?? 1);
+  const [tClass, setTClass] = useState<number>(teacherInfo?.homeClass ?? 1);
   const [startIn, setStartIn] = useState(0);
   const [days, setDays] = useState(7);
   const [busy, setBusy] = useState(false);
@@ -57,7 +60,7 @@ export function NoticeComposeScreen() {
           </AppText>
           <AppText variant="body" color={color.onNavySub} align="center">
             {teacher
-              ? "선생님 공지는 검토 없이 바로 전체 학생에게 게시돼요. '👩‍🏫 선생님' 표시가 붙어요."
+              ? "선생님 공지는 검토 없이 고른 대상에게 바로 게시돼요. '👩‍🏫 선생님' 표시가 붙어요."
               : `학생자치회 검토위원이 확인하면 게시되고 +${REWARD.noticeApproved} 토큰을 받아요(하루 1건). 결과는 학생 공지 화면의 '내가 올린 공지'에서 볼 수 있어요.`}
           </AppText>
         </Card>
@@ -94,7 +97,7 @@ export function NoticeComposeScreen() {
     if (!kind) return;
     setBusy(true);
     setError(null);
-    const d: NoticeDraft = { kind, title, body, eventDate, scope, showFrom, days };
+    const d: NoticeDraft = { kind, title, body, eventDate, scope, showFrom, days, grade: teacher ? tGrade : null, classNo: teacher ? tClass : null };
     const r = await submitNotice(d);
     setBusy(false);
     if (r.ok) setDone(true);
@@ -158,9 +161,21 @@ export function NoticeComposeScreen() {
                   { value: 'grade', label: `${enrollment.grade}학년` },
                   { value: 'class', label: `${enrollment.grade}-${enrollment.class_no}반` },
                 ]
-              : [{ value: 'all', label: '전체 학생' }]
+              : [
+                  { value: 'all', label: '전체' },
+                  { value: 'grade', label: '학년' },
+                  { value: 'class', label: '반' },
+                ]
           }
         />
+        {teacher && scope !== 'all' ? (
+          <View style={{ gap: space.sm }}>
+            <View style={{ flexDirection: 'row', gap: space.sm }}>{[1, 2, 3].map((g) => chip(`g${g}`, `${g}학년`, tGrade === g, () => setTGrade(g)))}</View>
+            {scope === 'class' ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((c) => chip(`c${c}`, `${c}반`, tClass === c, () => setTClass(c)))}</View>
+            ) : null}
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center' }}>
           <AppText variant="caption" color={color.inkMuted}>
             게시 시작
@@ -184,7 +199,7 @@ export function NoticeComposeScreen() {
       <Card style={{ gap: 6, borderWidth: 2, borderColor: color.line }}>
         <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', alignItems: 'center' }}>
           <Badge label={kind ? `${KIND_EMOJI[kind]} ${KIND_LABEL[kind]}` : '종류'} tone="muted" />
-          {scope !== 'all' && enrollment ? <Badge label={scopeLabel({ scope, scope_grade: enrollment.grade, scope_class: enrollment.class_no })} /> : null}
+          {scope !== 'all' && (enrollment || teacher) ? <Badge label={scopeLabel({ scope, scope_grade: teacher ? tGrade : enrollment!.grade, scope_class: teacher ? tClass : enrollment!.class_no })} /> : null}
           {eventDate ? (
             <AppText variant="caption" weight="semibold" color={color.navy}>
               {shortLabel(eventDate)} · {dDayLabel(now.ymd, eventDate)}

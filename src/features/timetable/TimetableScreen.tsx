@@ -8,6 +8,7 @@ import { Segmented, Stepper } from '@/components/ui/Segmented';
 import { useWeekTimetable } from '@/features/data';
 import { classLabel, useNow } from '@/features/hooks';
 import { bellFor, phaseAt } from './bell';
+import { lessonSubject } from './writingSections';
 import { shortSubject } from './subjects';
 import { PersonalTimetable } from './PersonalTimetable';
 import { addDays, diffDays, isWeekend, mondayOf, parseYmd, schoolTerm, weekdayLabel } from '@/lib/date';
@@ -148,7 +149,7 @@ function WeekGrid({ monday, lessons, today, minutes, grade, marks }: { monday: s
               <View key={d} style={{ flex: 1, padding: 2 }}>
                 <View
                   accessible
-                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lesson.subject + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}${mark ? `, ${mark} 있음` : ''}`}
+                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lessonSubject(lesson) + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}${mark ? `, ${mark} 있음` : ''}`}
                   style={{
                     flex: 1,
                     borderRadius: 10,
@@ -166,7 +167,7 @@ function WeekGrid({ monday, lessons, today, minutes, grade, marks }: { monday: s
                     numberOfLines={2}
                     color={lesson ? (lesson.tags.length ? color.accentInk : color.ink) : color.inkFaint}
                     style={{ fontSize: 12.5 }}>
-                    {lesson ? shortSubject(lesson.subject) : '–'}
+                    {lesson ? shortSubject(lessonSubject(lesson)) : '–'}
                   </AppText>
                   {mark ? (
                     <View style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: color.accent }} />
@@ -249,9 +250,9 @@ function DayList({
                   ) : null}
                 </View>
                 <AppText variant="bodyStrong" style={{ flex: 1 }} color={done ? color.inkFaint : color.ink}>
-                  {l.subject}
+                  {lessonSubject(l)}
                 </AppText>
-                {marks.get(`${l.date}|${l.subject}`) ? <Badge label={marks.get(`${l.date}|${l.subject}`)!} /> : null}
+                {marks.get(`${l.date}|${lessonSubject(l)}`) ? <Badge label={marks.get(`${l.date}|${lessonSubject(l)}`)!} /> : null}
                 {l.tags.map((t) => (
                   <Badge key={t} label={t} />
                 ))}

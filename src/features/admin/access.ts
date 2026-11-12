@@ -7,7 +7,7 @@ import { useAuth } from '@/state/auth';
  * 화면은 이 값으로 보여 줄지만 정하고, 실제 권한 검사는 서버 함수가 한다.
  */
 export function useStaffAccess() {
-  const { status, role } = useAuth();
+  const { status, role, teacher } = useAuth();
   const admin = role === 'admin';
   const [developer, setDeveloper] = useState(false);
   const [checked, setChecked] = useState(false);
@@ -23,5 +23,6 @@ export function useStaffAccess() {
       alive = false;
     };
   }, [status]);
-  return { admin, developer, staff: admin || developer, checked: admin || checked || status !== 'ready' };
+  // 선생님은 앱 사용 현황만 읽기(서버 admin_usage가 허용). 의견 관리 등은 화면별로 admin/developer 확인
+  return { admin, developer, teacher: !!teacher, staff: admin || developer || !!teacher, checked: admin || !!teacher || checked || status !== 'ready' };
 }
