@@ -8,7 +8,7 @@ import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { focus as F, radius, space } from '@/theme/tokens';
 import { gameUrl } from './catalog';
-import { finishHtmlGame, GAMES, isExtra, loadGame, saveGame, startGame, studyMinutesToday, useGameStatus, type FinishResult } from './data';
+import { finishHtmlGame, GAMES, isDoneToday, isExtra, EXTRA_PRICES, loadGame, saveGame, startGame, studyMinutesToday, useGameStatus, type FinishResult } from './data';
 
 type Phase = 'intro' | 'starting' | 'playing' | 'result' | 'class';
 type Msg = { unjung: 1; id?: number; type: string; data?: unknown };
@@ -150,12 +150,16 @@ export function HtmlPlayScreen() {
   }
 
   const extra = isExtra(status);
-  const doneAll = status?.next_cost === null;
+  const doneAll = isDoneToday(status);
+  const balance = wallet?.balance ?? 0;
+  const short = extra && balance < (status?.next_cost ?? 0); // 토큰이 모자라 연장 못 함
   const totalMax = status?.max_total ?? status?.max_plays ?? 10;
   const costLabel = !status ? '' : doneAll ? `오늘 ${totalMax}판을 다 했어요` : extra
-    ? `무료 ${status.max_plays}판을 다 썼어요 · 연장할수록 비싸져요 · 오늘 ${status.plays_today}/${totalMax}판 · 내 토큰 🪙 ${wallet?.balance ?? 0}`
+    ? `무료 ${status.max_plays}판을 다 썼어요 · 오늘 ${status.plays_today}/${totalMax}판 · 내 토큰 🪙 ${balance}\n연장 가격: ${EXTRA_PRICES}`
     : `무료 · 점수에 따라 1~5토큰 · 오늘 ${status.plays_today}/${status.max_plays}판`;
-  const playLabel = (base: string) => (doneAll ? `오늘 ${totalMax}판을 다 했어요` : extra ? `🪙 ${status?.next_cost}토큰으로 한 판 연장` : base);
+  const playLabel = (base: string) =>
+    doneAll ? `오늘 ${totalMax}판을 다 했어요` : short ? `토큰이 모자라요 (🪙${status?.next_cost} 필요 · 내 토큰 ${balance})` : extra ? `🪙 ${status?.next_cost}토큰으로 한 판 더` : base;
+  const earn = short ? <Big label="토큰 모으러 가기 (출석·공부·미션)" secondary onPress={() => router.push('/wallet')} /> : null;
   const showFrame = phase === 'playing' || phase === 'result' || phase === 'class';
 
   return (
@@ -225,7 +229,8 @@ export function HtmlPlayScreen() {
               </AppText>
             ) : (
               <>
-                <Big label={phase === 'starting' ? '여는 중…' : playLabel('▶  시작')} disabled={phase === 'starting' || doneAll} onPress={start} />
+                <Big label={phase === 'starting' ? '여는 중…' : playLabel('▶  시작')} disabled={phase === 'starting' || doneAll || short} onPress={start} />
+                {earn}
                 <AppText variant="caption" color={F.sub} align="center">
                   {costLabel}
                 </AppText>
@@ -261,7 +266,13 @@ export function HtmlPlayScreen() {
                 +{result.reward} 토큰
               </AppText>
             ) : null}
-            <Big label={playLabel('한 판 더')} disabled={doneAll} onPress={start} />
+            <Big label={playLabel('한 판 더')} disabled={doneAll || short} onPress={start} />
+            {earn}
+            {extra && !short ? (
+              <AppText variant="caption" color={F.sub} align="center">
+                무료 판을 다 써서 토큰으로 이어서 해요 · 내 토큰 🪙 {balance}
+              </AppText>
+            ) : null}
             <Big label="나가기" secondary onPress={exit} />
             <GameFeedbackLink id={id} />
           </Overlay>

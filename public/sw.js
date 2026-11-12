@@ -4,7 +4,7 @@
 // - /api/ 는 건드리지 않는다(앱이 직접 기기에 저장함)
 // - push: 웹 푸시 알림 표시, 누르면 해당 화면으로
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 
@@ -75,6 +75,10 @@ self.addEventListener('push', (event) => {
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       tag: data.tag,
+      // 같은 묶음(tag)으로 바뀌어도 다시 울리고 화면을 켠다
+      renotify: !!data.tag,
+      vibrate: [120, 60, 120],
+      timestamp: Date.now(),
       data: { url: data.url || '/' },
     }),
   );

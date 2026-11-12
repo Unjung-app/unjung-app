@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -7,6 +7,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { useNow } from '@/features/hooks';
 import { isoToYmd, shortLabel, stampLabel } from '@/lib/date';
+import { markSeen } from '@/features/admin/todo';
 import { useAuth } from '@/state/auth';
 import { color, radius, space } from '@/theme/tokens';
 import {
@@ -34,6 +35,10 @@ export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
   const { status, planner, teacher } = useAuth();
   const ready = status === 'ready';
   const [tab, setTab] = useState<'survey' | 'suggest'>(params.tab === 'suggest' ? 'suggest' : 'survey');
+  // 기획행정부가 건의 탭을 보면 '새 건의' 배지를 지운다
+  useEffect(() => {
+    if (tab === 'suggest' && planner && status === 'ready') markSeen('suggestions');
+  }, [tab, planner, status]);
   const surveys = useSurveyFeed(ready);
   const requests = useSurveyRequests(ready);
   const suggestions = useSuggestionFeed(ready);

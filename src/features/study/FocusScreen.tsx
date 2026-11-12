@@ -7,6 +7,7 @@ import { AppText } from '@/components/ui/AppText';
 import { useWallet } from '@/state/wallet';
 import { focus as F, radius, space, subjectColor } from '@/theme/tokens';
 import { hm, hms, useDashboard } from './api';
+import { setQuietRewards } from '@/state/wallet';
 import { useStudyLive, useStudySession } from './session';
 
 /**
@@ -22,6 +23,11 @@ export function FocusScreen() {
   const { refresh: refreshWallet } = useWallet();
   const s = useStudySession(true);
   const dash = useDashboard(true, 60_000);
+  // 공부하는 동안은 토큰 진동 끄기
+  useEffect(() => {
+    setQuietRewards(true);
+    return () => setQuietRewards(false);
+  }, []);
   const live = useStudyLive(true);
   const started = useRef(false);
   const base = useRef<{ subject: number; total: number } | null>(null);
