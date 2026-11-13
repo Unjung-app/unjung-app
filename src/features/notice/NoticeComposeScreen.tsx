@@ -51,6 +51,8 @@ export function NoticeComposeScreen() {
   const parsedCustomDays = /^\d+$/.test(customDays) ? Number(customDays) : null;
   const validCustomDays = parsedCustomDays !== null && parsedCustomDays >= 1 && parsedCustomDays <= 14;
   const selectedDays = customDuration && validCustomDays && parsedCustomDays !== null ? parsedCustomDays : days;
+  const targetGrade = teacher ? tGrade : enrollment?.grade ?? 1;
+  const targetClass = teacher ? tClass : enrollment?.class_no ?? 1;
   const showFrom = addDays(now.ymd, startIn);
   const showUntil = addDays(showFrom, selectedDays - 1);
   const ready =
@@ -106,9 +108,7 @@ export function NoticeComposeScreen() {
     if (!kind) return;
     setBusy(true);
     setError(null);
- HEAD
     const d: NoticeDraft = { kind, title, body, eventDate, scope, showFrom, days: selectedDays };
- origin/main
     const r = await submitNotice(d);
     setBusy(false);
     if (r.ok) setDone(true);
@@ -165,13 +165,11 @@ export function NoticeComposeScreen() {
           label="알릴 범위"
           value={scope}
           onChange={setScope}
- HEAD
           options={[
             { value: 'all', label: '전체' },
-            { value: 'grade', label: `학년별 (${enrollment.grade}학년)` },
-            { value: 'class', label: `반별 (${enrollment.grade}학년 ${enrollment.class_no}반)` },
+            { value: 'grade', label: `학년별 (${targetGrade}학년)` },
+            { value: 'class', label: `반별 (${targetGrade}학년 ${targetClass}반)` },
           ]}
-
         />
         {teacher && scope !== 'all' ? (
           <View style={{ gap: space.sm }}>
@@ -232,7 +230,7 @@ export function NoticeComposeScreen() {
       <Card style={{ gap: 6, borderWidth: 2, borderColor: color.line }}>
         <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap', alignItems: 'center' }}>
           <Badge label={kind ? `${KIND_EMOJI[kind]} ${KIND_LABEL[kind]}` : '종류'} tone="muted" />
-          {scope !== 'all' && (enrollment || teacher) ? <Badge label={scopeLabel({ scope, scope_grade: teacher ? tGrade : enrollment!.grade, scope_class: teacher ? tClass : enrollment!.class_no })} /> : null}
+          {scope !== 'all' && (enrollment || teacher) ? <Badge label={scopeLabel({ scope, scope_grade: targetGrade, scope_class: targetClass })} /> : null}
           {eventDate ? (
             <AppText variant="caption" weight="semibold" color={color.navy}>
               {shortLabel(eventDate)} · {dDayLabel(now.ymd, eventDate)}
