@@ -26,6 +26,8 @@ export function NoticeComposeScreen() {
   const [scope, setScope] = useState<NoticeScope>('all');
   const [startIn, setStartIn] = useState(0);
   const [days, setDays] = useState(7);
+  const [customDuration, setCustomDuration] = useState(false);
+  const [customDays, setCustomDays] = useState('7');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -43,9 +45,16 @@ export function NoticeComposeScreen() {
     );
   }
 
+  const parsedCustomDays = /^\d+$/.test(customDays) ? Number(customDays) : null;
+  const validCustomDays = parsedCustomDays !== null && parsedCustomDays >= 1 && parsedCustomDays <= 14;
+  const selectedDays = customDuration && validCustomDays && parsedCustomDays !== null ? parsedCustomDays : days;
   const showFrom = addDays(now.ymd, startIn);
-  const showUntil = addDays(showFrom, days - 1);
-  const ready = !!kind && title.trim().length >= 2 && body.trim().length >= 5;
+  const showUntil = addDays(showFrom, selectedDays - 1);
+  const ready =
+    !!kind &&
+    title.trim().length >= 2 &&
+    body.trim().length >= 5 &&
+    (!customDuration || validCustomDays);
 
   if (done) {
     return (
@@ -92,7 +101,7 @@ export function NoticeComposeScreen() {
     if (!kind) return;
     setBusy(true);
     setError(null);
-    const d: NoticeDraft = { kind, title, body, eventDate, scope, showFrom, days };
+    const d: NoticeDraft = { kind, title, body, eventDate, scope, showFrom, days: selectedDays };
     const r = await submitNotice(d);
     setBusy(false);
     if (r.ok) setDone(true);
@@ -151,8 +160,8 @@ export function NoticeComposeScreen() {
           onChange={setScope}
           options={[
             { value: 'all', label: '전체' },
-            { value: 'grade', label: `${enrollment.grade}학년` },
-            { value: 'class', label: `${enrollment.grade}-${enrollment.class_no}반` },
+            { value: 'grade', label: `학년별 (${enrollment.grade}학년)` },
+            { value: 'class', label: `반별 (${enrollment.grade}학년 ${enrollment.class_no}반)` },
           ]}
         />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center' }}>
@@ -165,8 +174,36 @@ export function NoticeComposeScreen() {
           <AppText variant="caption" color={color.inkMuted}>
             게시 기간
           </AppText>
-          {[3, 7, 14].map((d) => chip(`d${d}`, `${d}일`, days === d, () => setDays(d)))}
+          {[3, 7, 14].map((d) =>
+            chip(`d${d}`, `${d}일`, !customDuration && days === d, () => {
+              setCustomDuration(false);
+              setDays(d);
+            }),
+          )}
+          {chip('custom-duration', '개인 지정', customDuration, () => {
+            setCustomDays(String(days));
+            setCustomDuration(true);
+          })}
         </View>
+        {customDuration ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <TextInput
+              accessibilityLabel="개인 지정 게시 기간"
+              value={customDays}
+              onChangeText={(value) => setCustomDays(value.replace(/\D/g, '').slice(0, 2))}
+              placeholder="1~14"
+              placeholderTextColor={color.inkFaint}
+              keyboardType="number-pad"
+              maxLength={2}
+              style={{ ...input, minHeight: 44, width: 88, textAlign: 'center' }}
+            />
+            <AppText variant="body" color={color.inkMuted}>일</AppText>
+            <AppText variant="caption" color={color.inkMuted}>1~14일 중 선택</AppText>
+          </View>
+        ) : null}
+        {customDuration && !validCustomDays ? (
+          <AppText variant="caption" color={color.danger}>게시 기간은 1~14일로 입력해 주세요.</AppText>
+        ) : null}
         <AppText variant="caption" color={color.inkMuted}>
           {shortLabel(showFrom)} ~ {shortLabel(showUntil)} 동안 보여요
         </AppText>
