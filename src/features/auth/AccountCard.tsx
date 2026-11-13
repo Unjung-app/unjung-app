@@ -1,18 +1,19 @@
+import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Button, Divider, ListRow } from '@/components/ui/primitives';
 import { Logo } from '@/components/Logo';
-import { CONTACT_EMAIL } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { color, radius, space } from '@/theme/tokens';
 
 const ROLE_LABEL = { student: '학생', reviewer: '검토위원', admin: '관리자' } as const;
 
 /** 전체·설정 화면 맨 위의 계정 카드 */
-export function AccountCard() {
+export function AccountCard({ isDeveloper = false }: { isDeveloper?: boolean } = {}) {
   const router = useRouter();
-  const { status, email, enrollment, role, signOut } = useAuth();
+  const { status, email, enrollment, role, teacher, teacherInfo, signOut } = useAuth();
+  const [confirmOut, setConfirmOut] = useState(false);
 
   if (status === 'signedOut' || status === 'loading') {
     return (
@@ -28,21 +29,24 @@ export function AccountCard() {
     );
   }
 
+  const badges = [teacher ? '👩‍🏫 선생님' : null, role !== 'student' ? ROLE_LABEL[role] : null, isDeveloper ? '개발자' : null];
+
   return (
     <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
       <View style={{ padding: space.lg, gap: 2 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-          <AppText variant="heading">{enrollment?.name ?? '학번 등록 필요'}</AppText>
-          {role !== 'student' ? (
-            <View style={{ backgroundColor: color.accentSoft, borderRadius: radius.round, paddingHorizontal: 8, paddingVertical: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm }}>
+          <AppText variant="heading">{teacher ? `${teacher} 선생님` : enrollment?.name ?? '학번 등록 필요'}</AppText>
+          {badges.map((label) => label ? (
+            <View key={label} style={{ backgroundColor: color.accentSoft, borderRadius: radius.round, paddingHorizontal: 8, paddingVertical: 2 }}>
               <AppText variant="caption" weight="semibold" color={color.accentInk}>
-                {ROLE_LABEL[role]}
+                {label}
               </AppText>
             </View>
-          ) : null}
+          ) : null)}
         </View>
         <AppText variant="caption" color={color.inkMuted}>
           {enrollment ? `${enrollment.grade}학년 ${enrollment.class_no}반 ${enrollment.number}번 · ` : ''}
+          {teacherInfo ? [teacherInfo.homeGrade ? `${teacherInfo.homeGrade}-${teacherInfo.homeClass} 담임` : null, teacherInfo.dept].filter(Boolean).join(' · ') + (teacherInfo.homeGrade || teacherInfo.dept ? ' · ' : '') : ''}
           {email}
         </AppText>
       </View>
@@ -52,15 +56,26 @@ export function AccountCard() {
           <ListRow icon="pin" title="학번·이름 등록하기" onPress={() => router.push('/onboarding')} />
         </>
       ) : null}
-      <Divider />
-      <ListRow icon="close" title="로그아웃" onPress={signOut} right={<View />} />
-      {enrollment ? (
-        <View style={{ paddingHorizontal: space.lg, paddingBottom: space.md }}>
-          <AppText variant="caption" color={color.inkFaint}>
-            학번·이름이 틀렸다면 {CONTACT_EMAIL} 으로 연락해 주세요.
-          </AppText>
-        </View>
+      {teacher ? (
+        <>
+          <Divider />
+          <ListRow icon="pin" title="선생님 정보 고치기" subtitle="이름 · 담임 반 · 담당" onPress={() => router.push('/settings/teacher')} />
+        </>
       ) : null}
+      {enrollment ? (
+        <>
+          <Divider />
+          <ListRow icon="pin" title="학번·이름 고치기" subtitle="잘못 입력했다면 여기서" onPress={() => router.push('/settings/enrollment')} />
+        </>
+      ) : null}
+      <Divider />
+      <ListRow
+        icon="close"
+        title={confirmOut ? '한 번 더 누르면 로그아웃돼요' : '로그아웃'}
+        subtitle={confirmOut ? '다시 들어오려면 학교 구글 계정으로 로그인해야 해요' : undefined}
+        onPress={() => (confirmOut ? signOut() : setConfirmOut(true))}
+        right={<View />}
+      />
     </View>
   );
 }

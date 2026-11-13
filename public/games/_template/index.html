@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>급식실 러시 (운중고 게임 템플릿)</title>
+<!--
+  ┌──────────────────────────────────────────────────────────────────┐
+  │ 운중고 스마트 스쿨 게임 템플릿 v1                                   │
+  │ 이 파일 하나가 게임 하나입니다. AI에게 이 파일을 통째로 주고        │
+  │ "이 규칙을 지키면서 내 게임으로 바꿔 줘"라고 하면 됩니다.           │
+  │                                                                  │
+  │ 꼭 지킬 것                                                        │
+  │  1. 파일 하나(.html). 외부 라이브러리·외부 이미지·외부 글꼴 금지     │
+  │     (그림은 이모지, 캔버스 그리기, 또는 파일 안에 넣은 작은 그림)     │
+  │  2. 세로 휴대폰 화면(폭 360~430px)에서 손가락으로 플레이            │
+  │  3. 한 판은 1~5분. 쉬는 시간 10분 안에 끝나게                       │
+  │  4. 게임이 끝나면 UnjungGame.submitScore(점수) 를 부른다            │
+  │  5. 아래 "앱 연결 코드" 블록은 고치지 않는다                         │
+  │  6. 실제 선생님·학생 이름, 욕설, 폭력·선정적인 내용 금지             │
+  └──────────────────────────────────────────────────────────────────┘
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: #0E2748; overflow: hidden; touch-action: none;
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; color: #fff; user-select: none; -webkit-user-select: none; }
+  #wrap { position: relative; width: 100%; max-width: 430px; height: 100%; margin: 0 auto; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px; background: rgba(14,39,72,.92); }
+  .screen h1 { margin: 0; font-size: 30px; }
+  .screen p { margin: 0; color: #B9CBEA; line-height: 1.5; }
+  button { font: inherit; font-weight: 700; font-size: 18px; border: 0; border-radius: 14px; padding: 14px 28px; min-width: 160px; min-height: 48px; background: #F5A524; color: #0B1B33; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="start" class="screen">
+    <h1>🍱 급식실 러시</h1>
+    <p>떨어지는 급식은 받고<br>숙제(📄)는 피하세요!<br>화면 왼쪽·오른쪽을 눌러 움직여요.</p>
+    <p id="hello"></p>
+    <button id="go">시작</button>
+  </div>
+  <div id="over" class="screen hidden">
+    <h1>끝!</h1>
+    <p id="result"></p>
+    <button id="again">다시 하기</button>
+  </div>
+</div>
+
+<script>
+/* ===================== 앱 연결 코드 (고치지 마세요) =====================
+   앱 안에서 열리면 진짜 앱과 연결되고, 그냥 브라우저·AI 미리보기에서 열면
+   가짜(연습용)로 동작합니다. 그래서 앱 없이도 게임을 끝까지 만들어 볼 수 있어요.
+
+   UnjungGame.player            → { nickname: '닉네임', grade: 2 }  (연습용에선 '테스트')
+   UnjungGame.submitScore(n)    → 게임이 끝날 때 점수(정수)를 보냄. 결과: Promise<{ best }>
+                                  앱은 1.5초 뒤 결과 화면(한 판 더 / 나가기)으로 게임을 덮어요.
+   UnjungGame.submitScore(n, { hold: true }) → 점수만 기록하고, 게임의 결과 화면을 계속 보여 줘요.
+                                  그 화면의 '계속' 버튼에서 UnjungGame.done() 을 부르면 앱 결과 화면이 떠요.
+   UnjungGame.done()            → (hold로 보낸 뒤) 앱 결과 화면 열기
+   UnjungGame.getStudyMinutes() → 오늘 스터디 윗미 공부 시간(분). Promise<number> (연습용에선 0)
+   UnjungGame.save(obj)         → 이어하기용 저장(작은 데이터, 10KB까지). Promise
+   UnjungGame.load()            → 저장한 것 불러오기. Promise<obj | null>
+   UnjungGame.onPause(fn)       → 앱이 게임을 멈출 때(수업 시작 등) 부름
+   UnjungGame.exit()            → 앱으로 돌아가기
+========================================================================== */
+(function () {
+  const inApp = window.parent !== window && /[?&]unjung=1/.test(location.search);
+  const listeners = { pause: [] };
+  let seq = 0; const waiting = {};
+  function ask(type, data) {
+    if (!inApp) return Promise.resolve(null);
+    return new Promise((resolve) => { const id = ++seq; waiting[id] = resolve; window.parent.postMessage({ unjung: 1, id, type, data }, '*'); setTimeout(() => { if (waiting[id]) { delete waiting[id]; resolve(null); } }, 8000); });
+  }
+  window.addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.unjung !== 1) return;
+    if (m.reply && waiting[m.reply]) { waiting[m.reply](m.data); delete waiting[m.reply]; }
+    if (m.type === 'player') Object.assign(api.player, m.data || {});
+    if (m.type === 'pause') listeners.pause.forEach((f) => f());
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) listeners.pause.forEach((f) => f()); });
+  const KEY = 'unjung-game-practice';
+  const api = {
+    inApp,
+    player: { nickname: inApp ? '' : '테스트', grade: 2 },
+    submitScore(n, opts) {
+      n = Math.max(0, Math.floor(Number(n) || 0));
+      if (inApp) return ask('score', { score: n, hold: !!(opts && opts.hold) }).then((r) => r || { best: n });
+      let best = n; try { best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best); } catch (e) {}
+      return Promise.resolve({ best });
+    },
+    save(obj) { const s = JSON.stringify(obj ?? null); if (s.length > 10000) return Promise.reject(new Error('저장 데이터가 너무 커요(10KB까지)'));
+      if (inApp) return ask('save', s); try { localStorage.setItem(KEY + ':save', s); } catch (e) { return Promise.resolve(false); } return Promise.resolve(true); },
+    load() { if (inApp) return ask('load').then((s) => (s ? JSON.parse(s) : null)); try { return Promise.resolve(JSON.parse(localStorage.getItem(KEY + ':save'))); } catch { return Promise.resolve(null); } },
+    onPause(fn) { listeners.pause.push(fn); },
+    exit() { if (inApp) ask('exit'); },
+    done() { if (inApp) ask('done'); },
+    getStudyMinutes() { return inApp ? ask('study').then((m) => Math.max(0, Math.floor(Number(m) || 0))) : Promise.resolve(0); },
+  };
+  window.UnjungGame = api;
+  ask('ready');
+})();
+/* ======================= 앱 연결 코드 끝 ======================= */
+
+
+/* ======================= 여기부터 게임 (자유롭게 바꾸세요) ======================= */
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+let W = 0, H = 0;
+function fit() { const r = cv.getBoundingClientRect(); const d = window.devicePixelRatio || 1; cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0); W = r.width; H = r.height; }
+window.addEventListener('resize', fit); fit();
+
+const GOOD = ['🍚', '🍗', '🍜', '🥟', '🍰'], BAD = ['📄', '📚', '📝'];
+let me, items, score, life, t, spawnIn, running = false, dir = 0, last = 0;
+
+function reset() { me = { x: W / 2, y: H - 70 }; items = []; score = 0; life = 3; t = 0; spawnIn = 0; }
+function start() { reset(); running = true; hide('start'); hide('over'); last = performance.now(); requestAnimationFrame(loop); }
+function end() {
+  running = false;
+  document.getElementById('result').textContent = `점수 ${score}점`;
+  show('over');
+  UnjungGame.submitScore(score).then((r) => { document.getElementById('result').textContent = `점수 ${score}점 · 내 최고 ${r.best}점`; });
+}
+
+function loop(now) {
+  if (!running) return;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+  me.x = Math.max(24, Math.min(W - 24, me.x + dir * 320 * dt));
+  spawnIn -= dt;
+  if (spawnIn <= 0) { const bad = Math.random() < Math.min(0.55, 0.25 + t / 120);
+    items.push({ x: 24 + Math.random() * (W - 48), y: -30, v: 140 + t * 6 + Math.random() * 60, e: bad ? BAD[(Math.random() * 3) | 0] : GOOD[(Math.random() * 5) | 0], bad });
+    spawnIn = Math.max(0.28, 0.8 - t / 90); }
+  for (const it of items) it.y += it.v * dt;
+  for (const it of items) if (!it.hit && Math.abs(it.x - me.x) < 34 && Math.abs(it.y - me.y) < 34) { it.hit = true; if (it.bad) life--; else score += 10; }
+  items = items.filter((it) => !it.hit && it.y < H + 40);
+  draw();
+  if (life <= 0) return end();
+  requestAnimationFrame(loop);
+}
+
+function draw() {
+  ctx.fillStyle = '#F3F5F9'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#DDE3EE'; for (let y = 0; y < H; y += 48) ctx.fillRect(0, y, W, 1);   // 급식실 바닥
+  ctx.font = '34px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const it of items) ctx.fillText(it.e, it.x, it.y);
+  ctx.fillText('🧑‍🎓', me.x, me.y);
+  ctx.fillStyle = '#0B1B33'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(`🍱 ${score}`, 14, 24); ctx.textAlign = 'right'; ctx.fillText('❤️'.repeat(life), W - 14, 24);
+}
+
+// 조작: 화면 왼쪽/오른쪽 누르기 (키보드 ←→도 됨)
+const press = (e) => { const x = (e.touches ? e.touches[0].clientX : e.clientX) - cv.getBoundingClientRect().left; dir = x < W / 2 ? -1 : 1; };
+cv.addEventListener('pointerdown', press); cv.addEventListener('pointermove', (e) => e.buttons && press(e));
+window.addEventListener('pointerup', () => (dir = 0));
+window.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') dir = -1; if (e.key === 'ArrowRight') dir = 1; });
+window.addEventListener('keyup', () => (dir = 0));
+
+UnjungGame.onPause(() => { if (running) { running = false; document.getElementById('hello').textContent = '잠깐 멈췄어요'; show('start'); } });
+document.getElementById('hello').textContent = UnjungGame.player.nickname ? `${UnjungGame.player.nickname}님, 반가워요!` : '';
+document.getElementById('go').onclick = start;
+document.getElementById('again').onclick = start;
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+reset(); draw();
+</script>
+</body>
+</html>

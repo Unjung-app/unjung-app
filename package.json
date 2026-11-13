@@ -51,7 +51,8 @@
     "new": "node scripts/participant/new.mjs",
     "save": "node scripts/participant/save.mjs",
     "ai": "node scripts/participant/ai.mjs",
-    "doctor": "node scripts/participant/doctor.mjs"
+    "doctor": "node scripts/participant/doctor.mjs",
+    "test:timetable": "node scripts/test-timetable.mjs"
   },
   "private": true,
   "engines": {

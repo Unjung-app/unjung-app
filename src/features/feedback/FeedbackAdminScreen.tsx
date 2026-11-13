@@ -7,7 +7,9 @@ import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { stampLabel } from '@/lib/date';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/state/auth';
+import { useStaffAccess } from '@/features/admin/access';
+import { GAMES } from '@/features/games/catalog';
+import { AiRelay } from './AiRelay';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 import { KIND_LABEL, STATUS_LABEL, STATUS_TONE, type FeedbackKind, type FeedbackStatus } from './FeedbackScreen';
@@ -27,28 +29,30 @@ type Row = {
   class_no: number | null;
 };
 
-/** 관리자: 학생 의견 처리. '반영 완료'로 바꾸면 작성자에게 +10 토큰(서버가 한 번만 지급). */
+/** 관리자·개발자: 학생 의견 처리(개발자는 확인 중·답변까지). '반영 완료'로 바꾸면 작성자에게 +10 토큰(서버가 한 번만 지급). */
 export function FeedbackAdminScreen() {
-  const { role } = useAuth();
-  const [filter, setFilter] = useState<'open' | 'all'>('open');
+  const { admin, developer, checked } = useStaffAccess();
+  const staff = admin || developer; // 선생님(관리자 아님)은 의견 관리 대상 아님
+  const [filter, setFilter] = useState<'open' | 'all' | 'game'>('open');
   const [rows, setRows] = useState<Row[] | null>(null);
 
   const load = useCallback(async () => {
     let qy = supabase.from('feedback_admin').select('*').order('created_at', { ascending: false }).limit(100);
     if (filter === 'open') qy = qy.in('status', ['new', 'seen']);
+    if (filter === 'game') qy = qy.like('screen', 'game:%');
     const { data } = await qy;
     setRows((data as Row[]) ?? []);
   }, [filter]);
 
   useEffect(() => {
-    if (role === 'admin') load();
-  }, [role, load]);
+    if (staff) load();
+  }, [staff, load]);
 
-  if (role !== 'admin') {
+  if (!staff) {
     return (
       <Screen topInset={false}>
         <AppText variant="body" color={color.inkMuted}>
-          관리자만 볼 수 있는 화면이에요.
+          {checked ? '관리자·개발자만 볼 수 있는 화면이에요.' : '확인하는 중…'}
         </AppText>
       </Screen>
     );
@@ -56,14 +60,23 @@ export function FeedbackAdminScreen() {
 
   return (
     <Screen topInset={false} onRefresh={load}>
+      {admin ? <AiRelay onApplied={load} /> : null}
       <Segmented
         label="보기"
         value={filter}
         onChange={setFilter}
-        options={[
-          { value: 'open', label: '처리할 것' },
-          { value: 'all', label: '전체' },
-        ]}
+        options={
+          admin
+            ? [
+                { value: 'open', label: '처리할 것' },
+                { value: 'game', label: '게임 의견' },
+                { value: 'all', label: '전체' },
+              ]
+            : [
+                { value: 'open', label: '처리할 것' },
+                { value: 'all', label: '전체 게임 의견' },
+              ]
+        }
       />
       {rows === null ? (
         <AppText variant="body" color={color.inkMuted}>
@@ -74,13 +87,13 @@ export function FeedbackAdminScreen() {
           처리할 의견이 없어요 🎉
         </AppText>
       ) : (
-        rows.map((r) => <AdminCard key={r.id} r={r} onChanged={load} />)
+        rows.map((r) => <AdminCard key={r.id} r={r} admin={admin} onChanged={load} />)
       )}
     </Screen>
   );
 }
 
-function AdminCard({ r, onChanged }: { r: Row; onChanged: () => void }) {
+function AdminCard({ r, admin, onChanged }: { r: Row; admin: boolean; onChanged: () => void }) {
   const [reply, setReply] = useState(r.reply ?? '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -105,7 +118,7 @@ function AdminCard({ r, onChanged }: { r: Row; onChanged: () => void }) {
       </View>
       <AppText variant="body">{r.body}</AppText>
       <AppText variant="caption" color={color.inkFaint} numberOfLines={2}>
-        {[r.screen && `화면 ${r.screen}`, r.app_version && `v${r.app_version}`, r.device].filter(Boolean).join(' · ')}
+        {[r.screen && (r.screen.startsWith('game:') ? `🎮 ${gameTitle(r.screen.slice(5))}` : `화면 ${r.screen}`), r.app_version && `v${r.app_version}`, r.device].filter(Boolean).join(' · ')}
       </AppText>
       <TextInput
         accessibilityLabel="답변"
@@ -133,9 +146,23 @@ function AdminCard({ r, onChanged }: { r: Row; onChanged: () => void }) {
       ) : null}
       <View style={{ flexDirection: 'row', gap: space.sm, flexWrap: 'wrap' }}>
         <Button label="확인 중" variant="soft" disabled={busy} onPress={() => set('seen')} />
-        <Button label={`반영 완료 (+${REWARD.feedbackDone})`} disabled={busy} onPress={() => set('done')} />
-        <Button label="보류" variant="ghost" disabled={busy} onPress={() => set('wontfix')} />
+        {admin ? (
+          <>
+            <Button label={`반영 완료 (+${REWARD.feedbackDone})`} disabled={busy} onPress={() => set('done')} />
+            <Button label="보류" variant="ghost" disabled={busy} onPress={() => set('wontfix')} />
+          </>
+        ) : null}
       </View>
+      {!admin ? (
+        <AppText variant="caption" color={color.inkFaint}>
+          개발자는 '확인 중'과 답변까지 할 수 있어요. 반영 완료(토큰 지급)는 호원·종범에게 알려 주세요.
+        </AppText>
+      ) : null}
     </Card>
   );
+}
+
+function gameTitle(id: string) {
+  const g = (GAMES as Record<string, { emoji: string; title: string } | undefined>)[id];
+  return g ? `${g.emoji} ${g.title}` : id;
 }

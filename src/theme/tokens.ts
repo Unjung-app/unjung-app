@@ -30,6 +30,8 @@ export const color = {
   shadow: '#000000',
   danger: '#B42318',
   dangerSoft: '#FDECEA',
+  /** 가운데 창 뒤 배경 */
+  backdrop: 'rgba(11,27,51,0.55)',
 } as const;
 
 /** 꾸미기 상점: 닉네임 색 (흰 배경 대비 4.5:1 이상) — 키는 DB shop_items.value */
@@ -44,6 +46,18 @@ export const nameColor: Record<string, string> = {
   forest: '#166534',
 };
 
+/** 어두운 배경(운중의 밤·남색 카드) 위 닉네임 색: 같은 색의 밝은 버전(#0E2748 위 대비 4.5:1 이상) */
+export const nameColorOnDark: Record<string, string> = {
+  sky: '#7CC4F5',
+  mint: '#5EE0C0',
+  coral: '#FDA47A',
+  violet: '#C4B5FD',
+  gold: '#F5C04A',
+  rose: '#F9A8D4',
+  ocean: '#93B4FF',
+  forest: '#86E0A0',
+};
+
 /** 꾸미기 상점: 프로필 카드 배경 테마 (bg 위 ink/sub 대비 4.5:1 이상) */
 export const profileTheme: Record<string, { bg: string; ink: string; sub: string; edge: string }> = {
   plain: { bg: '#FFFFFF', ink: '#0B1B33', sub: '#4A5872', edge: '#DDE3EE' },
@@ -54,6 +68,34 @@ export const profileTheme: Record<string, { bg: string; ink: string; sub: string
   ocean: { bg: '#D9F0F7', ink: '#0B3A4A', sub: '#335F6E', edge: '#86C6D9' },
   night: { bg: '#0E2748', ink: '#FFFFFF', sub: '#B9CBEA', edge: '#F5A524' },
 };
+
+/** 스터디 윗미: 과목 색 (키는 DB study_subjects.color). 흰 배경·어두운 집중 화면 모두에서 점·막대로 쓴다 */
+export const subjectColor: Record<string, string> = {
+  navy: '#3B5B92',
+  red: '#E5484D',
+  orange: '#F08C2E',
+  yellow: '#E2B714',
+  green: '#30A46C',
+  teal: '#12A594',
+  blue: '#3E7BFA',
+  purple: '#8E4EC6',
+  pink: '#E93D82',
+  gray: '#8B95A7',
+};
+
+/** 스터디 윗미 집중 화면(열품타식 검은 화면) */
+export const focus = {
+  bg: '#05080F',
+  surface: '#111827',
+  line: '#1F2A3D',
+  ink: '#FFFFFF',
+  sub: '#9AA8BF', // bg 대비 8:1
+  live: '#4ADE80',
+  accent: '#F5A524',
+  onAccent: '#0B1B33',
+  danger: '#FF8A80',
+  scrim: 'rgba(5,8,15,0.92)',
+} as const;
 
 export const space ={ xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
 

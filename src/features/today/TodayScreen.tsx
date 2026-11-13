@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { REWARD } from '@/lib/rewards';
-import { Pressable, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
@@ -9,19 +9,27 @@ import { Screen } from '@/components/ui/Screen';
 import { InstallBanner } from '@/features/install/InstallBanner';
 import { WalletStrip } from '@/features/today/WalletStrip';
 import { DailyMissions } from '@/features/today/DailyMissions';
+import { CouncilSection, QuickGrid, QuoteLine } from '@/features/today/HomeParts';
+import { NicknamePrompt } from '@/features/settings/NicknamePrompt';
+import { UpdateNotesCard } from '@/features/updates/UpdateNotes';
+import { StaffTodoCard } from '@/features/admin/todo';
+import { FirstMissions } from '@/features/launch/FirstMissions';
+import { useWallet } from '@/state/wallet';
+import { LaunchBanner, useLaunchEvent } from '@/features/launch/Launch';
 import { durationLabel, useStudyLive, type StudyToday } from '@/features/study/session';
 import { supabase } from '@/lib/supabase';
 import { DeadlineCard } from '@/features/tasks/DeadlineCard';
-import { NoticeStrip } from '@/features/notice/NoticeStrip';
-import { SurveyStrip } from '@/features/voice/SurveyStrip';
 import { PushPrompt } from '@/features/settings/PushPrompt';
 import { MEAL_CODE, useTopReview } from '@/features/meal/reviews';
 import { Logo } from '@/components/Logo';
 import { givenName, useAuth } from '@/state/auth';
 import { useUpcomingSchedule, useWeekMeals, useWeekTimetable } from '@/features/data';
+import { useSubjectSelection } from '@/features/timetable/selection';
+import { lessonSubject } from '@/features/timetable/writingSections';
+import { personalize } from '@/features/timetable/personal';
 import { classLabel, useNow, useOpenFeature } from '@/features/hooks';
 import { bellFor, lunchOver, phaseAt, type DayPhase } from '@/features/timetable/bell';
-import { addDays, dDayLabel, isWeekend, longLabel, mondayOf, shortLabel, weekdayLabel } from '@/lib/date';
+import { addDays, dDayLabel, isWeekend, longLabel, mondayOf, shortLabel, schoolTerm, weekdayLabel } from '@/lib/date';
 import { groupEvents, isForGrade, isMajorEvent, type Meal, type SchoolEvent } from '@/lib/school';
 import type { ClassLesson as Lesson } from '@/features/data';
 import { usePrefs, type MyClass } from '@/state/prefs';
@@ -36,15 +44,26 @@ function greeting(minutes: number) {
 export function TodayScreen() {
   const now = useNow();
   const router = useRouter();
-  const { myClass } = usePrefs();
-  const { enrollment } = useAuth();
-  const nick = givenName(enrollment?.name);
+  const { myClass: preferredClass } = usePrefs();
+  const { enrollment, status, session, teacher } = useAuth();
+  const personal = status === 'ready' && enrollment?.grade === 2 && !!session;
+  const myClass = personal ? { grade: enrollment.grade, classNo: enrollment.class_no } : preferredClass;
+  const term = schoolTerm(now.ymd);
+  const selection = useSubjectSelection(personal ? session.user.id : null, term.year, term.semester);
+  const nick = teacher ? `${teacher} 선생님` : givenName(enrollment?.name);
   // 주말에는 다음 주 데이터를 불러와 '다음 수업일'을 보여 준다
   const schoolWeekDay = isWeekend(now.ymd) ? addDays(mondayOf(now.ymd), 7) : now.ymd;
   const timetable = useWeekTimetable(schoolWeekDay, myClass);
+  const personalLessons = personal && selection.saved && myClass
+    ? personalize(timetable.items, selection.groups, selection.saved, myClass.classNo, term.year, term.semester)
+    : timetable.items;
   const meals = useWeekMeals(schoolWeekDay);
   const schedule = useUpcomingSchedule(now.ymd);
 
+  const { wallet } = useWallet();
+  const [nickDone, setNickDone] = useState(false);
+  const { width } = useWindowDimensions();
+  const wide = width >= 900;
   const refreshing = timetable.refreshing || meals.refreshing || schedule.refreshing;
   const anySample =
     meals.source === 'sample' || schedule.source === 'sample' || (!!myClass && timetable.source === 'sample');
@@ -54,6 +73,7 @@ export function TodayScreen() {
       refreshing={refreshing}
       onRefresh={() => {
         timetable.refresh();
+        if (personal) void selection.reload();
         meals.refresh();
         schedule.refresh();
       }}>
@@ -88,27 +108,41 @@ export function TodayScreen() {
         </Pressable>
       </View>
 
-      <WalletStrip />
+      <QuoteLine today={now.ymd} />
+      <StaffTodoCard />
+      {teacher ? null : <WalletStrip />}
+      <UpdateNotesCard />
       <InstallBanner />
       {anySample ? <SampleNotice /> : null}
+      {teacher ? null : <NicknamePrompt onDone={() => setNickDone(true)} />}
+      <PushPrompt hold={!teacher && !nickDone && status === 'ready' && !!wallet && !wallet.nickname} />
 
-      <NowCard
-        myClass={myClass}
-        today={now.ymd}
-        minutes={now.minutes}
-        lessons={timetable.items}
-        loading={timetable.source === 'loading'}
-        holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
-      />
-      <DeadlineCard today={now.ymd} />
-      <DailyMissions today={now.ymd} />
-      <NoticeStrip />
-      <SurveyStrip />
-      <PushPrompt />
-      <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
-      <View style={{ flexDirection: 'row', gap: space.md }}>
-        <StudyCard />
-        <EventCard today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} />
+      {/* 넓은 화면(태블릿·폴드 펼침)에서는 두 줄로. 좁은 화면은 왼쪽 → 오른쪽 순서로 이어진다 */}
+      <View style={wide ? { flexDirection: 'row', gap: space.lg, alignItems: 'flex-start' } : { gap: space.md }}>
+        <View style={{ flex: wide ? 1 : undefined, gap: space.md, minWidth: 0 }}>
+          {/* 1. 매일 보는 것: 지금 수업 → 바로 가기 → 마감 → 급식 */}
+          <NowCard
+            myClass={myClass}
+            today={now.ymd}
+            minutes={now.minutes}
+            lessons={personalLessons}
+            loading={timetable.source === 'loading' || (personal && selection.loading)}
+            holiday={schedule.items.find((e) => e.date === now.ymd && e.holiday)}
+          />
+          <QuickGrid />
+          {teacher ? null : <FirstMissions />}
+          {teacher ? null : <DeadlineCard today={now.ymd} />}
+          <MealCard today={now.ymd} minutes={now.minutes} meals={meals.items} grade={myClass?.grade ?? null} />
+          {wide ? <StudyEventRow today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} /> : null}
+        </View>
+        <View style={{ flex: wide ? 1 : undefined, gap: space.md, minWidth: 0 }}>
+          {/* 2. 학생회: 공지 · 설문 · 건의 · 행사 사진 · 앱 의견 */}
+          <CouncilSection />
+          {/* 3. 출시 이벤트 · 공부 · 일정 · 미션 */}
+          {teacher ? null : <LaunchBanner />}
+          {!wide ? <StudyEventRow today={now.ymd} events={schedule.items} grade={myClass?.grade ?? null} /> : null}
+          {teacher ? null : <DailyMissions today={now.ymd} />}
+        </View>
       </View>
     </Screen>
   );
@@ -165,7 +199,7 @@ function NowCard({
         </AppText>
         <AppText variant="body" color={color.onNavySub}>
           다음 수업일 {shortLabel(next)}
-          {first ? ` · 1교시 ${first.subject}` : ''}
+          {first ? ` · 1교시 ${lessonSubject(first)}` : ''}
         </AppText>
       </Card>
     );
@@ -207,7 +241,7 @@ function NowCard({
 
       <View style={{ gap: 4 }}>
         <AppText variant="display" color={color.onNavy}>
-          {phase.kind === 'after' ? '수고했어요' : (focus?.subject ?? (loading ? '불러오는 중' : '수업 정보 없음'))}
+          {phase.kind === 'after' ? '수고했어요' : (focus ? lessonSubject(focus) : loading ? '불러오는 중' : '수업 정보 없음')}
         </AppText>
         {focusPeriod ? (
           <AppText variant="body" color={color.onNavySub}>
@@ -217,7 +251,7 @@ function NowCard({
         ) : (
           <AppText variant="body" color={color.onNavySub}>
             {lastPeriod}교시까지 모두 끝났어요
-            {tomorrowFirst ? ` · 내일 1교시 ${tomorrowFirst.subject}` : ''}
+            {tomorrowFirst ? ` · 내일 1교시 ${lessonSubject(tomorrowFirst)}` : ''}
           </AppText>
         )}
       </View>
@@ -246,7 +280,7 @@ function NowCard({
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <AppText variant="label" weight="regular" color={color.onNavySub} style={{ flex: 1 }}>
           {after && afterBell && phase.kind !== 'after'
-            ? `다음 ${afterBell.period}교시 ${after.subject} · ${fmt(afterBell.start)}`
+            ? `다음 ${afterBell.period}교시 ${lessonSubject(after)} · ${fmt(afterBell.start)}`
             : ' '}
         </AppText>
         <Pressable accessibilityRole="link" onPress={() => openFeature('timetable')} hitSlop={12}>
@@ -320,11 +354,21 @@ function MealCard({ today, minutes, meals, grade }: { today: string; minutes: nu
 
 /* ---------- 아래 두 칸 ---------- */
 
+function StudyEventRow({ today, events, grade }: { today: string; events: SchoolEvent[]; grade: number | null }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: space.md }}>
+      <StudyCard />
+      <EventCard today={today} events={events} grade={grade} />
+    </View>
+  );
+}
+
 function StudyCard() {
   const openFeature = useOpenFeature();
   const { status } = useAuth();
   const ready = status === 'ready';
   const live = useStudyLive(ready);
+  const { mult } = useLaunchEvent();
   const [today, setToday] = useState<StudyToday | null>(null);
   useEffect(() => {
     if (!ready) return;
@@ -333,17 +377,17 @@ function StudyCard() {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`오늘 공부 ${today ? durationLabel(today.ranked_seconds) : ''}. 공부 타이머 열기`}
+      accessibilityLabel={`오늘 공부 ${today ? durationLabel(today.ranked_seconds + today.class_seconds) : ''}. 스터디 윗미 열기`}
       onPress={() => openFeature('study')}
       style={({ pressed }) => ({ flex: 1, backgroundColor: pressed ? color.navyRaised : color.navy, borderRadius: radius.card, padding: space.lg, gap: 6 })}>
       <AppText variant="label" weight="regular" color={color.onNavyMuted}>
         오늘 공부
       </AppText>
       <AppText variant="heading" color={color.onNavy} style={{ fontSize: 22, lineHeight: 28 }}>
-        {ready ? durationLabel(today?.ranked_seconds ?? 0) : '집중 모드'}
+        {ready ? durationLabel((today?.ranked_seconds ?? 0) + (today?.class_seconds ?? 0)) : '스터디 윗미'}
       </AppText>
       <AppText variant="caption" color={color.onNavySub}>
-        {ready ? `토큰 ${today?.tokens ?? 0}/${REWARD.studyDailyCap} · 10분마다 +1` : '로그인하면 공부 시간이 반 랭킹이 돼요'}
+        {ready ? `토큰 ${today?.tokens ?? 0} · 10분마다 +${mult}` : '로그인하면 공부 시간이 반 랭킹이 돼요'}
       </AppText>
       <View style={{ marginTop: 'auto', paddingTop: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: live?.all ? color.liveOnNavy : color.navyDone }} />

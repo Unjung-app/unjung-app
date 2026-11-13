@@ -14,6 +14,8 @@ import { seoulNow } from '@/lib/date';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { injectWebFont, NATIVE_FONTS, fontStyle } from '@/theme/fonts';
 import { color } from '@/theme/tokens';
+import { Pressable } from 'react-native';
+import { AppText } from '@/components/ui/AppText';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 injectWebFont();
@@ -65,14 +67,16 @@ function Root() {
       <StatusBar style="dark" />
       <AuthGate />
       <Stack
-        screenOptions={{
+        screenOptions={({ navigation }) => ({
           headerShadowVisible: false,
           headerStyle: { backgroundColor: color.bg },
           headerTintColor: color.navy,
           headerTitleStyle: { ...fontStyle('bold'), fontSize: 17, color: color.ink },
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: color.bg },
-        }}>
+          // 새로고침·바깥 페이지(개인정보 처리방침 등)에서 돌아와 뒤로 갈 곳이 없으면 '홈' 버튼(학생 의견 #45)
+          headerLeft: navigation.canGoBack() ? undefined : () => <HomeButton />,
+        })}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="feature/[id]" options={{ title: '' }} />
         <Stack.Screen name="+not-found" options={{ title: '페이지 없음' }} />
@@ -80,20 +84,31 @@ function Root() {
         <Stack.Screen name="settings/tabs" options={{ title: '하단 탭 설정' }} />
         <Stack.Screen name="settings/class" options={{ title: '내 반 설정' }} />
         <Stack.Screen name="settings/install" options={{ title: '홈 화면에 추가' }} />
+        <Stack.Screen name="settings/updates" options={{ title: '업데이트 소식' }} />
+        <Stack.Screen name="settings/teacher" options={{ title: '선생님 정보' }} />
+        <Stack.Screen name="study/teacher" options={{ title: '스터디 윗미 · 반별 기록' }} />
         <Stack.Screen name="settings/nickname" options={{ title: '닉네임' }} />
         <Stack.Screen name="settings/notifications" options={{ title: '알림' }} />
+        <Stack.Screen name="settings/enrollment" options={{ title: '내 학번·이름' }} />
         <Stack.Screen name="wallet" options={{ title: '토큰·출석' }} />
         <Stack.Screen name="shop" options={{ title: '꾸미기 상점' }} />
         <Stack.Screen name="feedback" options={{ title: '의견 보내기' }} />
-        <Stack.Screen name="admin/feedback" options={{ title: '의견 관리 (관리자)' }} />
+        <Stack.Screen name="admin/feedback" options={{ title: '의견 관리' }} />
         <Stack.Screen name="game/[id]" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="notice/new" options={{ title: '공지 올리기' }} />
         <Stack.Screen name="lost/new" options={{ title: '분실물 올리기' }} />
         <Stack.Screen name="review" options={{ title: '검토하기 (검토위원)' }} />
         <Stack.Screen name="admin/staff" options={{ title: '학생 관리 (관리자)' }} />
+        <Stack.Screen name="admin/usage" options={{ title: '앱 사용 현황' }} />
+        <Stack.Screen name="gallery/[id]" options={{ title: '행사 사진' }} />
+        <Stack.Screen name="gallery/new" options={{ title: '행사 사진 올리기' }} />
         <Stack.Screen name="voice/survey/[id]" options={{ title: '설문' }} />
         <Stack.Screen name="voice/survey/new" options={{ title: '설문 만들기' }} />
         <Stack.Screen name="voice/suggest" options={{ title: '건의 올리기' }} />
+        <Stack.Screen name="profile/[nickname]" options={{ title: '프로필' }} />
+        <Stack.Screen name="study/focus" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
+        <Stack.Screen name="study/group/[id]" options={{ title: '그룹 순위' }} />
+        <Stack.Screen name="study/admin/[id]" options={{ title: '스터디 윗미 관리' }} />
         <Stack.Screen name="login" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       </Stack>
@@ -114,5 +129,16 @@ export default function RootLayout() {
         </AuthProvider>
       </PrefsProvider>
     </SafeAreaProvider>
+  );
+}
+
+function HomeButton() {
+  const router = useRouter();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel="홈으로" onPress={() => router.replace('/')} hitSlop={8} style={{ minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 8 }}>
+      <AppText variant="label" color={color.navy}>
+        ‹ 홈
+      </AppText>
+    </Pressable>
   );
 }

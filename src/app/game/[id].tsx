@@ -1,3 +1,3 @@
-import { PlayScreen } from '@/features/games/PlayScreen';
+import { HtmlPlayScreen } from '@/features/games/HtmlPlayScreen';
 
-export default PlayScreen;
+export default HtmlPlayScreen;

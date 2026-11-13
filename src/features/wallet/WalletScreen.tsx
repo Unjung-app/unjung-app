@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui/Screen';
 import { ProfileCard } from '@/components/NameTag';
 import { LoginPrompt } from '@/features/wallet/LoginPrompt';
 import { stampLabel } from '@/lib/date';
+import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { ledgerLabel, useWallet, type LedgerRow } from '@/state/wallet';
 import { color, radius, space } from '@/theme/tokens';
@@ -30,7 +31,7 @@ const EARN: { what: string; amount: string; limit: string }[] = [
 
 export function WalletScreen() {
   const router = useRouter();
-  const { status, enrollment } = useAuth();
+  const { status, enrollment, teacher } = useAuth();
   const { wallet, itemById, refresh, loadLedger } = useWallet();
   const [ledger, setLedger] = useState<LedgerRow[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,6 +48,7 @@ export function WalletScreen() {
   }, [status, reload]);
 
   if (status === 'signedOut') return <LoginPrompt what="토큰과 출석" />;
+  if (teacher) return <StudentOnly what="토큰과 출석" />;
 
   return (
     <Screen topInset={false} refreshing={refreshing} onRefresh={reload}>
@@ -60,6 +62,9 @@ export function WalletScreen() {
         <Button label="꾸미기 상점" icon="bag" style={{ flex: 1 }} onPress={() => router.push('/shop')} />
         <Button label={wallet?.nickname ? '닉네임 바꾸기' : '닉네임 정하기'} variant="soft" style={{ flex: 1 }} onPress={() => router.push('/settings/nickname')} />
       </View>
+      {wallet?.nickname ? (
+        <Button label="내 프로필 보기 (랭킹에서 다른 학생에게 보이는 모습)" variant="ghost" onPress={() => router.push({ pathname: '/profile/[nickname]', params: { nickname: wallet.nickname! } })} />
+      ) : null}
 
       <View style={{ flexDirection: 'row', gap: space.md }}>
         <Card tone="navy" style={{ flex: 1, gap: 4 }}>
@@ -83,6 +88,11 @@ export function WalletScreen() {
           <AppText variant="caption" color={color.inkMuted}>
             최고 {wallet?.best ?? 0}일 · 🛡️ {wallet?.shields ?? 0}/2
           </AppText>
+          {wallet && !wallet.today_is_school_day ? (
+            <AppText variant="caption" color={color.accentInk}>
+              오늘은 쉬는 날이라 그대로예요. 다음 학교 가는 날 출석하면 +1
+            </AppText>
+          ) : null}
         </Card>
       </View>
       <AppText variant="caption" color={color.inkMuted}>

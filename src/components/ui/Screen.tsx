@@ -1,4 +1,4 @@
-import { RefreshControl, ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
+import { RefreshControl, ScrollView, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ReactNode } from 'react';
 import { color, MAX_APP_WIDTH, space } from '@/theme/tokens';
@@ -19,6 +19,9 @@ export function Screen({
   topInset?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  // 넓은 화면(태블릿·폴드 펼침·PC)에서는 내용 폭을 넓힌다. 폰은 그대로
+  const { width } = useWindowDimensions();
+  const maxWidth = width >= 900 ? 960 : width >= 680 ? 680 : MAX_APP_WIDTH;
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: color.bg }}
@@ -27,7 +30,7 @@ export function Screen({
       showsVerticalScrollIndicator={false}>
       <View
         style={[
-          { width: '100%', maxWidth: MAX_APP_WIDTH, alignSelf: 'center', paddingHorizontal: space.xl, gap: space.md },
+          { width: '100%', maxWidth, alignSelf: 'center', paddingHorizontal: width < 360 ? space.lg : space.xl, gap: space.md },
           contentStyle,
         ]}>
         {children}

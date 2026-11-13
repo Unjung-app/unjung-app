@@ -7,6 +7,7 @@ import { Screen } from '@/components/ui/Screen';
 import { NameTag } from '@/components/NameTag';
 import { LoginPrompt } from '@/features/wallet/LoginPrompt';
 import { untilLabel } from '@/lib/date';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { useWallet } from '@/state/wallet';
 import { fontStyle } from '@/theme/fonts';
@@ -24,6 +25,13 @@ export function NicknameScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // 서버 규칙(11-08): 처음 정한 뒤 한 번은 바로, 그 뒤 14일에 한 번. DB가 옛 버전이면 null(옛 30일 계산)
+  const [ns, setNs] = useState<{ free: boolean; until: string | null } | null>(null);
+  useEffect(() => {
+    supabase.rpc('nickname_status').then(({ data, error: e }) => {
+      if (!e && data) setNs(data as { free: boolean; until: string | null });
+    });
+  }, [wallet?.nickname]);
 
   useEffect(() => {
     if (wallet?.nickname && !value) setValue(wallet.nickname);
@@ -36,7 +44,13 @@ export function NicknameScreen() {
   const v = value.trim();
   const valid = RULE.test(v);
   const unchanged = !!wallet?.nickname && v === wallet.nickname;
-  const lockedUntil = wallet?.nickname && wallet.nickname_changed_at ? untilLabel(wallet.nickname_changed_at, 30) : null;
+  const lockedUntil = ns
+    ? ns.until
+      ? untilLabel(ns.until, 0)
+      : null
+    : wallet?.nickname && wallet.nickname_changed_at
+      ? untilLabel(wallet.nickname_changed_at, 30)
+      : null;
   const hint = !v
     ? '한글·영문·숫자·_ 로 2~10자'
     : valid
@@ -117,7 +131,7 @@ export function NicknameScreen() {
         ) : step === 'confirm' ? (
           <>
             <AppText variant="caption" color={color.accentInk}>
-              저장하면 30일 동안 바꿀 수 없어요. 이대로 할까요?
+              {ns?.free && wallet?.nickname ? '이번 한 번은 대기 없이 바꿀 수 있어요. 다음부터는 14일에 한 번이에요. 이대로 할까요?' : ns ? '저장하면 14일 동안 바꿀 수 없어요. 이대로 할까요?' : '저장하면 30일 동안 바꿀 수 없어요. 이대로 할까요?'}
             </AppText>
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               <Button label="다시 쓰기" variant="soft" style={{ flex: 1 }} disabled={busy} onPress={() => setStep('edit')} />

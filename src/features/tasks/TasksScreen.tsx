@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { REWARD } from '@/lib/rewards';
-import { Pressable, TextInput, View } from 'react-native';
+import { Image, Pressable, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
@@ -9,6 +9,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useWeekTimetable } from '@/features/data';
 import { classLabel, useNow } from '@/features/hooks';
 import { addDays, dDayLabel, diffDays, shortLabel, type Ymd } from '@/lib/date';
+import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
 import { useWallet } from '@/state/wallet';
@@ -17,6 +18,9 @@ import { color, radius, space } from '@/theme/tokens';
 import { KIND_LABEL, loadSuggestions, useClassTasks, type ClassTask, type Suggestion, type TaskDraft, type TaskKind } from './data';
 import { TaskComposer } from './TaskComposer';
 
+
+// 시간표에 과목처럼 끼어 오는 학사 일정(학생 의견 #48)
+const NOT_SUBJECT = /휴업|휴일|방학|수능|수학능력|시험|고사|행사|체험|축제|개교|졸업|입학|토요|자율|창체|창의적|재량/;
 export const KIND_TONE: Record<TaskKind, { bg: string; fg: string }> = {
   assessment: { bg: color.accentSoft, fg: color.accentInk },
   homework: { bg: color.surfaceMuted, fg: color.navy },
@@ -35,13 +39,13 @@ export function dueLabel(today: Ymd, due: Ymd) {
 export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
   const now = useNow();
-  const { status, enrollment } = useAuth();
+  const { status, enrollment, teacher } = useAuth();
   const { myClass } = usePrefs();
   const { refresh: refreshWallet } = useWallet();
   const ready = status === 'ready';
   const board = useClassTasks(now.ymd, ready);
   const [tab, setTab] = useState<'next' | 'past'>('next');
-  const [composing, setComposing] = useState<null | { id?: number; draft?: TaskDraft }>(null);
+  const [composing, setComposing] = useState<null | { id?: number; draft?: TaskDraft; photoPath?: string | null; photoUrl?: string | null }>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   // 과목 목록: 이번 주 + 다음 주 우리 반 시간표에서
@@ -49,7 +53,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
   const tt2 = useWeekTimetable(addDays(now.ymd, 7), myClass);
   const subjects = useMemo(() => {
     const count = new Map<string, number>();
-    for (const l of [...tt1.items, ...tt2.items]) if (l.subject) count.set(l.subject, (count.get(l.subject) ?? 0) + 1);
+    for (const l of [...tt1.items, ...tt2.items]) if (l.subject && !NOT_SUBJECT.test(l.subject)) count.set(l.subject, (count.get(l.subject) ?? 0) + 1);
     return [...count.entries()].sort((a, b) => b[1] - a[1]).map(([s]) => s);
   }, [tt1.items, tt2.items]);
 
@@ -71,11 +75,12 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
         </AppText>
       ) : null}
       <AppText variant="body" color={color.inkMuted}>
-        {enrollment ? `${enrollment.grade}학년 ${enrollment.class_no}반` : classLabel(myClass)} 친구들끼리만 보는 마감 게시판이에요.
+        {enrollment ? `${enrollment.grade}학년 ${enrollment.class_no}반` : classLabel(myClass)} 친구들끼리만 보는 수행평가·숙제 게시판이에요.
       </AppText>
     </>
   );
 
+  if (teacher) return <StudentOnly what="수행평가·숙제" topInset={!inStack} />;
   if (status !== 'ready') {
     return (
       <Screen topInset={!inStack}>
@@ -96,7 +101,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
   }
 
   const submit = async (d: TaskDraft) => {
-    const r = composing?.id ? await board.update(composing.id, d) : await board.create(d);
+    const r = composing?.id ? await board.update(composing.id, d, composing.photoPath) : await board.create(d);
     if (r.ok) {
       setComposing(null);
       setNotice(composing?.id ? '고쳤어요' : `올렸어요! 친구 2명이 확인하면 +${REWARD.taskConfirmed} 토큰`);
@@ -109,7 +114,15 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
       {header}
 
       {composing ? (
-        <TaskComposer today={now.ymd} subjects={subjects} initial={composing.draft} onSubmit={submit} onCancel={() => setComposing(null)} />
+        <TaskComposer
+          today={now.ymd}
+          subjects={subjects}
+          initial={composing.draft}
+          initialPhotoUrl={composing.photoUrl}
+          myClassNo={enrollment?.class_no ?? null}
+          onSubmit={submit}
+          onCancel={() => setComposing(null)}
+        />
       ) : (
         <Button label="＋ 수행평가·숙제 올리기" onPress={() => (setComposing({}), setNotice(null))} />
       )}
@@ -137,7 +150,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
         <Card>
           <AppText variant="body" color={color.inkMuted}>
             {tab === 'next'
-              ? '아직 올라온 마감이 없어요. 선생님이 말한 수행평가나 숙제를 먼저 올려 보세요!'
+              ? '아직 올라온 글이 없어요. 선생님이 말한 수행평가나 숙제를 먼저 올려 보세요!'
               : '지난 30일 동안의 항목이 없어요.'}
           </AppText>
         </Card>
@@ -155,8 +168,16 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
                 key={t.id}
                 t={t}
                 past={tab === 'past'}
+                myClassNo={enrollment?.class_no ?? null}
                 board={board}
-                onEdit={() => setComposing({ id: t.id, draft: { subject: t.subject, kind: t.kind, due: t.due, body: t.body } })}
+                onEdit={() =>
+                  setComposing({
+                    id: t.id,
+                    draft: { subject: t.subject, kind: t.kind, due: t.due, body: t.body, share: t.share_classes ?? [] },
+                    photoPath: t.photo_path ?? null,
+                    photoUrl: t.photoUrl ?? null,
+                  })
+                }
                 onConfirmed={refreshWallet}
               />
             ))}
@@ -164,7 +185,7 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
         ))
       )}
       <AppText variant="caption" color={color.inkFaint}>
-        우리 반 학생만 볼 수 있어요. 틀린 내용은 '정정 제안'으로 알려 주세요. 장난 글은 검토위원이 지울 수 있어요.
+        우리 반 학생(과 공유받은 반)만 볼 수 있어요. 틀린 내용은 '정정 제안'으로 알려 주세요. 장난 글은 검토위원이 지울 수 있어요.
       </AppText>
     </Screen>
   );
@@ -173,12 +194,14 @@ export function TasksScreen({ inStack = false }: { inStack?: boolean }) {
 function TaskCard({
   t,
   past,
+  myClassNo,
   board,
   onEdit,
   onConfirmed,
 }: {
   t: ClassTask;
   past: boolean;
+  myClassNo: number | null;
   board: ReturnType<typeof useClassTasks>;
   onEdit: () => void;
   onConfirmed: () => void;
@@ -226,8 +249,18 @@ function TaskCard({
           {t.open_suggestions > 0 ? <Badge label={`정정 ${t.open_suggestions}`} tone="accent" /> : null}
         </View>
         {t.body ? <AppText variant="body">{t.body}</AppText> : null}
+        {t.photoUrl ? (
+          <Image
+            source={{ uri: t.photoUrl }}
+            style={{ width: '100%', aspectRatio: open ? 3 / 4 : 16 / 9, borderRadius: radius.control, backgroundColor: color.surfaceMuted }}
+            resizeMode={open ? 'contain' : 'cover'}
+            accessibilityLabel={`${t.subject} 첨부 사진${open ? '' : ', 눌러서 크게 보기'}`}
+          />
+        ) : null}
         <AppText variant="caption" color={color.inkFaint}>
-          {t.mine ? '내가 올림' : t.author_nickname ?? '우리 반 친구'} · 확인 {Math.min(t.confirm_count, 99)}명
+          {t.mine ? '내가 올림' : t.author_nickname ?? '친구'}
+          {myClassNo && t.from_class && t.from_class !== myClassNo ? ` · ${t.from_class}반에서 공유` : ''}
+          {t.mine && t.share_classes?.length ? ` · ${t.share_classes.join('·')}반에도 공유` : ''} · 확인 {Math.min(t.confirm_count, 99)}명
         </AppText>
       </Pressable>
 

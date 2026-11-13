@@ -1,98 +1,68 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Pressable, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import Svg, { Circle } from 'react-native-svg';
 import { AppText } from '@/components/ui/AppText';
-import { Button, Card } from '@/components/ui/primitives';
+import { Button, Card, SectionTitle } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { useWeekTimetable } from '@/features/data';
-import { useNow, useOpenFeature } from '@/features/hooks';
+import { useNow } from '@/features/hooks';
+import { inputStyle } from '@/features/voice/ui';
+import { dDayLabel, diffDays, longLabel } from '@/lib/date';
+import { REWARD } from '@/lib/rewards';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
-import { useWallet } from '@/state/wallet';
-import { color, radius, space } from '@/theme/tokens';
-import { REWARD, secondsToNextStudyToken, studyTokensFor } from '@/lib/rewards';
-import { clockLabel, durationLabel, useStudyLive, useStudySession } from './session';
+import { color, radius, space, subjectColor } from '@/theme/tokens';
+import { call, hm, hms, isoDayToYmd, useClassBoard, useDashboard, useGroupList, type GroupInfo, type Subject } from './api';
+import { useStudyLive } from './session';
+import { ClassBoardCard } from './ClassBoardCard';
+import { TeacherStudyScreen } from './TeacherStudy';
+import { StudyCalendar } from './StudyCalendar';
 
-const RING = 220;
-const STROKE = 14;
-/** 30분마다 '아직 공부 중인가요?'를 묻고(진동), 5분 안에 답이 없으면 세션을 끝낸다(화면만 켜 두고 자리를 비우는 것 방지) */
-const CHECK_EVERY_S = 30 * 60;
-const CHECK_WAIT_S = 300;
+const COLORS = Object.keys(subjectColor);
 
+/**
+ * 스터디 윗미 첫 화면(열품타식): 오늘 총 공부 시간 → 내 그룹 → 과목 목록(▶ 누르면 집중 화면).
+ * 집중(시간 재기)은 /study/focus 화면에서만 한다. 이 화면은 기록·그룹·과목 관리.
+ */
 export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
   const now = useNow();
-  const openFeature = useOpenFeature();
-  const { status, enrollment } = useAuth();
+  const { status, teacher } = useAuth();
   const { myClass } = usePrefs();
-  const { refresh: refreshWallet } = useWallet();
   const ready = status === 'ready';
-  const s = useStudySession(ready);
+  const dash = useDashboard(ready);
+  const groups = useGroupList(ready);
   const live = useStudyLive(ready);
-  const [subject, setSubject] = useState('');
-  const [asking, setAsking] = useState(false);
-  const confirmedAt = useRef(0);
+  const classBoard = useClassBoard(ready);
+  const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
 
-  // 공부 토큰이 늘면(10분마다) 지갑을 새로 받아 '+1 토큰' 알림을 띄운다
-  const seenTokens = useRef<number | null>(null);
-  useEffect(() => {
-    const t = s.today?.tokens;
-    if (t === undefined) return;
-    if (seenTokens.current !== null && t > seenTokens.current) refreshWallet('집중 모드 10분 달성');
-    seenTokens.current = t;
-  }, [s.today?.tokens, refreshWallet]);
-
-  // 자리 비움 확인: 세션 시작 때 기준을 잡고, 30분마다 묻는다
-  useEffect(() => {
-    if (s.phase === 'idle') {
-      confirmedAt.current = 0;
-      setAsking(false);
-      return;
-    }
-    if (s.phase !== 'running') return;
-    if (!asking && s.elapsed - confirmedAt.current >= CHECK_EVERY_S) {
-      setAsking(true);
-      try {
-        (globalThis.navigator as Navigator | undefined)?.vibrate?.([200, 100, 200]);
-      } catch {
-        // 진동이 안 되는 기기
-      }
-    }
-    if (asking && s.elapsed - confirmedAt.current >= CHECK_EVERY_S + CHECK_WAIT_S) {
-      setAsking(false);
-      s.end('5분 동안 확인이 없어서 세션을 끝냈어요. 그 전까지는 기록됐어요.').then(() => refreshWallet());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.elapsed, s.phase, asking]);
-
-  // 이 화면을 벗어나면 일시정지, 돌아오면 이어서 (다른 탭으로 옮겨도 마찬가지)
+  // 집중 화면에서 돌아오면 새 기록으로
   useFocusEffect(
     useCallback(() => {
-      s.back();
-      return () => s.leave();
+      dash.reload();
+      groups.reload();
+      classBoard.reload();
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [s.back, s.leave]),
+    }, [dash.reload, groups.reload, classBoard.reload]),
   );
 
   const tt = useWeekTimetable(now.ymd, myClass);
-  const subjects = useMemo(() => {
+  const suggestions = useMemo(() => {
+    const have = new Set((dash.data?.subjects ?? []).map((s) => s.name));
     const set = new Set<string>();
-    for (const l of tt.items) if (l.subject && !/자율|동아리|창체/.test(l.subject)) set.add(l.subject);
-    return ['자습', ...[...set].slice(0, 9)];
-  }, [tt.items]);
+    for (const l of tt.items) if (l.subject && !/자율|동아리|창체/.test(l.subject) && !have.has(l.subject)) set.add(l.subject);
+    return [...set].slice(0, 8);
+  }, [tt.items, dash.data?.subjects]);
 
-  if (status !== 'ready') {
+  if (teacher) return <TeacherStudyScreen />;
+  if (!ready) {
     return (
       <Screen topInset={!inStack}>
-        {!inStack ? (
-          <AppText variant="title" accessibilityRole="header">
-            공부 타이머
-          </AppText>
-        ) : null}
+        {!inStack ? <Title /> : null}
         <Card tone="navy">
           <AppText variant="heading" color={color.onNavy} style={{ fontSize: 20, lineHeight: 28 }}>
-            {status === 'needsEnrollment' ? '학번을 등록하면\n공부 시간이 반 랭킹에 더해져요' : '학교 계정으로 로그인하면\n공부 시간이 토큰과 반 랭킹이 돼요'}
+            {status === 'needsEnrollment' ? '학번을 등록하면\n친구들과 함께 공부 시간을 잴 수 있어요' : '학교 계정으로 로그인하면\n과목별 공부 시간과 그룹 랭킹을 볼 수 있어요'}
           </AppText>
           <Button
             label={status === 'needsEnrollment' ? '학번 등록하기' : '로그인하기'}
@@ -105,181 +75,317 @@ export function StudyScreen({ inStack = false }: { inStack?: boolean }) {
     );
   }
 
-  const running = s.phase === 'running' || s.phase === 'away';
-  const todayRanked = s.today?.ranked_seconds ?? 0;
-  // 다음 토큰까지: 오늘 랭킹 인정 시간 + 이번 신호 이후 흐른 시간(표시용 추정)
-  const sinceBeat = running && !s.inClass ? s.elapsed % 60 : 0;
-  const tokensToday = s.today?.tokens ?? 0;
-  const toNext = secondsToNextStudyToken(todayRanked + sinceBeat);
-  const step = studyTokensFor(todayRanked + sinceBeat) < 12 ? 600 : 900;
-  const ringPct = toNext === null ? 1 : 1 - toNext / step;
-  const r = (RING - STROKE) / 2;
-  const circ = 2 * Math.PI * r;
+  const d = dash.data;
+  const subjects = d?.subjects ?? [];
+  const bySubject = d?.by_subject ?? {};
+  const joinable = (groups.data ?? []).filter((g) => !g.joined && g.can_join);
+  const manager = d?.manager ?? false;
+  const focus = (s: { name: string; color: string }) => router.push({ pathname: '/study/focus', params: { subject: s.name, color: s.color } });
 
   return (
-    <Screen topInset={!inStack} onRefresh={running ? undefined : s.reloadToday}>
+    <Screen topInset={!inStack} onRefresh={() => (dash.reload(), groups.reload())}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        {!inStack ? (
-          <AppText variant="title" accessibilityRole="header">
-            공부 타이머
-          </AppText>
-        ) : (
-          <View />
-        )}
+        {!inStack ? <Title /> : <View />}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: color.surface, borderRadius: radius.round, paddingHorizontal: space.md, paddingVertical: 6 }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: live?.all ? color.success : color.inkFaint }} />
           <AppText variant="label" color={color.inkMuted}>
-            지금 {live?.all ?? 0}명 집중 중
+            지금 {live?.all ?? 0}명 공부 중{live?.my_class ? ` · 우리 반 ${live.my_class}` : ''}
           </AppText>
         </View>
       </View>
 
-      {asking && s.phase === 'running' ? (
-        <Card tone="muted" style={{ gap: space.sm, borderWidth: 2, borderColor: color.accent }}>
-          <AppText variant="heading">아직 공부 중인가요? ✍️</AppText>
-          <AppText variant="caption" color={color.inkMuted}>
-            5분 안에 눌러 주세요. 누르지 않으면 자리를 비운 것으로 보고 세션을 끝내요.
-          </AppText>
-          <Button
-            label="네, 계속할게요"
-            onPress={() => {
-              confirmedAt.current = s.elapsed;
-              setAsking(false);
-            }}
-          />
-        </Card>
-      ) : null}
-      {s.notice ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="안내 닫기" onPress={s.dismissNotice} style={{ backgroundColor: color.accentSoft, borderRadius: radius.control, padding: space.md, minHeight: 44 }}>
-          <AppText variant="label" weight="regular" color={color.accentInk}>
-            {s.notice}
-          </AppText>
-        </Pressable>
-      ) : null}
-      {s.error ? (
-        <AppText variant="label" weight="regular" color={color.danger}>
-          {s.error}
+      {/* 오늘 총 시간 */}
+      <Card tone="navy" style={{ alignItems: 'center', gap: 2, paddingVertical: space.xxl }}>
+        <AppText variant="label" color={color.onNavyMuted}>
+          {longLabel(now.ymd)}
+        </AppText>
+        <AppText
+          color={color.onNavy}
+          weight="bold"
+          style={{ fontSize: 48, lineHeight: 58, fontVariant: ['tabular-nums'] }}
+          accessibilityLabel={`오늘 공부 ${hm(d?.today.total_seconds ?? 0)}`}>
+          {hms(d?.today.total_seconds ?? 0)}
+        </AppText>
+        <AppText variant="caption" color={color.onNavySub}>
+          이번 주 {hm(d?.week_total_seconds ?? 0)} · 공부 토큰 {d?.today.tokens ?? 0}/{REWARD.studyDailyCap}
+        </AppText>
+        <Button
+          label="▶  공부 시작"
+          variant="soft"
+          style={{ alignSelf: 'stretch', backgroundColor: color.accent, minHeight: 52, marginTop: space.md }}
+          onPress={() => focus(subjects[0] ?? { name: '', color: 'navy' })}
+          accessibilityLabel={subjects[0] ? `${subjects[0].name} 공부 시작` : '공부 시작'}
+        />
+      </Card>
+      {dash.error && !d ? (
+        <AppText variant="caption" color={color.danger}>
+          기록을 불러오지 못했어요. {dash.error}
         </AppText>
       ) : null}
 
-      <Card tone="navy" style={{ alignItems: 'center', gap: space.lg, paddingVertical: space.xxl }}>
-        <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
-          <Svg width={RING} height={RING} style={{ position: 'absolute' }}>
-            <Circle cx={RING / 2} cy={RING / 2} r={r} stroke={color.navyTrack} strokeWidth={STROKE} fill="none" />
-            <Circle
-              cx={RING / 2}
-              cy={RING / 2}
-              r={r}
-              stroke={color.accent}
-              strokeWidth={STROKE}
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray={`${circ}`}
-              strokeDashoffset={circ * (1 - ringPct)}
-              transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
-            />
-          </Svg>
-          <AppText variant="label" color={color.onNavyMuted}>
-            {running ? (s.phase === 'away' ? '일시정지' : subject || '집중 중') : '이번 세션'}
-          </AppText>
-          <AppText
-            variant="display"
-            color={color.onNavy}
-            style={{ fontSize: 44, lineHeight: 52, fontVariant: ['tabular-nums'] }}
-            accessibilityLabel={`이번 세션 ${durationLabel(s.elapsed)}`}>
-            {clockLabel(s.elapsed)}
-          </AppText>
-          <AppText variant="caption" color={color.onNavySub}>
-            {toNext === null ? '오늘 공부 토큰을 다 받았어요' : `다음 토큰까지 ${Math.max(1, Math.ceil(toNext / 60))}분`}
-          </AppText>
-        </View>
+      {/* 그룹 */}
+      {(d?.groups ?? []).map((g) => (
+        <Pressable
+          key={g.id}
+          accessibilityRole="button"
+          accessibilityLabel={`${g.name}, ${g.members}명 중 ${g.live}명 공부 중, 순위 보기`}
+          onPress={() => router.push(`/study/group/${g.id}`)}
+          style={({ pressed }) => ({ backgroundColor: pressed ? color.surfaceMuted : color.surface, borderRadius: radius.card, padding: space.lg, gap: 4, borderWidth: 2, borderColor: color.accent })}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <AppText variant="heading" style={{ flex: 1 }} numberOfLines={1}>
+              👥 {g.name}
+            </AppText>
+            <AppText variant="label" color={color.accentInk}>
+              {endLabel(now.ymd, g.ends_on)}
+            </AppText>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: g.live ? color.success : color.inkFaint }} />
+            <AppText variant="label" weight="regular" color={color.inkMuted} style={{ flex: 1 }}>
+              {g.members}명 중 {g.live}명 공부 중
+            </AppText>
+            <AppText variant="label" color={color.navy}>
+              순위 보기 ›
+            </AppText>
+          </View>
+        </Pressable>
+      ))}
+      {joinable.map((g) => (
+        <JoinCard key={g.id} g={g} onJoined={() => (dash.reload(), groups.reload())} />
+      ))}
+      <ClassBoardCard board={classBoard.data} />
+      {manager ? (
+        <Card tone="muted" style={{ gap: space.sm }}>
+          <AppText variant="label">교육활동부 관리</AppText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {(groups.data ?? []).map((g) => (
+              <Button key={g.id} label={`${g.name} (${g.members}명)`} variant="soft" onPress={() => router.push(`/study/admin/${g.id}`)} />
+            ))}
+          </View>
+        </Card>
+      ) : null}
 
-        {running && s.inClass ? (
-          <AppText variant="caption" color={color.accent} align="center">
-            지금은 수업 시간이라 기록만 되고 랭킹·토큰에는 들어가지 않아요
-          </AppText>
-        ) : null}
-
-        {running ? (
-          <Button
-            label={s.phase === 'away' ? '돌아오는 중…' : '그만하기'}
-            variant="soft"
-            style={{ alignSelf: 'stretch', backgroundColor: color.surface, minHeight: 52 }}
-            disabled={s.phase === 'away'}
-            onPress={async () => {
-              await s.stop();
-              refreshWallet();
+      {/* 과목 */}
+      <SectionTitle
+        title="과목"
+        right={
+          subjects.length ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={editing ? '편집 끝내기' : '과목 편집'} onPress={() => setEditing((v) => !v)} hitSlop={12} style={{ minHeight: 44, justifyContent: 'center' }}>
+              <AppText variant="label" color={color.navy}>
+                {editing ? '완료' : '편집'}
+              </AppText>
+            </Pressable>
+          ) : null
+        }
+      />
+      <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
+        {subjects.map((s, i) => (
+          <SubjectRow key={s.id} s={s} seconds={bySubject[s.name] ?? 0} first={i === 0} editing={editing} onPlay={() => focus(s)} onChanged={dash.reload} />
+        ))}
+        <SubjectRow s={{ id: 0, name: '', color: 'gray', sort: 999 }} seconds={bySubject[''] ?? 0} first={!subjects.length} editing={false} onPlay={() => focus({ name: '', color: 'gray' })} onChanged={dash.reload} />
+        {adding ? (
+          <AddSubject
+            suggestions={suggestions}
+            nextColor={COLORS[subjects.length % COLORS.length]}
+            sort={subjects.length}
+            onDone={() => {
+              setAdding(false);
+              dash.reload();
             }}
           />
         ) : (
-          <Button
-            label={s.phase === 'starting' ? '시작하는 중…' : s.phase === 'stopping' ? '저장하는 중…' : '집중 시작'}
-            variant="soft"
-            style={{ alignSelf: 'stretch', backgroundColor: color.accent, minHeight: 52 }}
-            disabled={s.phase !== 'idle' || !enrollment}
-            onPress={() => s.start(subject === '자습' ? '' : subject)}
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="과목 추가"
+            onPress={() => setAdding(true)}
+            style={({ pressed }) => ({ minHeight: 52, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: color.lineSoft, backgroundColor: pressed ? color.surfaceMuted : color.surface })}>
+            <AppText variant="label" color={color.navy}>
+              + 과목 추가
+            </AppText>
+          </Pressable>
         )}
-      </Card>
-
-      {!running ? (
-        <View style={{ gap: space.sm }}>
-          <AppText variant="label" color={color.inkMuted}>
-            무엇을 공부하나요? (선택)
-          </AppText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-            {subjects.map((x) => {
-              const on = subject === x;
-              return (
-                <Pressable
-                  key={x}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
-                  onPress={() => setSubject(on ? '' : x)}
-                  style={{ minHeight: 44, paddingHorizontal: space.md, borderRadius: radius.round, justifyContent: 'center', backgroundColor: on ? color.navy : color.surface }}>
-                  <AppText variant="label" color={on ? color.onNavy : color.ink}>
-                    {x}
-                  </AppText>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      ) : null}
-
-      <View style={{ flexDirection: 'row', gap: space.md }}>
-        <Card style={{ flex: 1, gap: 4 }}>
-          <AppText variant="label" weight="regular" color={color.inkMuted}>
-            오늘 공부
-          </AppText>
-          <AppText variant="title">{durationLabel(todayRanked)}</AppText>
-          <AppText variant="caption" color={color.inkMuted}>
-            토큰 {tokensToday}/{REWARD.studyDailyCap}
-            {(s.today?.class_seconds ?? 0) > 0 ? ` · 수업 중 ${durationLabel(s.today?.class_seconds ?? 0)}` : ''}
-          </AppText>
-        </Card>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="랭킹 보기"
-          onPress={() => openFeature('ranking')}
-          style={({ pressed }) => ({ flex: 1, backgroundColor: pressed ? color.surfaceMuted : color.surface, borderRadius: radius.card, padding: space.xl, gap: 4 })}>
-          <AppText variant="label" weight="regular" color={color.inkMuted}>
-            이번 주
-          </AppText>
-          <AppText variant="title">{durationLabel(s.today?.week_ranked_seconds ?? 0)}</AppText>
-          <AppText variant="caption" color={color.navy} weight="semibold">
-            반 랭킹 보기 ›
-          </AppText>
-        </Pressable>
       </View>
 
+      <SectionTitle title="기록 달력" />
+      <StudyCalendar today={now.ymd} subjects={subjects} />
+
       <Card tone="muted" style={{ gap: 6 }}>
-        <AppText variant="label">집중 모드 규칙</AppText>
+        <AppText variant="label">시간 재기 규칙</AppText>
         <AppText variant="caption" color={color.inkMuted}>
-          • 이 화면을 켜 둔 동안만 시간이 올라가요. 공부하는 동안 화면이 꺼지지 않아요.{'\n'}• 다른 앱이나 다른 탭으로 가면 바로 멈추고, 60초 안에 돌아오면 이어져요.
-          {'\n'}• 처음 2시간은 10분마다, 그 뒤로는 15분마다 토큰 +1 (하루 최대 {REWARD.studyDailyCap}). 하루 12시간까지 랭킹에 들어가요.{'\n'}• 30분마다 '아직 공부 중인가요?'를 물어요(진동). 5분 안에 누르지 않으면 세션이 끝나요.{'\n'}• 수업 시간(우리 반 시간표)은 기록만 되고 랭킹·토큰에서 빠져요.
+          • 집중 화면을 켜 둔 동안만 시간이 올라가요. 그동안 폰 화면은 저절로 꺼지지 않아요(잠금 버튼을 누르면 멈춰요).{'\n'}• 다른 앱으로 가면 바로 멈추고, 60초 안에 돌아오면 이어져요.
+          {'\n'}• 수업 시간에 잰 시간도 오늘 기록·그룹 순위에 들어가요. 토큰과 반 랭킹에서만 빠져요.{'\n'}• 토큰: 처음 2시간은 10분마다, 그 뒤 15분마다 +1 (하루 최대 {REWARD.studyDailyCap}).
         </AppText>
       </Card>
     </Screen>
+  );
+}
+
+function Title() {
+  return (
+    <AppText variant="title" accessibilityRole="header">
+      스터디 윗미
+    </AppText>
+  );
+}
+
+/** 'D-3' / '오늘 마감' / '11/9 시작' */
+function endLabel(today: string, endsOn: string) {
+  const end = isoDayToYmd(endsOn);
+  const n = diffDays(today, end);
+  return n === 0 ? '오늘 마감' : n < 0 ? '끝남' : dDayLabel(today, end);
+}
+
+function SubjectRow({ s, seconds, first, editing, onPlay, onChanged }: { s: Subject; seconds: number; first: boolean; editing: boolean; onPlay: () => void; onChanged: () => void }) {
+  const name = s.name || '자습 (과목 없이)';
+  const [busy, setBusy] = useState(false);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingLeft: space.lg, paddingRight: space.sm, gap: space.md, borderTopWidth: first ? 0 : 1, borderTopColor: color.lineSoft }}>
+      <View style={{ width: 6, alignSelf: 'stretch', marginVertical: space.md, borderRadius: 3, backgroundColor: subjectColor[s.color] ?? subjectColor.gray }} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <AppText variant="bodyStrong" numberOfLines={1} color={s.name ? color.ink : color.inkMuted}>
+          {name}
+        </AppText>
+        <AppText variant="caption" color={color.inkMuted} style={{ fontVariant: ['tabular-nums'] }}>
+          오늘 {hms(seconds)}
+        </AppText>
+      </View>
+      {editing && s.id ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${s.name} 과목 지우기`}
+          disabled={busy}
+          onPress={async () => {
+            setBusy(true);
+            await call('delete_study_subject', { p_id: s.id });
+            setBusy(false);
+            onChanged();
+          }}
+          style={{ minWidth: 64, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radius.control, backgroundColor: color.dangerSoft }}>
+          <AppText variant="label" color={color.danger}>
+            지우기
+          </AppText>
+        </Pressable>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${name} 공부 시작`}
+          onPress={onPlay}
+          style={({ pressed }) => ({ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? color.navyRaised : color.navy })}>
+          <AppText color={color.onNavy} style={{ fontSize: 18, lineHeight: 22, marginLeft: 3 }}>
+            ▶
+          </AppText>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+function AddSubject({ suggestions, nextColor, sort, onDone }: { suggestions: string[]; nextColor: string; sort: number; onDone: () => void }) {
+  const [name, setName] = useState('');
+  const [c, setC] = useState(nextColor);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const save = async (n: string) => {
+    if (!n.trim()) return;
+    setBusy(true);
+    const e = await call('save_study_subject', { p_id: null, p_name: n.trim(), p_color: c, p_sort: sort });
+    setBusy(false);
+    if (e) setErr(e);
+    else onDone();
+  };
+  return (
+    <View style={{ padding: space.lg, gap: space.sm, borderTopWidth: 1, borderTopColor: color.lineSoft }}>
+      <TextInput
+        accessibilityLabel="과목 이름"
+        value={name}
+        onChangeText={(t) => setName(t.slice(0, 20))}
+        placeholder="예) 수학, 영어 단어, 국어 문학"
+        placeholderTextColor={color.inkFaint}
+        autoFocus
+        onSubmitEditing={() => save(name)}
+        style={{ ...inputStyle, minHeight: 48 }}
+      />
+      {suggestions.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {suggestions.map((x) => (
+            <Pressable key={x} accessibilityRole="button" accessibilityLabel={`${x} 넣기`} onPress={() => setName(x)} style={{ minHeight: 44, paddingHorizontal: space.md, borderRadius: radius.round, justifyContent: 'center', backgroundColor: color.surfaceMuted }}>
+              <AppText variant="label">{x}</AppText>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }} accessibilityRole="radiogroup" accessibilityLabel="과목 색">
+        {Object.entries(subjectColor).map(([k, v]) => (
+          <Pressable key={k} accessibilityRole="radio" accessibilityLabel={`색 ${k}`} accessibilityState={{ checked: c === k }} onPress={() => setC(k)} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: v, borderWidth: c === k ? 3 : 0, borderColor: color.ink }} />
+          </Pressable>
+        ))}
+      </View>
+      {err ? (
+        <AppText variant="caption" color={color.danger}>
+          {err}
+        </AppText>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <Button label="취소" variant="soft" style={{ flex: 1 }} onPress={onDone} />
+        <Button label={busy ? '저장 중…' : '추가'} style={{ flex: 1 }} disabled={busy || !name.trim()} onPress={() => save(name)} />
+      </View>
+    </View>
+  );
+}
+
+function JoinCard({ g, onJoined }: { g: GroupInfo; onJoined: () => void }) {
+  const router = useRouter();
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const full = g.members >= g.capacity;
+  const join = async () => {
+    setBusy(true);
+    const e = await call('join_study_group', { p_id: g.id, p_password: pw });
+    setBusy(false);
+    if (e) setErr(e);
+    else onJoined();
+  };
+  return (
+    <Card style={{ gap: space.sm, borderWidth: 2, borderColor: color.accent }}>
+      <AppText variant="label" color={color.accentInk}>
+        교육활동부 행사 · {g.starts_on.slice(5).replace('-', '/')}~{g.ends_on.slice(5).replace('-', '/')}
+      </AppText>
+      <AppText variant="heading">🔒 {g.name}</AppText>
+      <AppText variant="caption" color={color.inkMuted}>
+        {g.description || '비밀번호를 아는 학생만 들어올 수 있어요.'}
+        {'\n'}지금 {g.members}/{g.capacity}명 · 그룹 안에서는 닉네임으로 보여요
+        {g.join_until ? `\n참여 신청 마감: ${Number(g.join_until.slice(5, 7))}/${Number(g.join_until.slice(8))} 23:59` : ''}
+      </AppText>
+      {full ? (
+        <AppText variant="label" color={color.danger}>
+          정원이 다 찼어요
+        </AppText>
+      ) : (
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <TextInput
+            accessibilityLabel={`${g.name} 비밀번호`}
+            value={pw}
+            onChangeText={(t) => setPw(t.slice(0, 20))}
+            placeholder="비밀번호"
+            placeholderTextColor={color.inkFaint}
+            keyboardType="number-pad"
+            secureTextEntry
+            onSubmitEditing={join}
+            style={{ ...inputStyle, minHeight: 48, flex: 1, minWidth: 0 }}
+          />
+          <Button label={busy ? '…' : '참여'} disabled={busy || !pw} onPress={join} style={{ minWidth: 88 }} />
+        </View>
+      )}
+      {err ? (
+        <View style={{ gap: space.sm }}>
+          <AppText variant="caption" color={color.danger}>
+            {err}
+          </AppText>
+          {/닉네임/.test(err) ? <Button label="닉네임 정하기" variant="soft" onPress={() => router.push('/settings/nickname')} /> : null}
+        </View>
+      ) : null}
+    </Card>
   );
 }

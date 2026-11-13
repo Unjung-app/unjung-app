@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { ProfileCard } from '@/components/NameTag';
 import { LoginPrompt } from '@/features/wallet/LoginPrompt';
 import { seoulNow } from '@/lib/date';
+import { StudentOnly } from '@/features/auth/StudentOnly';
 import { useAuth } from '@/state/auth';
 import { useWallet, type Equip, type ShopItem, type ShopKind } from '@/state/wallet';
 import { color, nameColor, profileTheme, radius, space } from '@/theme/tokens';
@@ -14,7 +15,7 @@ const SECTIONS: { kind: ShopKind; title: string; hint: string }[] = [
   { kind: 'shield', title: '스트릭 보호권', hint: '학교 가는 날을 빠져도 연속 출석이 이어져요. 최대 2개' },
   { kind: 'emoji', title: '닉네임 이모지', hint: '닉네임 앞에 붙어요' },
   { kind: 'name_color', title: '닉네임 색', hint: '랭킹과 프로필에서 닉네임 색이 바뀌어요' },
-  { kind: 'theme', title: '프로필 테마', hint: '프로필 카드 배경. 운중의 밤에서는 닉네임이 흰색으로 보여요' },
+  { kind: 'theme', title: '프로필 테마', hint: '프로필 카드 배경. 운중의 밤에서는 닉네임 색이 밝은 색으로 바뀌어 보여요' },
   { kind: 'badge', title: '시즌 배지', hint: '기간 한정. 기간이 지나면 다시 살 수 없어요' },
 ];
 
@@ -29,7 +30,7 @@ const EQUIP_KEY: Record<Exclude<ShopKind, 'shield'>, keyof Equip> = {
 const md = (d: string) => `${Number(d.slice(5, 7))}월 ${Number(d.slice(8, 10))}일`;
 
 export function ShopScreen() {
-  const { status } = useAuth();
+  const { status, teacher } = useAuth();
   const { wallet, items, itemById, loadItems, buy, equip } = useWallet();
   const [selected, setSelected] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -57,6 +58,7 @@ export function ShopScreen() {
   }, [wallet?.equip, sel]);
 
   if (status === 'signedOut') return <LoginPrompt what="꾸미기 상점" />;
+  if (teacher) return <StudentOnly what="꾸미기 상점" />;
 
   const pick = (id: string) => {
     setSelected(id === selected ? null : id);

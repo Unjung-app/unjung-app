@@ -29,5 +29,10 @@
 
 ## 작업 흐름
 
-- `lead/*` 브랜치에서 작업 → `npm run check` 통과 → PR. `main`에 직접 올리지 않는다.
+- 출시(11/8) 뒤부터는 **테스트 서버 → 한 번에 업데이트** 방식으로 일한다. 자세한 순서: `docs/release.md`
+  - `lead/*`에서 작업 → `npm run check` 통과 → **`dev`로 PR**. `dev`는 테스트 서버(테스트 DB)에 배포된다.
+  - 업데이트할 때: `app.json` version 올리기 + `src/features/updates/changelog.ts` 맨 위에 바뀐 점 → `dev` → `main` PR 하나로 메인 앱에 반영.
+  - DB 변경(새 마이그레이션)은 테스트 DB에 먼저, 업데이트 때 메인 DB에 같은 파일을 실행한다.
+  - 급한 버그 수정(hotfix)만 예외로 `main`에 바로 PR하고, 곧바로 `main`을 `dev`에 합친다.
+- `main`에 직접 올리지 않는다.
 - PR 설명: 무엇을 바꿨나(3줄) · 미리보기에서 확인할 것 · 결정이 필요한 것.

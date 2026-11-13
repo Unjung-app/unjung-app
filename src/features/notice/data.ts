@@ -25,6 +25,8 @@ export type Notice = {
   created_at: string;
   author_nickname: string | null;
   author_grade: number | null;
+  /** 선생님이 올린 공지면 선생님 이름 */
+  author_teacher?: string | null;
   mine: boolean;
   reported: boolean;
 };
@@ -48,6 +50,9 @@ export type NoticeDraft = {
   scope: NoticeScope;
   showFrom: Ymd;
   days: number;
+  /** 선생님만: 학년·반 공지 대상 */
+  grade?: number | null;
+  classNo?: number | null;
 };
 
 type Result = { ok: true } | { ok: false; message: string };
@@ -107,6 +112,8 @@ export async function submitNotice(d: NoticeDraft): Promise<Result> {
     p_scope: d.scope,
     p_show_from: ymdToIso(d.showFrom),
     p_show_days: d.days,
+    // 학년·반 직접 고르기는 선생님만. 학생은 보내지 않아야 예전 서버 함수와도 맞는다
+    ...(d.grade != null ? { p_grade: d.grade, p_class: d.classNo ?? null } : {}),
   });
   return error ? { ok: false, message: friendly(error.message) } : { ok: true };
 }

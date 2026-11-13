@@ -34,17 +34,24 @@ const res = (error: { message: string } | null): Result =>
 
 export function useLostFeed(enabled: boolean) {
   const [items, setItems] = useState<LostItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     if (!enabled) return setItems(null);
-    const { data } = await supabase.from('lost_feed').select('*').order('created_at', { ascending: false }).limit(100);
-    const list = ((data as LostItem[]) ?? []).map((x) => ({ ...x, happened_on: isoToYmd(x.happened_on) }));
-    const paths = list.filter((x) => x.photo_path).map((x) => x.photo_path as string);
-    let urls: Record<string, string> = {};
-    if (paths.length) {
-      const { data: s } = await supabase.storage.from('lost-photos').createSignedUrls(paths, 3600);
-      urls = Object.fromEntries((s ?? []).filter((x) => x.signedUrl && x.path).map((x) => [x.path as string, x.signedUrl as string]));
+    try {
+      const { data, error: failure } = await supabase.from('lost_feed').select('*').order('created_at', { ascending: false }).limit(100);
+      if (failure) throw failure;
+      const list = ((data as LostItem[]) ?? []).map((x) => ({ ...x, happened_on: isoToYmd(x.happened_on) }));
+      const paths = list.filter((x) => x.photo_path).map((x) => x.photo_path as string);
+      let urls: Record<string, string> = {};
+      if (paths.length) {
+        const { data: s } = await supabase.storage.from('lost-photos').createSignedUrls(paths, 3600);
+        urls = Object.fromEntries((s ?? []).filter((x) => x.signedUrl && x.path).map((x) => [x.path as string, x.signedUrl as string]));
+      }
+      setItems(list.map((x) => ({ ...x, photoUrl: x.photo_path ? urls[x.photo_path] ?? null : null })));
+      setError(null);
+    } catch {
+      setError('게시물을 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요.');
     }
-    setItems(list.map((x) => ({ ...x, photoUrl: x.photo_path ? urls[x.photo_path] ?? null : null })));
   }, [enabled]);
   useEffect(() => {
     load();
@@ -61,6 +68,7 @@ export function useLostFeed(enabled: boolean) {
 
   return {
     items,
+    error,
     reload: load,
     respond: (id: number, on: boolean) => rpc('respond_lost_item', { p_id: id, p_on: on }),
     /** 받았어요: 보상 여부를 문구로 돌려준다(악용 방지 규칙에 걸리면 해결만 되고 보상은 없음) */
@@ -87,6 +95,9 @@ export function useLostFeed(enabled: boolean) {
 export type LostDraft = { type: LostType; item: string; place: string; happenedOn: Ymd; description: string; keepAt: string | null; photo: Blob | null };
 
 export async function postLostItem(d: LostDraft, userId: string): Promise<Result> {
+  const allowed = await supabase.rpc('can_post_lost_today');
+  if (allowed.error) return res(allowed.error);
+  if (!allowed.data) return { ok: false, message: '분실물 게시물은 하루에 한 번만 올릴 수 있어요.' };
   let path: string | null = null;
   if (d.photo) {
     path = `${userId}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.jpg`;
@@ -102,6 +113,7 @@ export async function postLostItem(d: LostDraft, userId: string): Promise<Result
     p_keep_at: d.keepAt,
     p_photo_path: path,
   });
+  if (error?.code === 'P0001' && path) await supabase.storage.from('lost-photos').remove([path]);
   return res(error);
 }
 

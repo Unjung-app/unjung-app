@@ -6,6 +6,7 @@ import { useOpenFeature } from '@/features/hooks';
 import { useAuth } from '@/state/auth';
 import { color, radius, space } from '@/theme/tokens';
 import { useSurveyFeed } from './data';
+import { useLaunchEvent } from '@/features/launch/Launch';
 
 /** '오늘' 홈: 아직 참여하지 않은 학생회 설문이 있으면 한 줄 카드로 알린다(없으면 안 그린다) */
 export function SurveyStrip() {
@@ -13,6 +14,7 @@ export function SurveyStrip() {
   const openFeature = useOpenFeature();
   const { status } = useAuth();
   const { items } = useSurveyFeed(status === 'ready');
+  const { mult } = useLaunchEvent();
   const todo = (items ?? []).filter((s) => s.is_open && !s.responded);
   if (!todo.length) return null;
   const first = todo[0];
@@ -25,7 +27,7 @@ export function SurveyStrip() {
       <AppText style={{ fontSize: 26, lineHeight: 32 }}>🗳️</AppText>
       <View style={{ flex: 1, gap: 2 }}>
         <AppText variant="caption" weight="semibold" color={color.accentInk}>
-          학생회 설문 {todo.length}개 · 참여하면 +3 토큰
+          학생회 설문 {todo.length}개 · 참여하면 +{3 * mult} 토큰
         </AppText>
         <AppText variant="bodyStrong" numberOfLines={1}>
           {first.title}

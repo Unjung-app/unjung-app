@@ -1,3 +1,4 @@
+import { GAMES } from '@/features/games/catalog';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -216,8 +217,15 @@ export function useWallet() {
   return v;
 }
 
+/** 공부 화면처럼 집중해야 할 때는 토큰을 받아도 진동하지 않는다(학생 의견 #61) */
+let quietRewards = false;
+export function setQuietRewards(on: boolean) {
+  quietRewards = on;
+}
+
 /** 토큰을 받을 때 휴대폰 진동 (안드로이드 웹은 vibrate, 앱은 햅틱. 아이폰 웹은 지원 안 함) */
 function rewardHaptic() {
+  if (quietRewards) return;
   try {
     if (Platform.OS === 'web') {
       const nav = globalThis.navigator as Navigator | undefined;
@@ -230,13 +238,15 @@ function rewardHaptic() {
   }
 }
 
-const GAME_NAME: Record<string, string> = { word: '영단어 러시', math: '암산 챌린지', life: '운중 라이프 퀴즈' };
+const GAME_NAME: Record<string, string> = { word: '영단어 러시', math: '암산 챌린지', life: '운중 라이프 퀴즈', ...Object.fromEntries(Object.entries(GAMES).map(([k, v]) => [k, v.title])) };
 
 /** 토큰 기록의 사람이 읽는 이름 */
 export function ledgerLabel(row: Pick<LedgerRow, 'reason' | 'note'>) {
   switch (row.reason) {
     case 'check_in':
       return '출석';
+    case 'game_score':
+      return '게임 점수 보상';
     case 'streak_7':
       return '연속 출석 7일 보너스';
     case 'streak_30':

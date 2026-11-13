@@ -5,21 +5,27 @@ import { AppText } from '@/components/ui/AppText';
 import { Icon } from '@/components/ui/Icon';
 import { Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
-import { CONTACT_EMAIL } from '@/lib/supabase';
+import { RequestCard, useFixState } from '@/features/settings/EnrollmentFixScreen';
 import { parseStudentNo } from '@/lib/student';
-import { useAuth } from '@/state/auth';
+import { isStudentEmail, useAuth } from '@/state/auth';
+import { TeacherForm } from './TeacherForm';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 
-/** 첫 로그인: 올해 학번·이름 한 번 입력. 저장 후에는 학생이 고칠 수 없다. */
+/** 첫 로그인: 올해 학번·이름 입력. 저장 후 24시간 안 1번은 직접 고칠 수 있고, 그 뒤엔 정정 요청. */
 export function OnboardingScreen() {
   const router = useRouter();
-  const { status, email, register, signOut } = useAuth();
+  const { status, email, register, signOut, canBeTeacher, teacherBlocked } = useAuth();
+  /** 교직원 계정(앞 5자리가 숫자가 아님)이면 선생님 정보부터. 드물게 학생이면 아래 링크로 학번 등록 */
+  const [asStudent, setAsStudent] = useState(false);
   const [studentNo, setStudentNo] = useState('');
   const [name, setName] = useState('');
   const [step, setStep] = useState<'input' | 'confirm'>('input');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 내 학번을 다른 계정이 먼저 등록했을 때 → 정정 요청 */
+  const [taken, setTaken] = useState(false);
+  const { state: fix, load: loadFix } = useFixState();
 
   useEffect(() => {
     if (status === 'ready') router.replace('/');
@@ -56,9 +62,45 @@ export function OnboardingScreen() {
     setSaving(false);
     if (!r.ok) {
       setError(r.message);
+      setTaken(r.message.includes('다른 계정'));
       setStep('input');
     }
   };
+
+  if (canBeTeacher && !asStudent) {
+    return (
+      <Screen>
+        <AppText variant="title" accessibilityRole="header">
+          선생님, 반가워요!
+        </AppText>
+        <AppText variant="body" color={color.inkMuted}>
+          교직원 계정({email})으로 로그인하셨어요. 학번 대신 선생님 정보를 한 번만 알려 주세요.
+        </AppText>
+        <TeacherForm />
+        <Card tone="muted" style={{ gap: 4 }}>
+          <AppText variant="label">선생님 계정으로 할 수 있는 것</AppText>
+          <AppText variant="caption" color={color.inkMuted}>
+            {'· 공지 바로 게시(전체·학년·반)\n· 행사 사진 올리기 · 설문 만들기\n· 스터디 윗미 이용 현황(반별 합계·학생별 기록)\n· 앱 사용 현황 보기'}
+          </AppText>
+        </Card>
+        <Button label="학생인데 학번으로 시작하지 않는 계정이에요" variant="ghost" onPress={() => setAsStudent(true)} />
+        <Button label="다른 계정으로 로그인" variant="ghost" onPress={signOut} />
+      </Screen>
+    );
+  }
+  if (teacherBlocked && !isStudentEmail(email)) {
+    return (
+      <Screen>
+        <AppText variant="title" accessibilityRole="header">
+          선생님 계정으로 쓸 수 없어요
+        </AppText>
+        <AppText variant="body" color={color.inkMuted}>
+          관리자가 이 계정({email})의 선생님 사용을 해제했어요(공용·행정 계정 등). 잘못된 경우 학생회 관리자에게 알려 주세요.
+        </AppText>
+        <Button label="다른 계정으로 로그인" variant="soft" onPress={signOut} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -129,7 +171,7 @@ export function OnboardingScreen() {
           <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' }}>
             <Icon name="info" size={18} color={color.accentInk} />
             <AppText variant="caption" color={color.accentInk} style={{ flex: 1 }}>
-              저장하면 직접 바꿀 수 없어요. 잘못 입력했다면 {CONTACT_EMAIL} 으로 학번·이름과 함께 연락해 주세요.
+              저장한 뒤 24시간 안에 한 번은 설정에서 직접 고칠 수 있어요. 그 뒤에는 앱 안에서 정정 요청을 보내야 해요.
             </AppText>
           </View>
           <Button label={saving ? '저장하는 중…' : '맞아요, 저장할게요'} disabled={saving} onPress={save} />
@@ -137,9 +179,13 @@ export function OnboardingScreen() {
         </Card>
       )}
 
+      {taken || fix?.request?.status === 'pending' ? (
+        <RequestCard request={fix?.request ?? null} onChanged={loadFix} initialNo={studentNo} initialName={name.trim()} />
+      ) : null}
+
       <Button label="다른 계정으로 로그인" variant="ghost" onPress={signOut} />
       <AppText variant="caption" color={color.inkFaint} align="center">
-        선생님이시거나 운중고 학생이 아니라면 학번을 넣지 말고 로그아웃한 뒤 '로그인 없이 둘러보기'를 써 주세요.
+        운중고 학생이 아니라면 로그아웃한 뒤 '로그인 없이 둘러보기'를 써 주세요. 선생님은 학교 계정으로 로그인하시면 학번 없이 선생님 화면이 나와요.
       </AppText>
     </Screen>
   );

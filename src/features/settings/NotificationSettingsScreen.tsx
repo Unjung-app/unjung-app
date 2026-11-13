@@ -10,8 +10,9 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { color, radius, space } from '@/theme/tokens';
 
-type Prefs = { mine: boolean; deadline: boolean; morning: boolean; survey: boolean; devices: number };
-const ROWS: { key: keyof Omit<Prefs, 'devices'>; title: string; desc: string }[] = [
+type Prefs = { mine: boolean; deadline: boolean; morning: boolean; survey: boolean; staff?: boolean; staff_roles?: string[]; devices: number };
+type PrefKey = 'mine' | 'deadline' | 'morning' | 'survey' | 'staff';
+const ROWS: { key: PrefKey; title: string; desc: string }[] = [
   { key: 'mine', title: '내 글 소식', desc: '공지 승인·반려, 분실물 응답, 건의 확인, 토큰 받음' },
   { key: 'deadline', title: '과제 마감 전날', desc: '우리 반 게시판에 내일 마감이 있으면 저녁 7시에' },
   { key: 'morning', title: '아침 급식·시간표', desc: '학교 가는 날 아침 7시 30분에 1교시와 점심 메뉴' },
@@ -53,11 +54,11 @@ export function NotificationSettingsScreen() {
     setMsg({ ok: true, text: '이 기기의 알림을 껐어요.' });
     load();
   };
-  const toggle = async (key: keyof Omit<Prefs, 'devices'>) => {
+  const toggle = async (key: PrefKey) => {
     if (!prefs) return;
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
-    const { data, error } = await supabase.rpc('set_push_prefs', { p_mine: next.mine, p_deadline: next.deadline, p_morning: next.morning, p_survey: next.survey });
+    const { data, error } = await supabase.rpc('set_push_prefs', { p_mine: next.mine, p_deadline: next.deadline, p_morning: next.morning, p_survey: next.survey, ...(next.staff_roles ? { p_staff: next.staff ?? true } : {}) });
     if (error) {
       setPrefs(prefs);
       setMsg({ ok: false, text: '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.' });
@@ -128,7 +129,12 @@ export function NotificationSettingsScreen() {
         받을 알림
       </AppText>
       <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
-        {ROWS.map((r, i) => {
+        {[
+          ...ROWS,
+          ...(prefs?.staff_roles?.length
+            ? [{ key: 'staff' as const, title: '업무 알림 (내 권한)', desc: `${prefs.staff_roles.join(' / ')} · 같은 종류는 30분에 한 번` }]
+            : []),
+        ].map((r, i) => {
           const on = !!prefs?.[r.key];
           return (
             <View key={r.key}>
@@ -157,6 +163,12 @@ export function NotificationSettingsScreen() {
       <AppText variant="caption" color={color.inkMuted}>
         종류 설정은 내 계정의 모든 기기에 함께 적용돼요. 알림에는 이름·학번이 들어가지 않아요.
       </AppText>
+      <Card tone="muted" style={{ gap: space.xs }}>
+        <AppText variant="label">🔒 잠금화면에 안 뜨면</AppText>
+        <AppText variant="caption" color={color.inkMuted}>
+          {'아이폰: 설정 → 알림 → 운중고 → ‘잠금 화면’과 ‘배너’를 켜 주세요. 집중 모드(방해 금지)가 켜져 있으면 안 떠요.\n안드로이드: 설정 → 알림 → 앱 알림 → 크롬(또는 운중고) → 알림 허용 · ‘잠금화면에 표시’ · 중요도 ‘높음’으로.\n홈 화면에 추가한 앱에서만 알림이 와요(아이폰).'}
+        </AppText>
+      </Card>
     </Screen>
   );
 }

@@ -8,8 +8,10 @@ import { Segmented, Stepper } from '@/components/ui/Segmented';
 import { useWeekTimetable } from '@/features/data';
 import { classLabel, useNow } from '@/features/hooks';
 import { bellFor, phaseAt } from './bell';
+import { lessonSubject } from './writingSections';
 import { shortSubject } from './subjects';
-import { addDays, diffDays, isWeekend, mondayOf, parseYmd, weekdayLabel } from '@/lib/date';
+import { PersonalTimetable } from './PersonalTimetable';
+import { addDays, diffDays, isWeekend, mondayOf, parseYmd, schoolTerm, weekdayLabel } from '@/lib/date';
 import type { ClassLesson as Lesson } from '@/features/data';
 import { useAuth } from '@/state/auth';
 import { usePrefs } from '@/state/prefs';
@@ -21,7 +23,11 @@ const fmt = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '
 export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
   const now = useNow();
   const router = useRouter();
-  const { myClass } = usePrefs();
+  const { myClass: preferredClass } = usePrefs();
+  const { status, session, enrollment } = useAuth();
+  const personal = status === 'ready' && enrollment?.grade === 2 && !!session;
+  const myClass = personal ? { grade: enrollment.grade, classNo: enrollment.class_no } : preferredClass;
+  const term = schoolTerm(now.ymd);
   const [mode, setMode] = useState<'week' | 'day'>('week');
   // 주말에는 다가오는 주(다음 월요일)를 먼저 보여 준다
   const home = isWeekend(now.ymd) ? addDays(mondayOf(now.ymd), 7) : now.ymd;
@@ -31,7 +37,6 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
   const thisMonday = mondayOf(now.ymd); // 라벨(이번 주·다음 주)은 실제 달력 기준
   const weekOffset = Math.round(diffDays(thisMonday, monday) / 7);
   // 우리 반 게시판의 마감을 해당 날짜·과목 칸에 점으로 표시
-  const { status } = useAuth();
   const board = useClassTasks(now.ymd, status === 'ready');
   const marks = useMemo(() => {
     const m = new Map<string, string>();
@@ -41,6 +46,23 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
     }
     return m;
   }, [board.items]);
+
+  const renderTimetable = (lessons: Lesson[]) => (
+    <>
+      {tt.source === 'sample' ? <SampleNotice /> : null}
+      <Segmented label="보기 방식" value={mode} onChange={setMode}
+        options={[{ value: 'week', label: '주간' }, { value: 'day', label: '하루' }]} />
+      {mode === 'week' ? (
+        <>
+          <Stepper
+            label={weekOffset === 0 ? '이번 주' : weekOffset === 1 ? '다음 주' : weekOffset === -1 ? '지난 주' : weekLabel(monday)}
+            onPrev={() => setAnchor(addDays(monday, -7))} onNext={() => setAnchor(addDays(monday, 7))} onReset={() => setAnchor(home)} />
+          <WeekGrid monday={monday} lessons={lessons} today={now.ymd} minutes={now.minutes} grade={myClass!.grade} marks={marks} />
+        </>
+      ) : <DayList anchor={anchor} setAnchor={setAnchor} lessons={lessons} today={now.ymd} minutes={now.minutes} grade={myClass!.grade} marks={marks} />}
+      {marks.size ? <AppText variant="caption" color={color.inkFaint}>주황 점은 우리 반 게시판에 올라온 수행평가·숙제예요.</AppText> : null}
+    </>
+  );
 
   return (
     <Screen topInset={!inStack} refreshing={tt.refreshing} onRefresh={tt.refresh}>
@@ -65,36 +87,13 @@ export function TimetableScreen({ inStack = false }: { inStack?: boolean }) {
           </AppText>
           <Button label="반 설정하기" onPress={() => router.push('/settings/class')} />
         </Card>
-      ) : (
-        <>
-          {tt.source === 'sample' ? <SampleNotice /> : null}
-          <Segmented
-            label="보기 방식"
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: 'week', label: '주간' },
-              { value: 'day', label: '하루' },
-            ]}
-          />
-          {mode === 'week' ? (
-            <>
-              <Stepper
-                label={weekOffset === 0 ? '이번 주' : weekOffset === 1 ? '다음 주' : weekOffset === -1 ? '지난 주' : weekLabel(monday)}
-                onPrev={() => setAnchor(addDays(monday, -7))}
-                onNext={() => setAnchor(addDays(monday, 7))}
-                onReset={() => setAnchor(home)}
-              />
-              <WeekGrid monday={monday} lessons={tt.items} today={now.ymd} minutes={now.minutes} grade={myClass.grade} marks={marks} />
-            </>
-          ) : (
-            <DayList anchor={anchor} setAnchor={setAnchor} lessons={tt.items} today={now.ymd} minutes={now.minutes} grade={myClass.grade} marks={marks} />
-          )}
-          <AppText variant="caption" color={color.inkFaint}>
-            {marks.size ? '주황 점은 우리 반 게시판에 올라온 마감이에요. ' : ''}선택 과목 자동 반영은 준비 중이에요.
-          </AppText>
-        </>
-      )}
+      ) : personal ? (
+        <PersonalTimetable key={`${session.user.id}:${term.year}:${term.semester}:${myClass.classNo}`}
+          uid={session.user.id} year={term.year} semester={term.semester} classNo={myClass.classNo} lessons={tt.items}>
+          {renderTimetable}
+        </PersonalTimetable>
+      ) : renderTimetable(tt.items)
+      }
     </Screen>
   );
 }
@@ -150,7 +149,7 @@ function WeekGrid({ monday, lessons, today, minutes, grade, marks }: { monday: s
               <View key={d} style={{ flex: 1, padding: 2 }}>
                 <View
                   accessible
-                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lesson.subject + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}${mark ? `, ${mark} 마감` : ''}`}
+                  accessibilityLabel={`${weekdayLabel(d)}요일 ${p.period}교시 ${lesson ? lessonSubject(lesson) + (lesson.tags.length ? ` (${lesson.tags.join(', ')})` : '') : '수업 없음'}${mark ? `, ${mark} 있음` : ''}`}
                   style={{
                     flex: 1,
                     borderRadius: 10,
@@ -168,7 +167,7 @@ function WeekGrid({ monday, lessons, today, minutes, grade, marks }: { monday: s
                     numberOfLines={2}
                     color={lesson ? (lesson.tags.length ? color.accentInk : color.ink) : color.inkFaint}
                     style={{ fontSize: 12.5 }}>
-                    {lesson ? shortSubject(lesson.subject) : '–'}
+                    {lesson ? shortSubject(lessonSubject(lesson)) : '–'}
                   </AppText>
                   {mark ? (
                     <View style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: color.accent }} />
@@ -251,9 +250,9 @@ function DayList({
                   ) : null}
                 </View>
                 <AppText variant="bodyStrong" style={{ flex: 1 }} color={done ? color.inkFaint : color.ink}>
-                  {l.subject}
+                  {lessonSubject(l)}
                 </AppText>
-                {marks.get(`${l.date}|${l.subject}`) ? <Badge label={`${marks.get(`${l.date}|${l.subject}`)} 마감`} /> : null}
+                {marks.get(`${l.date}|${lessonSubject(l)}`) ? <Badge label={marks.get(`${l.date}|${lessonSubject(l)}`)!} /> : null}
                 {l.tags.map((t) => (
                   <Badge key={t} label={t} />
                 ))}

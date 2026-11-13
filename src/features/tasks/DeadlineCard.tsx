@@ -18,7 +18,7 @@ export function DeadlineCard({ today }: { today: Ymd }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`다가오는 마감 ${soon.length}개, 수행평가·숙제 열기`}
+      accessibilityLabel={`3일 안에 할 일 ${soon.length}개, 수행평가·숙제 열기`}
       onPress={() => openFeature('tasks')}
       style={({ pressed }) => ({
         backgroundColor: pressed ? color.surfaceMuted : color.surface,
@@ -29,7 +29,7 @@ export function DeadlineCard({ today }: { today: Ymd }) {
         borderLeftColor: color.accent,
       })}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <AppText variant="heading">다가오는 마감 {soon.length}</AppText>
+        <AppText variant="heading">3일 안에 할 일 {soon.length}</AppText>
         <Icon name="chevronRight" size={18} color={color.inkFaint} />
       </View>
       {soon.slice(0, 3).map((t) => (

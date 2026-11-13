@@ -12,14 +12,31 @@ await db.exec(`
   create role anon nologin; create role authenticated nologin; create role service_role nologin;
   create schema auth;
   create table auth.users (id uuid primary key, email text);
+  -- 실제 Supabase처럼 로그인 수단(신원) 표. 테스트 계정은 기본으로 '구글' 신원을 갖는다(이메일이 fake-로 시작하면 이메일 가입 계정)
+  create table auth.identities (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users on delete cascade, provider text, identity_data jsonb);
+  create function auth._test_identity() returns trigger language plpgsql as $$ begin
+    insert into auth.identities (user_id, provider, identity_data) values (new.id, case when new.email like 'fake-%' then 'email' else 'google' end, jsonb_build_object('email', new.email));
+    return new; end $$;
+  create trigger users_identity after insert on auth.users for each row execute function auth._test_identity();
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
   create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('test.jwt', true), ''), '{}')::jsonb $$;
   grant usage on schema auth to anon, authenticated; grant usage on schema public to anon, authenticated;
+  -- 사진 조회는 게시물과 별개로 Storage의 접근 정책도 통과해야 한다.
+  create schema storage;
+  create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+  create table storage.objects (bucket_id text, name text);
+  alter table storage.objects enable row level security;
+  create function storage.foldername(name text) returns text[] language sql immutable
+    as $$ select string_to_array(name, '/') $$;
+  grant usage on schema storage to anon, authenticated;
+  grant select on storage.objects to anon, authenticated;
 `);
 const dir = process.argv[2] ?? 'supabase/migrations';
 for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
   try { await db.exec(fs.readFileSync(path.join(dir, f), 'utf8')); } catch (e) { console.log('MIGRATION ERROR', f, e.message); process.exit(1); }
 }
+// 검사 날짜와 상관없이 같은 결과가 나오도록 출시 이벤트(보상 2배)는 꺼 둔다. 이벤트 자체는 아래에서 따로 시험한다
+await db.exec(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`).catch(() => {});
 await db.exec(`grant select on all tables in schema public to authenticated;`);
 console.log('--- migration applied');
 const A = '11111111-1111-1111-1111-111111111111', B = '22222222-2222-2222-2222-222222222222', X = '33333333-3333-3333-3333-333333333333';
@@ -120,7 +137,11 @@ console.log('B 토큰 변화:', before, '→', await bal(B));
 { const r = await as(B, CB, `select public.set_nickname('Cloud_9') w`, 'B 닉네임 설정'); expect('B 닉네임 설정', r.ok); }
 const C = '44444444-4444-4444-4444-444444444444'; await q(`insert into auth.users values ('${C}','third@unjung.hs.kr')`);
 { const r = await as(C, 'third@unjung.hs.kr', `select public.set_nickname('CLOUD_9')`, 'C 대소문자만 다른 중복(막혀야 함)'); expect('대소문자 무시 중복 불가', /이미 다른 학생/.test(r.err ?? '')); }
-{ const r = await as(A, CA, `select public.set_nickname('구름아래')`, '30일 안에 변경(막혀야 함)'); expect('30일 변경 제한', /30일/.test(r.err ?? '')); }
+{ const C3 = 'third@unjung.hs.kr';
+  const r0 = await as(C, C3, `select public.set_nickname('셋째학생')`, 'C 처음 정하기'); expect('처음 닉네임 정하기', r0.ok);
+  const r = await as(C, C3, `select public.set_nickname('셋째학생2')`, '처음 정한 뒤 첫 변경은 바로'); expect('첫 변경은 대기 없이', r.ok);
+  const r2 = await as(C, C3, `select public.set_nickname('셋째학생3')`, '두 번째 변경(막혀야 함)'); expect('두 번째부터 14일 제한', /14일/.test(r2.err ?? ''));
+  const st = await as(C, C3, `select public.nickname_status() s`); expect('닉네임 상태: 다음 가능일', st.rows[0]?.s?.free === false && !!st.rows[0]?.s?.until); }
 { const r = await as(A, CA, `update public.profiles set nickname='직접수정' where id='${A}' returning nickname`, '프로필 직접 수정(0행)'); expect('프로필 직접 수정 불가', !r.ok || r.rows.length === 0); }
 { const r = await as(B, CB, `select nickname, equip_emoji from public.profile_cards order by nickname`, 'B가 본 카드(꾸미기 포함)'); expect('카드에 꾸미기 보임', r.ok && r.rows.some((x) => x.equip_emoji === 'e_cat')); }
 { const r = await as(B, CB, `select public.admin_adjust_tokens('${B}', 999, '셀프')`, 'B 관리자 보정(막혀야 함)'); expect('관리자 보정은 관리자만', !r.ok); }
@@ -333,7 +354,12 @@ const g6 = (await sg(A, 'life', '2026-11-09 18:25+09')).rows[0]?.r;
 { const key = await keyOf(g6.id); expect('라이프 퀴즈: 동기화된 급식·시간표·학사일정 문제 포함', g6?.duration_s === 90 && key.length >= 8 && key.some((x) => /점심/.test(x.q) && /\//.test(x.q)) && key.some((x) => /우리 반/.test(x.q)) && key.some((x) => /지필평가/.test(x.q)) && key.every((x) => x.choices.length === 4)); }
 await q(`insert into public.token_ledger (user_id, delta, reason, ref_id) values ('${A}', 100, 'admin', 'test-game-fund')`);
 for (let k = 0; k < 4; k++) await sg(A, 'word', `2026-11-09 19:0${k}+09`);
-{ const r = await sg(A, 'word', '2026-11-09 19:30+09'); expect('하루 10판 제한', !r.ok && /10판/.test(r.err ?? '')); }
+{ const r = await sg(A, 'word', '2026-11-09 19:30+09'); expect('무료 10판 뒤에는 가격 확인 없이 시작 불가', !r.ok && /연장 가격/.test(r.err ?? '')); }
+{ const w = await q(`select public._start_game('${A}', 'word', '2026-11-09 19:31+09', 8) r`); expect('연장: 가격이 다르면 거부', !w.ok && /5토큰/.test(w.err ?? '')); }
+{ const c = await q(`select public._extra_play_cost(9) a, public._extra_play_cost(10) b, public._extra_play_cost(13) c, public._extra_play_cost(19) d, public._extra_play_cost(20) e`);
+  const x = c.rows[0]; expect('연장 가격: 할수록 비싸지고 20판에서 끝', x.a === 0 && x.b === 5 && x.c === 8 && x.d === 20 && x.e === null); }
+{ await q(`insert into public.token_ledger (user_id, delta, reason, ref_id) values ('${A}', 500, 'admin_adjust', 'test-extra')`);
+  const r = await q(`select public._start_game('${A}', 'word', '2026-11-09 19:32+09', 5) r`); expect('연장 11판째: 5토큰 내고 시작', r.ok && r.rows[0]?.r?.cost === 5 && r.rows[0]?.r?.plays_today === 11); }
 { const r = await sg(A, 'word', '2026-11-10 18:00+09'); expect('다음 날 첫 판은 무료', r.ok && r.rows[0]?.r?.cost === 0); }
 { const r = await as(B, CB, `select count(*)::int n from public.game_runs`); const w = await as(B, CB, `select count(*)::int n from public.game_words`); expect('게임 기록·단어장(정답) 직접 조회 불가', r.rows[0]?.n === 0 && w.rows[0]?.n === 0); }
 { const r = await as(B, CB, `select public.game_ranking('math', '2026-11-09') r`, 'B 게임 랭킹'); const k = r.rows[0]?.r;
@@ -348,6 +374,24 @@ const gp = (await sg(D, 'word', TP)).rows[0]?.r;
   const badge = await q(`select count(*)::int n from public.inventory where user_id='${D}' and item_id='b_gameking'`);
   expect('주간 정산: 1위 +30·배지, 두 번 불러도 한 번만', r.rows[0]?.r?.paid === 1 && r2.rows[0]?.r?.paid === 0 && t.rows[0]?.n === 1 && badge.rows[0]?.n === 1); }
 { const r = await as(A, CA, `select public.settle_game_week(public.seoul_today()) r`); expect('이번 주는 아직 정산 안 함', r.rows[0]?.r?.settled === false); }
+// HTML 게임(학생 제작)
+{ const TH = '2026-10-21T09:00:00Z'; // 수 18:00 KST
+  const bad = await sg(D, 'Bad-Id!', TH); expect('HTML 게임: 이상한 id 거부', !bad.ok);
+  const cls = await sg(D, 'tower', '2026-10-21 10:00+09'); expect('HTML 게임: 수업 시간 시작 불가', !cls.ok && /수업 시간/.test(cls.err ?? ''));
+  const g = (await sg(D, 'tower', TH)).rows[0]?.r; expect('HTML 게임 시작(첫 판 무료, 문제 없음)', g?.cost === 0 && Array.isArray(g?.questions) && g.questions.length === 0 && g.duration_s === 3600);
+  const fast = await q(`select public._finish_html_game('${D}', '${g.id}', 999, '${plusSec(TH, 1)}') r`);
+  expect('3초 안에 끝낸 판은 0점', fast.rows[0]?.r?.score === 0);
+  const g2 = (await sg(D, 'tower', plusSec(TH, 60))).rows[0]?.r;
+  const ok = await q(`select public._finish_html_game('${D}', '${g2.id}', 99999999, '${plusSec(TH, 120)}') r`);
+  const again = await q(`select public._finish_html_game('${D}', '${g2.id}', 5, '${plusSec(TH, 130)}') r`);
+  expect('점수 상한 1천만, 두 번 끝내도 첫 점수 유지, 학생 게임은 무료', ok.rows[0]?.r?.score === 10000000 && again.rows[0]?.r?.score === 10000000 && g2.cost === 0);
+  const other = await as(B, CB, `select public.finish_html_game('${g2.id}', 1)`); expect('남의 판은 끝낼 수 없음', !other.ok);
+  const quiz = await q(`select public._finish_html_game('${D}', '${gp.id}', 5, now()) r`); expect('퀴즈 게임은 HTML 끝내기 불가', !quiz.ok);
+  const rk = await as(B, CB, `select public.game_ranking('tower', '2026-10-19') r`); expect('HTML 게임 랭킹', rk.rows[0]?.r?.top?.[0]?.score === 10000000);
+  const st = await as(A, CA, `select public.settle_game_week('2026-10-19') r`); expect('HTML 게임도 주간 정산', st.rows[0]?.r?.paid >= 1);
+  const sv = await as(D, CD, `select public.save_game('tower', '{"lv":3}')`); const ld = await as(D, CD, `select public.load_game('tower') r`); const ld2 = await as(B, CB, `select public.load_game('tower') r`);
+  const big = await as(D, CD, `select public.save_game('tower', repeat('x', 10001))`);
+  expect('이어하기 저장: 내 것만, 10KB 제한', sv.ok && ld.rows[0]?.r === '{"lv":3}' && ld2.rows[0]?.r == null && !big.ok); }
 { const r = await as(D, CD, `select public.buy_item('b_gameking')`); expect('게임왕 배지는 살 수 없음', !r.ok); }
 { const r = await as(D, CD, `select public.equip_item('badge', 'b_gameking') w`); expect('받은 게임왕 배지는 장착 가능', r.ok && r.rows[0]?.w?.equip?.badge === 'b_gameking'); }
 
@@ -401,7 +445,12 @@ const L1 = (await as(A, CA, `select public.post_lost_item('found', '검정 필�
 { const d = await as(D, CD, `select photo_path, keep_at, mine from public.lost_feed where id=${L1}`); const a = await as(A, CA, `select photo_path, my_photo_status from public.lost_feed where id=${L1}`);
   expect('사진은 승인 전엔 남에게 안 보임, 본인은 보임', d.rows[0]?.photo_path === null && d.rows[0]?.keep_at === '학생회실' && a.rows[0]?.photo_path === `${A}/p1.jpg` && a.rows[0]?.my_photo_status === 'pending'); }
 { const r = await as(D, CD, `select count(*)::int n from public.lost_photo_queue`); const b = await as(B, CB, `select count(*)::int n from public.lost_photo_queue`); expect('사진 검토 목록은 검토위원만', r.rows[0]?.n === 0 && b.rows[0]?.n === 1); }
+await q(`insert into storage.objects(bucket_id,name) values ('lost-photos','${A}/p1.jpg')`);
+const photoObject = `select name from storage.objects where bucket_id='lost-photos' and name='${A}/p1.jpg'`;
+{ const d = await as(D, CD, photoObject); expect('미승인 사진 파일은 다른 학생에게 비공개', d.ok && d.rows.length === 0); }
 await as(B, CB, `select public.review_lost_photo(${L1}, true)`);
+{ const d = await as(D, CD, photoObject); const outside = await as(X, 'someone@gmail.com', photoObject);
+  expect('승인된 사진 파일은 다른 학교 계정만 조회 가능', d.rows[0]?.name === `${A}/p1.jpg` && outside.ok && outside.rows.length === 0); }
 { const d = await as(D, CD, `select photo_path from public.lost_feed where id=${L1}`); expect('승인된 사진은 보임', d.rows[0]?.photo_path === `${A}/p1.jpg`); }
 { const r = await as(A, CA, `select public.respond_lost_item(${L1}, true)`); expect('내 글엔 응답 불가', !r.ok); }
 await as(D, CD, `select public.respond_lost_item(${L1}, true)`);
@@ -412,24 +461,44 @@ const ago = (id) => q(`update public.lost_items set created_at = now() - interva
 await ago(L1);
 { const r = await as(D, CD, `select public.resolve_lost_item(${L1}) r`); expect('주인이 받았어요 → 주운 사람 +10', r.ok && r.rows[0]?.r?.rewarded === true && (await bal(A)) === balL + 10); }
 { const r = await as(D, CD, `select public.resolve_lost_item(${L1})`); expect('이미 끝난 글 다시 처리 불가', !r.ok); }
+{ const pending = await as(D, CD, `select public.post_lost_comment(${L1}, '학생회실에 갈게요', false)`);
+  const posted = await as(D, CD, `select public.post_lost_comment(${L1}, '학생회실에 갈게요', true)`);
+  const student = await as(B, CB, `select body, name, student_no from public.read_lost_comments(${L1}, true)`);
+  const admin = await as(A, CA, `select name, student_no from public.read_lost_comments(${L1}, true)`);
+  const hidden = await as(B, CB, `select * from public.admin_lost_authors(array[${L1}]::bigint[])`);
+  const visible = await as(A, CA, `select * from public.admin_lost_authors(array[${L1}]::bigint[])`);
+  expect('댓글은 안내 확인 후 게시', !pending.ok && posted.ok && student.rows[0]?.body === '학생회실에 갈게요');
+  expect('댓글·게시물 실명과 학번은 관리자만 조회', student.rows[0]?.name === null && student.rows[0]?.student_no === null && !!admin.rows[0]?.student_no && hidden.rows.length === 0 && !!visible.rows[0]?.student_no);
+}
+{ const r = await as(A, CA, `select public.post_lost_item('lost', '가방', '교실', public.seoul_today(), '', '', '')`);
+  expect('같은 계정은 종류를 바꿔도 당일 두 번째 게시 불가', !r.ok && /하루에 한 번/.test(r.err ?? ''));
+}
+// 보상 테스트에서 게시일만 넘겨 동일 계정의 다음 등록을 준비한다.
+const previousLostDay = (id) => q(`update public.lost_post_days set day = (
+  select min(d.day) - 1 from public.lost_post_days d where d.author = lost_post_days.author
+) where author = '${id}' and day = public.seoul_today()`);
 const L2 = (await as(E, CE, `select public.post_lost_item('lost', '에어팟', '급식실', public.seoul_today(), '흰색 케이스', '', '') id`)).rows[0]?.id;
 await as(F1, CF1, `select public.respond_lost_item(${L2}, true)`);
 const balF = await bal(F1);
 { const r = await as(F1, CF1, `select public.resolve_lost_item(${L2})`); expect('잃어버린 물건 글: 받았다는 건 글쓴이만', !r.ok); }
 { const r = await as(E, CE, `select public.resolve_lost_item(${L2}) r`); expect('올리자마자(10분 안) 받았어요 → 해결은 되지만 보상 없음', r.ok && r.rows[0]?.r?.rewarded === false && r.rows[0]?.r?.reason === 'too_soon' && (await bal(F1)) === balF); }
+await previousLostDay(A);
 { const L4 = (await as(A, CA, `select public.post_lost_item('found', '수학 노트', '교실', public.seoul_today(), '', '교무실', '') id`)).rows[0]?.id;
   await as(D, CD, `select public.respond_lost_item(${L4}, true)`); await ago(L4); const b0 = await bal(A);
   const r = await as(D, CD, `select public.resolve_lost_item(${L4}) r`);
   expect('같은 두 학생 사이 보상은 30일에 1번', r.ok && r.rows[0]?.r?.reason === 'same_pair' && (await bal(A)) === b0); }
 { const b0 = await bal(F2); const got = [];
   for (const [u, c, it] of [[B, CB, '체육복'], [E, CE, '실내화'], [F1, CF1, '이어폰']]) {
+    await previousLostDay(F2);
     const id = (await as(F2, CF2, `select public.post_lost_item('found', '${it}', '체육관', public.seoul_today(), '', '학생회실', '') id`)).rows[0]?.id;
     await as(u, c, `select public.respond_lost_item(${id}, true)`); await ago(id);
     got.push((await as(u, c, `select public.resolve_lost_item(${id}) r`)).rows[0]?.r);
   }
   expect('분실물 보상은 한 학생당 한 주 2번(20)까지', got[0]?.rewarded && got[1]?.rewarded && got[2]?.reason === 'week_cap' && (await bal(F2)) === b0 + 20); }
+await previousLostDay(F2);
 const L3 = (await as(F2, CF2, `select public.post_lost_item('lost', '우산', '현관', public.seoul_today(), '', '', '') id`)).rows[0]?.id;
 { const r = await as(F2, CF2, `select public.close_lost_item(${L3})`); const f = await as(A, CA, `select count(*)::int n from public.lost_feed where id=${L3}`); expect('글쓴이가 닫으면 목록에서 사라짐', r.ok && f.rows[0]?.n === 0); }
+{ const r = await as(F2, CF2, `select public.post_lost_item('lost', '가방', '교실', public.seoul_today(), '', '', '')`); expect('글을 닫아도 당일 한도 유지', !r.ok && /하루에 한 번/.test(r.err ?? '')); }
 { await db.exec('reset role'); const r = await db.query(`set role anon; select count(*) from public.lost_feed`).then(() => ({ ok: true }), () => ({ ok: false })); await db.exec('reset role'); expect('비로그인 분실물 목록 불가', !r.ok); }
 
 // 검토위원 임명
@@ -538,6 +607,7 @@ await as(B, CB, `select public.review_notice(${pn2}, false, '날짜가 없어요
 { const o = await outbox(D, 'mine'); expect('내 글 알림 끄면 반려 알림 없음', !o.some((x) => x.ref === `notice:${pn2}`)); }
 await as(D, CD, `select public.set_push_prefs(true, true, true, false)`);
 // 분실물
+await previousLostDay(A);
 const PL = (await as(A, CA, `select public.post_lost_item('found', '파란 텀블러', '도서관', public.seoul_today(), '', '학생회실', '') id`)).rows[0]?.id;
 await as(B, CB, `select public.respond_lost_item(${PL}, true)`);
 await ago(PL);
@@ -613,9 +683,451 @@ await sub(B, CB, 'a7');
   const re = await as(U2, C2, `select public.register_enrollment('30106','본인')`);
   expect('잘못 등록한 학적 지우기 → 학생이 다시 등록', r.ok && again.rows[0]?.n === 0 && re.ok); }
 // 의견 반영 +10
-{ const fb = (await as(D, CD, `select public.submit_feedback('bug', '시간표가 가끔 비어 보여요', '/timetable', '1.0.0', 'test') id`)); const id = fb.rows[0]?.id ?? (await q(`select max(id) id from public.feedback`)).rows[0]?.id;
+{ const fb = (await as(D, CD, `select (public.submit_feedback('bug', '시간표가 가끔 비어 보여요', '/timetable', '1.0.0', 'test'))->>'id' id`)); const id = fb.rows[0]?.id ?? (await q(`select max(id) id from public.feedback`)).rows[0]?.id;
   const b0 = await bal(D); await as(A, CA, `select public.admin_update_feedback(${id}, 'done', '고쳤어요')`); expect('의견 반영 +10', (await bal(D)) === b0 + 10); }
 { const r = await q(`select value from public.app_config where key='app_url'`); expect('알림 서버 주소 = 정식 주소', r.rows[0]?.value === 'https://unjung-app.vercel.app'); }
 
+// 개인 시간표: 계정 격리, 선택 검증, 학년 제한, 재설정
+{
+  const U = '99999999-9999-9999-9999-999999999991', mail = 'timetable@unjung.hs.kr';
+  await q(`insert into auth.users values ('${U}','${mail}')`);
+  await q(`insert into public.enrollments(user_id,school_year,student_no,name) values ('${U}',2026,'20140','테스트')`);
+  const groups = (await q(`select groups from public.timetable_configs where school_year=2026 and semester=2 and grade=2`)).rows[0].groups;
+  expect('6개 영역과 8개 반 배치', groups.length === 6 && groups.every(g => Object.keys(g.slots).length === 8));
+  for (let c = 1; c <= 8; c++) {
+    const slots = groups.flatMap(g => g.slots[String(c)].map(s => s.join(':')));
+    expect(`${c}반 선택 과목 시간 충돌 없음`, slots.length === 17 && new Set(slots).size === 17);
+  }
+  const choices = Object.fromEntries(groups.map(g => [g.id,g.subjects[0]]));
+  const save = v => `select public.save_timetable_choices(2026,2,'${JSON.stringify(v)}'::jsonb)`;
+  expect('여섯 과목 저장', (await as(U,mail,save(choices))).ok);
+  expect('다른 계정 선택 비공개', (await as(B,CB,`select * from public.timetable_choices`)).rows.length === 0);
+  expect('목록 외 과목 차단', !(await as(U,mail,save({...choices,A:'없는 과목'}))).ok);
+  const incomplete = {...choices}; delete incomplete.art;
+  expect('미완료 선택 차단', !(await as(U,mail,save(incomplete))).ok);
+  expect('1학년 저장 차단', !(await as(B,CB,save(choices))).ok);
+  expect('외부 계정 저장 차단', !(await as(X,'someone@gmail.com',save(choices))).ok);
+  expect('직접 수정 차단', !(await as(U,mail,`update public.timetable_choices set choices='{}'`)).ok);
+  choices.art = '미술';
+  expect('과목 재설정 저장', (await as(U,mail,save(choices))).ok);
+  const read = await as(U,mail,`select choices from public.timetable_choices`);
+  expect('재접속 시 계정 선택 조회', read.rows.length === 1 && read.rows[0].choices.art === '미술');
+}
+
+// ───── 스터디 윗미(교육활동부 행사) ─────
+{ const M = '99999999-9999-9999-9999-999999999901', CM = 'm1@unjung.hs.kr';      // 교육활동부(20507)
+  const S1 = '99999999-9999-9999-9999-999999999911', C1 = 's1@unjung.hs.kr';     // 1학년, 닉네임 있음
+  const S2 = '99999999-9999-9999-9999-999999999912', C2 = 's2@unjung.hs.kr';     // 2학년, 닉네임 없음
+  const S3 = '99999999-9999-9999-9999-999999999913', C3 = 's3@unjung.hs.kr';     // 2학년, 닉네임 있음
+  await q(`insert into auth.users values ('${M}','${CM}'),('${S1}','${C1}'),('${S2}','${C2}'),('${S3}','${C3}')`);
+  await as(M, CM, `select public.register_enrollment('20507','관리자')`); await as(M, CM, `select public.set_nickname('교육부장')`);
+  await as(S1, C1, `select public.register_enrollment('10111','일학년')`); await as(S1, C1, `select public.set_nickname('새내기')`);
+  await as(S2, C2, `select public.register_enrollment('20611','이학년')`);
+  await as(S3, C3, `select public.register_enrollment('20612','삼번')`); await as(S3, C3, `select public.set_nickname('열공러')`);
+  const g = (await q(`select id, grade from public.study_groups order by grade`)).rows; const G1 = g[0]?.id, G2 = g[1]?.id;
+  expect('행사 그룹 2개(1·2학년)', g.length === 2 && g[0].grade === 1 && g[1].grade === 2);
+  expect('행사 그룹 참여 마감 11/8', (await q(`select count(*)::int n from public.study_groups where join_until = '2026-11-08'`)).rows[0]?.n === 2);
+  // 검사 날짜와 상관없이 돌도록 마감은 따로 시험한다(아래). 여기서는 없앤다
+  await q(`update public.study_groups set join_until = null, ends_on = '2099-12-31'`);
+  { const r = await as(S3, C3, `select * from public.study_groups`); expect('그룹 원본 표(비밀번호) 직접 읽기 불가', r.ok && r.rows.length === 0); }
+  { const r = await as(S3, C3, `select public.study_group_list() r`); const l = r.rows[0]?.r ?? [];
+    expect('그룹 목록: 내 학년만, 비밀번호 없음', l.length === 1 && l[0].grade === 2 && !JSON.stringify(l).includes('2026"') && !('password' in l[0])); }
+  { const r = await as(M, CM, `select public.is_study_manager() a`); const n = await as(S3, C3, `select public.is_study_manager() a`);
+    expect('교육활동부 학번은 자동 관리자, 일반 학생은 아님', r.rows[0]?.a === true && n.rows[0]?.a === false); }
+  { const r = await as(M, CM, `select public.study_group_list() r`); expect('관리자는 모든 학년 그룹을 봄', (r.rows[0]?.r ?? []).length === 2); }
+  { const r = await as(S3, C3, `select public.join_study_group(${G2}, '1234')`); expect('비밀번호 틀리면 참여 불가', !r.ok && /비밀번호/.test(r.err ?? '')); }
+  { const r = await as(S3, C3, `select public.join_study_group(${G1}, '2026')`); expect('다른 학년 그룹 참여 불가', !r.ok && /1학년만/.test(r.err ?? '')); }
+  { const r = await as(S2, C2, `select public.join_study_group(${G2}, '2026')`); expect('닉네임 없으면 참여 불가', !r.ok && /닉네임/.test(r.err ?? '')); }
+  { const r = await as(S3, C3, `select public.join_study_group(${G2}, ' 2026 ')`); const again = await as(S3, C3, `select public.join_study_group(${G2}, '2026')`);
+    expect('비밀번호 맞으면 참여(두 번 눌러도 한 번)', r.ok && again.ok && (await q(`select count(*)::int n from public.study_group_members where user_id='${S3}'`)).rows[0]?.n === 1); }
+  await as(S1, C1, `select public.join_study_group(${G1}, '2026')`);
+  { const r = await as(S1, C1, `select public.study_group_board(${G2})`); expect('다른 그룹 보드는 못 봄', !r.ok); }
+  // 기간 공부 기록: 11/10 40분(랭킹 30 + 수업 10), 11/11 20분 → 누적 60분, 참여일 1일
+  await q(`insert into public.study_daily (user_id, day, school_year, grade, class_no, ranked_seconds, class_seconds, tokens) values
+    ('${S3}', '2026-11-10', 2026, 2, 6, 1800, 600, 3), ('${S3}', '2026-11-11', 2026, 2, 6, 1200, 0, 2), ('${S3}', '2026-11-30', 2026, 2, 6, 9000, 0, 12)`);
+  await q(`update public.study_groups set ends_on = '2026-11-25'`);
+  { const r = await as(M, CM, `select public.study_group_admin(${G2}) r`); const m = r.rows[0]?.r?.members?.[0];
+    expect('관리자 보드: 실명·학번, 기간 누적(수업 포함), 참여일(30분↑), 기간 밖 제외', r.ok && m?.name === '삼번' && m?.student_no === '20612' && m?.period_seconds === 3600 && m?.days === 1 && m?.by_day?.['2026-11-10'] === 2400 && r.rows[0]?.r?.days?.length === 17); }
+  { const r = await as(S3, C3, `select public.study_group_admin(${G2})`); expect('관리자 보드는 관리자만', !r.ok); }
+  await as(M, CM, `select public.manage_study_group(${G2}, null, null, '2026-11-01', null, null)`);
+  { const r = await as(S3, C3, `select public.study_group_board(${G2}) r`); const b = r.rows[0]?.r; const me = b?.members?.[0];
+    expect('그룹 보드: 닉네임만(실명·학번 없음), 기간 누적', r.ok && me?.nickname === '열공러' && me?.mine === true && me?.period_seconds === 3600 && !JSON.stringify(b).includes('삼번') && !JSON.stringify(b).includes('20612')); }
+  await q(`update public.study_groups set ends_on = '2099-12-31'`);
+  { const r = await as(S3, C3, `select public.manage_study_group(${G2}, '0000', null, null, null, null)`); expect('일반 학생은 그룹 설정 불가', !r.ok); }
+  { await q(`update public.study_groups set capacity = 2 where id = ${G2}`); await as(M, CM, `select public.join_study_group(${G2}, '2026')`);
+    const U = '99999999-9999-9999-9999-999999999914', CU = 's4@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
+    await as(U, CU, `select public.register_enrollment('20613','넷째')`); await as(U, CU, `select public.set_nickname('넷째공부')`);
+    const r = await as(U, CU, `select public.join_study_group(${G2}, '2026')`); expect('정원이 차면 참여 불가', !r.ok && /정원/.test(r.err ?? ''));
+    await q(`update public.study_groups set capacity = 50 where id = ${G2}`); }
+  { const U = '99999999-9999-9999-9999-999999999915', CU = 's5@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
+    await as(U, CU, `select public.register_enrollment('20614','다섯째')`); await as(U, CU, `select public.set_nickname('늦게온사람')`);
+    const bad = await as(U, CU, `select public.set_study_join_until(${G2}, public.seoul_today() - 1)`);
+    const set = await as(M, CM, `select public.set_study_join_until(${G2}, public.seoul_today() - 1)`);
+    const late = await as(U, CU, `select public.join_study_group(${G2}, '2026')`); const l = await as(U, CU, `select public.study_group_list() r`);
+    const already = await as(S1, C1, `select public.join_study_group(${G1}, '2026')`);
+    await as(M, CM, `select public.set_study_join_until(${G2}, null)`); const ok = await as(U, CU, `select public.join_study_group(${G2}, '2026')`);
+    expect('참여 마감: 관리자만 설정, 마감 뒤 참여 불가·목록에 참여 불가 표시, 연장하면 참여', !bad.ok && set.ok && !late.ok && /까지였어요/.test(late.err ?? '') && l.rows[0]?.r?.[0]?.can_join === false && already.ok && ok.ok); }
+  { const r = await as(M, CM, `select public.manage_study_member(${G2}, '${S3}')`); const n = await q(`select count(*)::int n from public.study_group_members where group_id=${G2} and user_id='${S3}'`);
+    expect('관리자가 멤버 내보내기', r.ok && n.rows[0]?.n === 0); }
+  { const s = await as(S1, C1, `select public.save_study_subject(null, '수학', 'blue', 1) id`); const dup = await as(S1, C1, `select public.save_study_subject(null, '수학', 'red', 2)`);
+    const other = await as(S3, C3, `select public.save_study_subject(${s.rows[0]?.id}, '해킹', null, null)`);
+    expect('내 과목 추가·중복 금지·남의 과목 수정 불가', s.ok && !dup.ok && /같은 이름/.test(dup.err ?? '') && !other.ok); }
+  { const st = await as(S1, C1, `select public.start_study('수학') r`); const d = await as(S1, C1, `select public.my_study_dashboard() r`); const x = d.rows[0]?.r;
+    expect('대시보드: 과목·그룹(지금 공부 중 1명)·관리자 아님', st.ok && x?.subjects?.[0]?.name === '수학' && x?.groups?.[0]?.live === 1 && x?.manager === false && typeof x?.today?.total_seconds === 'number'); }
+  { const r = await as(A, CA, `select is_study_manager from public.admin_find_user('20507')`); const s = await as(A, CA, `select public.admin_set_study_manager('${S3}', true)`);
+    const ok = await as(S3, C3, `select public.is_study_manager() a`); expect('관리자: 스터디 관리자 지정', r.rows[0]?.is_study_manager === false && s.ok && ok.rows[0]?.a === true); }
+}
+
+// 게임 점수 보상(주간 상위 비율, 하루 30)
+{ const W = '2026-12-07T09:00:00Z'; // 월 18:00 KST
+  const g1 = (await sg(D, 'patrol', W)).rows[0]?.r; expect('학생 제작 게임은 무료', g1?.cost === 0);
+  const f1 = (await q(`select public._finish_html_game('${D}', '${g1.id}', 100, '${plusSec(W, 30)}') r`)).rows[0]?.r;
+  expect('기록이 적을 때 2토큰', f1?.score_reward === 2);
+  // 다른 사람 기록 6판(낮은 점수)을 깔고 높은 점수 → 5토큰
+  for (let k = 0; k < 6; k++) { const id = (await q(`insert into public.game_runs (user_id, game, grade, class_no, started_at, finished_at, duration_s, questions, score) values ('${B}', 'patrol', 1, 3, '${W}', '${W}', 3600, '[]', ${10 + k}) returning id`)).rows[0].id; }
+  const g2 = (await sg(D, 'patrol', plusSec(W, 60))).rows[0]?.r;
+  const f2 = (await q(`select public._finish_html_game('${D}', '${g2.id}', 999, '${plusSec(W, 120)}') r`)).rows[0]?.r;
+  const g3 = (await sg(D, 'patrol', plusSec(W, 130))).rows[0]?.r;
+  const f3 = (await q(`select public._finish_html_game('${D}', '${g3.id}', 1, '${plusSec(W, 200)}') r`)).rows[0]?.r;
+  expect('상위면 5토큰, 하위면 1토큰', f2?.score_reward === 5 && f3?.score_reward === 1);
+  const sum = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${D}' and reason='game_score' and ref_id in ('${g1.id}','${g2.id}','${g3.id}')`)).rows[0]?.n;
+  expect('게임 점수 보상 기록', sum === 8); }
+
+// 행사 사진(소통홍보부)
+{ const K = '99999999-9999-9999-9999-999999999930', CK = 'k@unjung.hs.kr'; await q(`insert into auth.users values ('${K}','${CK}')`);
+  await as(K, CK, `select public.register_enrollment('20504','유담')`);
+  const no = await as(B, CB, `select public.post_gallery('체육대회', '', '2026-10-10', array['${B}/a.jpg'], null)`);
+  expect('행사 사진: 소통홍보부가 아니면 못 올림', !no.ok);
+  const bad = await as(K, CK, `select public.post_gallery('체육대회', '', '2026-10-10', array['${B}/a.jpg'], null)`);
+  expect('남의 폴더 사진 경로 거부', !bad.ok);
+  const ok = await as(K, CK, `select public.post_gallery('체육대회 사진', '즐거웠어요', '2026-10-10', array['${K}/1.jpg','${K}/2.jpg'], 'https://youtu.be/dQw4w9WgXcQ?t=3') id`);
+  const row = await q(`select youtube, cardinality(photos) n from public.gallery_posts where id = ${ok.rows[0]?.id}`);
+  expect('행사 사진 올리기(유튜브 주소 → id)', ok.ok && row.rows[0]?.youtube === 'dQw4w9WgXcQ' && row.rows[0]?.n === 2);
+  const see = await as(B, CB, `select count(*)::int n from public.gallery_posts`); expect('학생은 행사 사진을 봄', see.rows[0]?.n === 1);
+  const del = await as(B, CB, `select public.delete_gallery(${ok.rows[0]?.id})`); expect('남의 글은 못 지움', !del.ok);
+  const n = await as(K, CK, `select public.submit_notice('event', '행사 안내', '내일 체육대회가 있어요', null, 'all', public.seoul_today(), 3) id`);
+  const st = await q(`select status from public.notices where id = ${n.rows[0]?.id}`);
+  expect('소통홍보부 공지는 바로 게시', st.rows[0]?.status === 'approved'); }
+// 스터디 달력 · 과목명
+{ const U = '99999999-9999-9999-9999-999999999911', CU = 's1@unjung.hs.kr';
+  await q(`insert into public.study_daily (user_id, day, school_year, grade, class_no, ranked_seconds, class_seconds, tokens) values ('${U}', '2026-10-05', 2026, 1, 1, 1200, 600, 2) on conflict do nothing`);
+  const r = await as(U, CU, `select public.my_study_month('2026-10-17') r`);
+  expect('스터디 달력: 그 달 날짜별 시간(수업 포함)', r.ok && r.rows[0]?.r?.days?.['2026-10-05'] === 1800 && r.rows[0]?.r?.month === '2026-10-01');
+  const c = await q(`select count(*)::int n from public.timetable_configs where groups::text like '%사회문화탐구%'`);
+  expect('과목명 사회문제탐구로 정정', c.rows[0]?.n === 0); }
+
+// 최종 관리자 · 사용 현황
+{ const r = await as(A, CA, `select public.admin_usage() r`); const u = r.rows[0]?.r;
+  const n = await as(B, CB, `select public.admin_usage()`);
+  expect('사용 현황: 관리자만, 가입·14일 접속·기능별', r.ok && u?.daily?.length === 14 && typeof u?.enrolled === 'number' && typeof u?.features?.game_plays === 'number' && !n.ok);
+  const Z = '99999999-9999-9999-9999-999999999920', CZ = 'z@unjung.hs.kr'; await q(`insert into auth.users values ('${Z}','${CZ}')`);
+  await as(Z, CZ, `select public.register_enrollment('20512','종범')`);
+  const role = await q(`select role from public.profiles where id='${Z}'`);
+  expect('명단 학번(20512)으로 등록해도 자동 관리자 아님(학번은 아무나 칠 수 있음)', role.rows[0]?.role === 'student');
+  const pend = await as(A, CA, `select want from public.admin_listed_pending() where user_id='${Z}'`);
+  const nz = await as(Z, CZ, `select public.admin_confirm_listed('${Z}')`);
+  const cf = await as(A, CA, `select public.admin_confirm_listed('${Z}') r`);
+  const role2 = await q(`select role from public.profiles where id='${Z}'`);
+  expect('명단 확인: 관리자가 이름 보고 확인해야 관리자', pend.rows[0]?.want === 'admin' && !nz.ok && cf.rows[0]?.r === 'admin' && role2.rows[0]?.role === 'admin'); }
+
+// 출시 이벤트 · 기획행정부 명단
+{ await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2099-01-01T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+  const before = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${B}'`)).rows[0].n;
+  await q(`select public.award_tokens('${B}', 3, 'meal_review', 'launch-test')`);
+  await q(`select public.award_tokens('${B}', 7, 'admin_adjust', 'launch-test2')`);
+  const after = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${B}'`)).rows[0].n;
+  expect('출시 부스트: 보상 2배, 다른 사유는 그대로', after - before === 13);
+  const ev = await as(B, CB, `select public.launch_event() r`); const g1 = await as(B, CB, `select public.claim_launch_gift() r`); const g2 = await as(B, CB, `select public.claim_launch_gift() r`);
+  expect('웰컴 토큰 50은 한 번만', ev.rows[0]?.r?.active === true && g1.rows[0]?.r?.got === 50 && g2.rows[0]?.r?.got === 0);
+  const ev2 = await as(B, CB, `select public.launch_event() r`); expect('받은 뒤에는 받음 표시', ev2.rows[0]?.r?.gift_claimed === true);
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+  const b0 = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${B}'`)).rows[0].n;
+  await q(`select public.award_tokens('${B}', 3, 'meal_review', 'launch-test3')`);
+  const b1 = (await q(`select coalesce(sum(delta),0)::int n from public.token_ledger where user_id='${B}'`)).rows[0].n;
+  expect('이벤트가 끝나면 원래대로', b1 - b0 === 3);
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr'; await q(`insert into auth.users values ('${P}','${CP}')`);
+  await as(P, CP, `select public.register_enrollment('20218','석주')`);
+  const pl0 = await q(`select is_planner from public.profiles where id='${P}'`);
+  expect('기획행정부 학번도 자동 지정 안 됨', pl0.rows[0]?.is_planner === false);
+  await as(A, CA, `select public.admin_confirm_listed('${P}')`);
+  const pl = await q(`select is_planner from public.profiles where id='${P}'`);
+  const n = await as(P, CP, `select public.submit_notice('council', '안건 투표 안내', '체육복 등교 안건 투표가 열렸어요', null, 'all', public.seoul_today(), 3) id`);
+  const st = await q(`select status from public.notices where id = ${n.rows[0]?.id}`);
+  expect('명단 확인 후 기획행정부, 공지 바로 게시', pl.rows[0]?.is_planner === true && st.rows[0]?.status === 'approved'); }
+
+// ───────── 학번·이름 정정 ─────────
+{ const S1 = '99999999-9999-9999-9999-999999999971', C1 = 'fix1@unjung.hs.kr';
+  const S2 = '99999999-9999-9999-9999-999999999972', C2 = 'fix2@unjung.hs.kr';
+  const S3 = '99999999-9999-9999-9999-999999999973', C3 = 'fix3@unjung.hs.kr';
+  await q(`insert into auth.users values ('${S1}','${C1}'),('${S2}','${C2}'),('${S3}','${C3}')`);
+  await as(S1, C1, `select public.register_enrollment('20731','임하지')`);
+  const st0 = await as(S1, C1, `select public.my_enrollment_fix() r`);
+  expect('정정: 등록 직후엔 직접 고치기 가능', st0.rows[0]?.r?.can_self_fix === true);
+  const lst = await as(S1, C1, `select public.self_fix_enrollment('20218','임하진')`);
+  expect('정정: 직책 명단 학번으로는 직접 못 바꿈', !lst.ok);
+  await as(S2, C2, `select public.register_enrollment('20301','다른사람')`);
+  const taken = await as(S1, C1, `select public.self_fix_enrollment('20301','임하진')`);
+  expect('정정: 남이 쓰는 학번으로는 직접 못 바꿈', !taken.ok);
+  const ok1 = await as(S1, C1, `select (public.self_fix_enrollment('20714','임하진')).student_no r`);
+  expect('정정: 첫 직접 고치기 성공', ok1.ok && ok1.rows[0]?.r === '20714');
+  const again = await as(S1, C1, `select public.self_fix_enrollment('20715','임하진')`);
+  const st1 = await as(S1, C1, `select public.my_enrollment_fix() r`);
+  expect('정정: 두 번째 직접 고치기는 막힘', !again.ok && st1.rows[0]?.r?.can_self_fix === false);
+  await as(S2, C2, `select public.register_enrollment('20302','늦은사람')`).catch(() => {});
+  await q(`update public.enrollments set created_at = now() - interval '25 hours' where user_id='${S2}'`);
+  const late = await as(S2, C2, `select public.self_fix_enrollment('20303','다른사람')`);
+  expect('정정: 24시간 지나면 직접 못 고침', !late.ok);
+  // S3: 내 학번(20301)을 S2가 먼저 등록 → 등록 못 함 → 요청
+  const blocked = await as(S3, C3, `select public.register_enrollment('20301','진짜주인')`);
+  const rq = await as(S3, C3, `select public.request_enrollment_fix('20301','진짜주인','다른 사람이 제 학번을 등록했어요') id`);
+  expect('정정 요청: 등록 전이어도 보낼 수 있음', !blocked.ok && rq.ok);
+  const nl = await as(S3, C3, `select * from public.admin_enrollment_requests()`);
+  const list = await as(A, CA, `select * from public.admin_enrollment_requests() where user_id='${S3}'`);
+  expect('정정 요청 목록: 관리자만, 학번 쓰는 계정 표시', !nl.ok && list.rows[0]?.holder_id === S2);
+  const nd = await as(S3, C3, `select public.admin_decide_enrollment_request(${rq.rows[0]?.id}, true, null)`);
+  const d = await as(A, CA, `select public.admin_decide_enrollment_request(${rq.rows[0]?.id}, true, null)`);
+  const e3 = await q(`select student_no from public.enrollments where user_id='${S3}'`);
+  const e2 = await q(`select count(*)::int n from public.enrollments where user_id='${S2}'`);
+  expect('정정 승인: 요청자 등록, 차지했던 계정은 학적 해제', !nd.ok && d.ok && e3.rows[0]?.student_no === '20301' && e2.rows[0]?.n === 0);
+  const d2 = await as(A, CA, `select public.admin_decide_enrollment_request(${rq.rows[0]?.id}, false, null)`);
+  expect('정정: 처리된 요청은 다시 처리 못 함', !d2.ok);
+  const rq2 = await as(S1, C1, `select public.request_enrollment_fix('20716','임하진', null) id`);
+  await as(A, CA, `select public.admin_decide_enrollment_request(${rq2.rows[0]?.id}, false, '확인이 안 돼요')`);
+  const st2 = await as(S1, C1, `select public.my_enrollment_fix() r`);
+  const e1 = await q(`select student_no from public.enrollments where user_id='${S1}'`);
+  expect('정정 반려: 학적 그대로, 상태 반려', st2.rows[0]?.r?.request?.status === 'rejected' && e1.rows[0]?.student_no === '20714');
+  const log = await as(A, CA, `select kind from public.admin_enrollment_log(50)`);
+  const kinds = new Set(log.rows.map((x) => x.kind));
+  const nlog = await as(S1, C1, `select * from public.admin_enrollment_log(5)`);
+  expect('변경 기록: 직접·요청·해제가 남고 관리자만 봄', kinds.has('self') && kinds.has('request') && kinds.has('release') && !nlog.ok);
+  const nm = await as(A, CA, `select student_no from public.admin_find_user('임하진')`);
+  expect('관리자 찾기: 이름으로도', nm.rows[0]?.student_no === '20714');
+  const direct = await as(S1, C1, `select count(*)::int n from public.enrollment_requests`);
+  expect('정정 요청 표는 직접 못 읽음', !direct.ok || direct.rows[0]?.n === 0); }
+
+// ───────── 11-06 출시 직전 보안 ─────────
+{ const F = '99999999-9999-9999-9999-999999999950', CF = 'fake-hacker@unjung.hs.kr';
+  await q(`insert into auth.users values ('${F}','${CF}')`);
+  const r1 = await as(F, CF, `select public.is_school_user() ok`); expect('이메일 가입 가짜 학교 계정 → 학생 아님', r1.ok && r1.rows[0]?.ok === false);
+  const r2 = await as(F, CF, `select public.register_enrollment('20999','가짜')`); expect('가짜 계정 학번 등록 거부', !r2.ok);
+  const r3 = await as(F, CF, `select count(*)::int n from public.meals_cache`); expect('가짜 계정 급식 표도 0', r3.ok && r3.rows[0]?.n === 0);
+  // 구글 개인 계정이 토큰 이메일만 학교 주소로 바꾼 경우(신원 이메일은 gmail)
+  const G = '99999999-9999-9999-9999-999999999951'; await q(`insert into auth.users values ('${G}','someone2@gmail.com')`);
+  const r4 = await as(G, 'changed@unjung.hs.kr', `select public.is_school_user() ok`); expect('토큰 이메일만 바꾼 계정 → 학생 아님', r4.rows[0]?.ok === false);
+  const r5 = await as(B, CB, `select public.is_school_user() ok`); expect('진짜 구글 학교 계정은 학생', r5.rows[0]?.ok === true);
+  await db.exec(`grant select on public.meals_cache to anon; reset role; select set_config('test.uid','',false), set_config('test.jwt','{}',false); set role anon;`);
+  const r6 = await q(`select count(*)::int n from public.meals_cache`); await db.exec('reset role');
+  expect('비로그인은 오류 없이 0행', r6.ok && r6.rows[0]?.n === 0);
+  const r7 = await as(B, CB, `select public.push_on_feedback()`); expect('트리거 함수 직접 호출 차단', !r7.ok && /permission/.test(r7.err ?? ''));
+}
+{ // 공지 하루 10개(자동 승인되는 기획행정부도)
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr';
+  let last; for (let i = 0; i < 11; i++) last = await as(P, CP, `select public.submit_notice('council', '안내 ${i}번', '안내 내용입니다 ${i}', null, 'all', public.seoul_today(), 3)`);
+  expect('공지 하루 10개 넘으면 거부', !last.ok && /하루에 10개/.test(last.err ?? ''));
+}
+{ // 출시 기간 의견 보너스: 하루 한 번 +5
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2099-01-01T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+  const U = '99999999-9999-9999-9999-999999999952', CU = 'fb@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
+  await as(U, CU, `select public.register_enrollment('30808','의견')`);
+  const a = await as(U, CU, `select public.submit_feedback('idea', '시간표에 교실 위치도 보였으면 좋겠어요', '', '', '') r`);
+  const b = await as(U, CU, `select public.submit_feedback('idea', '급식 사진도 올릴 수 있으면 좋겠어요', '', '', '') r`);
+  const s = await as(U, CU, `select public.feedback_stats() r`);
+  expect('출시 의견 보너스 하루 한 번 +5', a.rows[0]?.r?.bonus === 5 && b.rows[0]?.r?.bonus === 0 && s.rows[0]?.r?.bonus_today === true && s.rows[0]?.r?.mine === 2);
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+}
+
+{ // 첫걸음 미션: 실제 기록이 있어야 완료, 한 번만, 이벤트 기간에만
+  const U = '99999999-9999-9999-9999-999999999953', CU = 'first@unjung.hs.kr'; await q(`insert into auth.users values ('${U}','${CU}')`);
+  await as(U, CU, `select public.register_enrollment('30707','첫걸음')`);
+  const off = await as(U, CU, `select public.claim_first_missions() r`); expect('이벤트 기간 밖에는 미션 보상 거부', !off.ok);
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2099-01-01T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+  const z = await as(U, CU, `select public.claim_first_missions() r`); expect('아무것도 안 했으면 0', z.rows[0]?.r?.tokens === 0);
+  await as(U, CU, `select public.set_nickname('첫걸음러')`);
+  await as(U, CU, `select public.submit_feedback('idea', '첫걸음 미션 좋아요 계속해 주세요', '', '', '')`);
+  const a = await as(U, CU, `select public.claim_first_missions() r`);
+  const b = await as(U, CU, `select public.claim_first_missions() r`);
+  const st = await as(U, CU, `select public.first_missions() r`);
+  const ms = st.rows[0]?.r?.missions ?? [];
+  expect('닉네임·의견 2개 완료 → +10, 두 번째는 0', a.rows[0]?.r?.tokens === 10 && b.rows[0]?.r?.tokens === 0);
+  expect('미션 목록에 받음 표시', ms.length === 9 && ms.filter((m) => m.claimed).length === 2 && st.rows[0]?.r?.active === true);
+  const ledger = await q(`select sum(delta)::int n from public.token_ledger where user_id='${U}' and reason='first_mission'`);
+  expect('미션 보상에는 부스트 없음', ledger.rows[0]?.n === 10);
+  const X2 = await as(X, 'someone@gmail.com', `select public.first_missions() r`); expect('외부 계정은 미션 조회 불가', !X2.ok);
+  await q(`update public.app_config set value = '{"from":"2020-01-01T00:00:00+09:00","until":"2020-01-02T00:00:00+09:00","mult":2,"gift":50}' where key = 'launch_event'`);
+}
+
+{ // 개발자 권한: 사용 현황·의견 보기, '확인 중'만 가능
+  const D = '99999999-9999-9999-9999-999999999954', CD = 'dev@unjung.hs.kr'; await q(`insert into auth.users values ('${D}','${CD}')`);
+  await as(D, CD, `select public.register_enrollment('20702','개발')`);
+  const isd = await as(D, CD, `select public.is_developer() ok`); expect('개발자 명단 학번 → 개발자', isd.rows[0]?.ok === true);
+  const nb = await as(B, CB, `select public.is_developer() ok`); expect('일반 학생은 개발자 아님', nb.rows[0]?.ok === false);
+  const u = await as(D, CD, `select public.admin_usage() r`); expect('개발자는 사용 현황(게임별 포함) 조회', u.ok && Array.isArray(u.rows[0]?.r?.games_week));
+  const ub = await as(B, CB, `select public.admin_usage() r`); expect('일반 학생은 사용 현황 불가', !ub.ok);
+  const app = await as(D, CD, `select count(*)::int n from public.feedback_admin where screen not like 'game:%' or screen is null`); expect('개발자에게 앱 기능 의견은 안 보임', app.rows[0]?.n === 0);
+  const appId = (await q(`select id from public.feedback where coalesce(screen,'') not like 'game:%' order by id limit 1`)).rows[0]?.id;
+  const appUpd = await as(D, CD, `select public.admin_update_feedback(${appId}, 'seen', '')`); expect('개발자는 앱 기능 의견 처리 불가', !appUpd.ok);
+  await as(B, CB, `select public.submit_feedback('bug', '타워가 화면 밖으로 나가요', 'game:tower', '', '')`);
+  const fl = await as(D, CD, `select id, screen from public.feedback_admin order by id limit 1`); expect('개발자는 게임 의견 조회', fl.ok && fl.rows.length === 1 && fl.rows[0].screen === 'game:tower');
+  const fid = fl.rows[0]?.id;
+  const seen = await as(D, CD, `select public.admin_update_feedback(${fid}, 'seen', '확인했어요')`); expect('개발자 확인 중·답변 가능', seen.ok);
+  const done = await as(D, CD, `select public.admin_update_feedback(${fid}, 'done', '')`); expect('개발자는 반영 완료(토큰 지급) 불가', !done.ok);
+  const fb = await as(B, CB, `select count(*)::int n from public.feedback_admin`); expect('일반 학생은 의견 목록 0', fb.rows[0]?.n === 0);
+}
+
+{ // 업무 알림: 게임 의견 → 그 게임 개발자, 익명 건의 → 기획행정부, 30분 묶음
+  const D = '99999999-9999-9999-9999-999999999954', P = '99999999-9999-9999-9999-999999999940';
+  await q(`insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ('${D}','https://x/d','k','a'), ('${P}','https://x/p','k','a') on conflict do nothing`);
+  const U2 = '99999999-9999-9999-9999-999999999955', C2 = 'staffpush@unjung.hs.kr'; await q(`insert into auth.users values ('${U2}','${C2}')`);
+  await as(U2, C2, `select public.register_enrollment('30606','알림')`);
+  await as(U2, C2, `select public.submit_feedback('bug', '디펜스 몬스터가 멈춰요', 'game:defense', '', '')`);
+  await as(U2, C2, `select public.submit_feedback('bug', '디펜스 점수가 안 올라가요', 'game:defense', '', '')`);
+  await as(U2, C2, `select public.post_suggestion('facility', '사물함 고장', '3층 사물함 문이 안 닫혀요 고쳐 주세요')`);
+  const dn = await q(`select count(*)::int n from public.push_outbox where user_id='${D}' and kind='staff'`);
+  const pn = await q(`select count(*)::int n from public.push_outbox where user_id='${P}' and kind='staff' and ref like 'sugg:%'`);
+  expect('게임 의견 → 담당 개발자 알림(30분 묶음 1개)', dn.rows[0]?.n === 1);
+  expect('익명 건의 → 기획행정부 알림', pn.rows[0]?.n === 1);
+  await as(U2, C2, `select public.submit_feedback('idea', '급식 사진 기능 원해요', '', '', '')`);
+  const dn2 = await q(`select count(*)::int n from public.push_outbox where user_id='${D}' and kind='staff'`);
+  expect('앱 기능 의견은 개발자에게 안 감', dn2.rows[0]?.n === 1);
+  const pr = await as(P, 'p@unjung.hs.kr', `select public.set_push_prefs(true, true, true, false, false) r`);
+  expect('업무 알림 끄기 + 내 업무 종류 표시', pr.rows[0]?.r?.staff === false && (pr.rows[0]?.r?.staff_roles ?? []).some((x) => x.includes('기획행정부')));
+}
+
+
+{ // 11-09: 학생 설문 신청 → 기획행정부 승인/반려
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr';
+  const U2 = '99999999-9999-9999-9999-999999999955', C2 = 'staffpush@unjung.hs.kr';
+  const QS2 = JSON.stringify([{ kind: 'single', prompt: '야자 간식 뭐가 좋아?', options: ['빵', '과자'] }, { kind: 'text', prompt: '하고 싶은 말', required: false }]);
+  const req = (t) => as(U2, C2, `select public.request_survey('${t}', '', null, 3, 'after_vote', '${QS2}'::jsonb) id`);
+  await as(P, CP, `select public.set_push_prefs(true, true, true, false, true)`); // 위에서 끈 업무 알림 다시 켜기
+  const r1 = await req('간식 조사'); expect('학생이 설문 신청', r1.ok);
+  const R1 = r1.rows[0]?.id;
+  const st = await q(`select status, from_student from public.surveys where id=${R1}`); expect('신청은 검토 중 상태', st.rows[0]?.status === 'requested' && st.rows[0]?.from_student === true);
+  const f0 = await as(B, CB, `select count(*)::int n from public.survey_feed where id=${R1}`); expect('검토 중 신청은 목록에 안 보임', f0.rows[0]?.n === 0);
+  const g0 = await as(B, CB, `select public.get_survey(${R1})`); expect('다른 학생은 검토 중 신청을 못 봄', !g0.ok);
+  const g1 = await as(U2, C2, `select public.get_survey(${R1}) s`); expect('신청자는 내 신청을 봄', g1.ok && g1.rows[0]?.s?.status === 'requested');
+  const sp = await q(`select count(*)::int n from public.push_outbox where kind='staff' and ref like 'survey-req:%'`); expect('설문 신청 → 기획행정부 업무 알림', sp.rows[0]?.n >= 1);
+  const sv = await q(`select count(*)::int n from public.push_outbox where ref = 'survey:${R1}'`); expect('검토 중에는 전체 설문 알림 없음', sp.ok && sv.rows[0]?.n === 0);
+  const s0 = await as(B, CB, `select public.submit_survey(${R1}, '[]'::jsonb)`); expect('검토 중 설문은 참여 불가', !s0.ok);
+  const r2 = await req('두번째 신청'); const r3 = await req('세번째 신청'); expect('검토 중 신청은 2개까지', r2.ok && !r3.ok);
+  const rl = await as(P, CP, `select public.survey_requests() r`); expect('기획행정부는 검토할 신청 목록을 봄', (rl.rows[0]?.r ?? []).length >= 2);
+  const ns = await as(B, CB, `select public.review_survey(${R1}, true, null)`); expect('일반 학생은 승인 불가', !ns.ok);
+  const nr = await as(P, CP, `select public.review_survey(${r2.rows[0]?.id}, false, '')`); expect('반려는 사유 필수', !nr.ok);
+  const rj = await as(P, CP, `select public.review_survey(${r2.rows[0]?.id}, false, '비슷한 설문이 이미 있어요')`); const mine = await as(U2, C2, `select public.survey_requests() r`);
+  expect('반려 → 신청자 목록에 사유와 함께', rj.ok && (mine.rows[0]?.r ?? []).some((x) => x.status === 'rejected' && x.review_note === '비슷한 설문이 이미 있어요'));
+  const ok = await as(P, CP, `select public.review_survey(${R1}, true, null)`); const f1 = await as(B, CB, `select from_student, is_open from public.survey_feed where id=${R1}`);
+  expect('승인 → 학생 설문으로 공개', ok.ok && f1.rows[0]?.from_student === true && f1.rows[0]?.is_open === true);
+  const qid = (await q(`select id from public.survey_questions where survey_id=${R1} order by ord`)).rows.map((r) => Number(r.id));
+  const sb = await as(B, CB, `select public.submit_survey(${R1}, '${JSON.stringify([{ q: qid[0], choices: [1] }, { q: qid[1], text: '과자 최고' }])}'::jsonb)`); expect('승인된 학생 설문 참여', sb.ok);
+  const own = await as(U2, C2, `select public.get_survey(${R1}) s`); const so = own.rows[0]?.s;
+  expect('신청자는 참여 안 해도 결과·주관식을 봄', so?.can_see_results === true && so?.questions?.[1]?.texts?.[0] === '과자 최고');
+  const oth = await as(E, CE, `select public.get_survey(${R1}) s`); expect('다른 학생은 주관식 못 봄', oth.ok && oth.rows[0]?.s?.questions?.[1]?.texts == null);
+}
+
+
+{ // 11-09: 우리 반 공부 순위 · 지금 공부 중(우리 반) · 프로필 (A=20818 구름위, B는 다른 반)
+  const live = await as(A, CA, `select public.study_live() r`); expect('공부 중 인원에 우리 반 포함', live.ok && 'my_class' in (live.rows[0]?.r ?? {}));
+  await q(`insert into public.study_daily (user_id, day, school_year, grade, class_no, ranked_seconds, class_seconds) values ('${A}', public.seoul_today(), public.current_school_year(), 2, 8, 1500, 0)
+           on conflict (user_id, day) do update set ranked_seconds = public.study_daily.ranked_seconds + 1500`);
+  const cb = await as(A, CA, `select public.study_class_board() r`); const r = cb.rows[0]?.r;
+  expect('우리 반 순위: 내 기록 1위', cb.ok && r?.rows?.[0]?.mine === true && r?.rows?.[0]?.week_seconds >= 1500 && r?.class_no === 8);
+  expect('우리 반 순위에 실명·학번 없음', !JSON.stringify(r).includes('이호원') && !JSON.stringify(r).includes('20818'));
+  const ob = await as(B, CB, `select public.study_class_board() r`); expect('다른 반 학생 순위에는 안 나옴', ob.ok && !(ob.rows[0]?.r?.rows ?? []).some((x) => x.nickname === '구름위'));
+  const nx = await as(X, 'someone@gmail.com', `select public.study_class_board()`); expect('외부 계정 반 순위 불가', !nx.ok);
+  const pp = await as(B, CB, `select public.public_profile('구름위') r`); const pr = pp.rows[0]?.r;
+  expect('프로필 조회: 공부·게임·꾸미기', pp.ok && pr?.nickname === '구름위' && Number(pr?.study_week_seconds) >= 1500 && pr?.games?.length >= 1 && !JSON.stringify(pr).includes('이호원') && !JSON.stringify(pr).includes(A));
+  await q(`update public.profiles set hide_in_ranking = true where id='${A}'`);
+  const ph = await as(B, CB, `select public.public_profile('구름위')`); expect('랭킹 숨김이면 프로필 비공개', !ph.ok);
+  const pm = await as(A, CA, `select public.public_profile('구름위') r`); expect('내 프로필은 숨김이어도 봄', pm.ok && pm.rows[0]?.r?.mine === true);
+  const cb2 = await as(A, CA, `select public.study_class_board() r`); expect('반 순위에서도 숨김은 익명', cb2.rows[0]?.r?.rows?.[0]?.nickname == null);
+  await q(`update public.profiles set hide_in_ranking = false where id='${A}'`);
+}
+
+{ // 11-09: 수행평가 사진 · 같은 수업 반에 공유
+  const S7 = '99999999-9999-9999-9999-999999998871', C7 = 'share7@unjung.hs.kr', S6 = '99999999-9999-9999-9999-999999998861', C6 = 'share6@unjung.hs.kr';
+  await q(`insert into auth.users values ('${S7}','${C7}'), ('${S6}','${C6}')`);
+  await as(S7, C7, `select public.register_enrollment('20707','칠반')`, '7반 등록'); await as(S6, C6, `select public.register_enrollment('20606','육반')`);
+  const bad = await as(A, CA, `select public.create_class_task('물리', 'assessment', public.seoul_today() + 3, '보고서', '${B}/abcdef12.jpg', null)`); expect('남의 폴더 사진 경로 거부', !bad.ok);
+  const mk = await as(A, CA, `select public.create_class_task('물리', 'assessment', public.seoul_today() + 3, '실험 보고서', '${A}/abcdef12.jpg', array[7, 8, 7, 9]) id`); expect('사진·공유 반 넣어 올리기', mk.ok);
+  const T = mk.rows[0]?.id;
+  const sh = await q(`select share_classes from public.class_tasks where id=${T}`); expect('공유 반 정리(내 반·중복·없는 반 제외)', JSON.stringify(sh.rows[0]?.share_classes) === '[7]');
+  const f7 = await as(S7, C7, `select from_class, photo_path from public.class_task_feed where id=${T}`); expect('공유받은 7반에 보임(어느 반 글인지·사진)', f7.rows[0]?.from_class === 8 && f7.rows[0]?.photo_path === `${A}/abcdef12.jpg`);
+  const f6 = await as(S6, C6, `select count(*)::int n from public.class_task_feed where id=${T}`); expect('공유 안 한 6반에는 안 보임', f6.rows[0]?.n === 0);
+  const c7 = await as(S7, C7, `select public.confirm_class_task(${T})`); expect('공유받은 반도 확인 가능', c7.ok);
+  const c6 = await as(S6, C6, `select public.confirm_class_task(${T})`); expect('다른 반은 확인 불가', !c6.ok);
+  const up = await as(A, CA, `select public.update_class_task(${T}, '물리', 'assessment', public.seoul_today() + 3, '실험 보고서', null, false, array[6])`);
+  const f6b = await as(S6, C6, `select count(*)::int n from public.class_task_feed where id=${T}`); const cc = await q(`select confirm_count from public.class_tasks where id=${T}`);
+  expect('공유 반만 바꾸면 확인 유지 + 6반에 보임', up.ok && f6b.rows[0]?.n === 1 && cc.rows[0]?.confirm_count === 1);
+  const up2 = await as(A, CA, `select public.update_class_task(${T}, '물리', 'assessment', public.seoul_today() + 3, '실험 보고서', null, true, null)`); const cc2 = await q(`select confirm_count, photo_path from public.class_tasks where id=${T}`);
+  expect('사진 빼면 확인 다시', up2.ok && cc2.rows[0]?.confirm_count === 0 && cc2.rows[0]?.photo_path === null);
+  const dl = await q(`select public.push_enqueue_deadlines(public.seoul_today() + 2) n`); expect('마감 알림 함수(공유 포함) 동작', dl.ok);
+}
+
+{ // 11-10: 선생님 계정(앞 5자리 숫자가 아니면 교직원 → 이름 쓰면 바로 선생님)
+  const T1 = '99999999-9999-9999-9999-999999997701', CT1 = 'teach.park@unjung.hs.kr';   // 미리 등록(관리자)
+  const T2 = '99999999-9999-9999-9999-999999997702', CT2 = 'kimteacher@unjung.hs.kr';   // 자동
+  const T3 = '99999999-9999-9999-9999-999999997703', CT3 = 'office@unjung.hs.kr';       // 공용 계정 → 해제
+  const N5 = '99999999-9999-9999-9999-999999997705', CN5 = '27101kim@unjung.hs.kr';     // 학생 계정(숫자 5자리)
+  const nb = await as(B, CB, `select public.admin_add_teacher('${CT1}', '박선생', true)`); expect('학생은 선생님 미리 등록 불가', !nb.ok);
+  const ad = await as(A, CA, `select public.admin_add_teacher('${CT1}', '박선생', true)`); expect('관리자가 미리 등록(로그인 전)', ad.ok);
+  await q(`insert into auth.users values ('${T1}','${CT1}'), ('${T2}','${CT2}'), ('${T3}','${CT3}'), ('${N5}','${CN5}')`);
+  const pr = await q(`select role, teacher_name from public.profiles where id='${T1}'`); expect('미리 등록: 첫 로그인 때 관리자·선생님', pr.rows[0]?.role === 'admin' && pr.rows[0]?.teacher_name === '박선생');
+  const cb = await as(T2, CT2, `select public.can_be_teacher() v`); const cs = await as(N5, CN5, `select public.can_be_teacher() v`);
+  expect('교직원 계정 판별(숫자 5자리=학생)', cb.rows[0]?.v === true && cs.rows[0]?.v === false);
+  const rs = await as(N5, CN5, `select public.register_teacher('김학생')`); expect('학생 계정은 선생님 등록 불가', !rs.ok);
+  const bn = await as(T2, CT2, `select public.register_teacher('kim')`); expect('선생님 이름은 한글', !bn.ok);
+  const r2 = await as(T2, CT2, `select public.register_teacher('김선생', 2, 8, '정보 교과')`, '선생님 등록'); const p2 = await q(`select role, teacher_name, teacher_home_class from public.profiles where id='${T2}'`);
+  expect('자동 등록: 바로 선생님(관리자 아님)', r2.ok && p2.rows[0]?.teacher_name === '김선생' && p2.rows[0]?.role === 'student' && p2.rows[0]?.teacher_home_class === 8);
+  const re = await as(T2, CT2, `select public.register_enrollment('20999','김선생')`); expect('선생님은 학번 등록 안 함', !re.ok);
+  const tg = await as(T2, CT2, `update public.profiles set teacher_name = '해커' where id='${T2}'`); const gb = await as(B, CB, `update public.profiles set teacher_name = '가짜' where id='${B}'`);
+  const tn = await q(`select (select teacher_name from public.profiles where id='${T2}') a, (select teacher_name from public.profiles where id='${B}') b`);
+  expect('선생님 항목은 직접 못 바꿈', tn.rows[0]?.a === '김선생' && tn.rows[0]?.b == null);
+  const bs = await as(B, CB, `select public.register_teacher('가짜')`); expect('학번 등록된 계정은 선생님 불가', !bs.ok);
+  // 선생님 권한
+  const nt = await as(T2, CT2, `select public.submit_notice('event', '2학년 체육대회', '내일 체육대회가 있어요. 체육복 챙기기', null, 'grade', public.seoul_today(), 3, 2, null) id`, '선생님 공지');
+  const nf = await as(E, CE, `select author_teacher, scope_grade from public.notice_feed where id=${nt.rows[0]?.id}`); const nf1 = await as(B, CB, `select count(*)::int n from public.notice_feed where id=${nt.rows[0]?.id}`);
+  expect('선생님 공지: 바로 게시·학년 대상·선생님 표시', nt.ok && nf.rows[0]?.author_teacher === '김선생' && nf.rows[0]?.scope_grade === 2 && nf1.rows[0]?.n === 0);
+  const sn = await as(B, CB, `select public.submit_notice('event', '1학년 안내', '1학년만 보는 안내입니다', null, 'grade', public.seoul_today(), 3, 3, null) id`);
+  const sg = await q(`select scope_grade, status from public.notices where id=${sn.rows[0]?.id}`); expect('학생은 학년을 골라도 자기 학년·검토 대기', sg.rows[0]?.scope_grade === 1 && sg.rows[0]?.status === 'pending');
+  const cm = await as(T2, CT2, `select public.is_comm() v`); expect('선생님 행사 사진 올리기 가능', cm.rows[0]?.v === true);
+  const QS = JSON.stringify([{ kind: 'single', prompt: '만족하나요?', options: ['네', '아니요'] }]);
+  const sv = await as(T2, CT2, `select public.create_survey('수업 만족도', '', null, 3, 'planner_only', '${QS}'::jsonb) id`, '선생님 설문');
+  const sf = await as(B, CB, `select author_teacher from public.survey_feed where id=${sv.rows[0]?.id}`); const sr = await as(T2, CT2, `select public.get_survey(${sv.rows[0]?.id}) s`);
+  expect('선생님 설문: 만들기·표시·결과 열람', sv.ok && sf.rows[0]?.author_teacher === '김선생' && sr.rows[0]?.s?.can_see_results === true);
+  const sc = await as(T2, CT2, `select public.close_survey(${sv.rows[0]?.id}, false)`); expect('만든 선생님이 설문 마감', sc.ok);
+  const us = await as(T2, CT2, `select public.admin_usage() r`); expect('선생님 앱 사용 현황 읽기', us.ok);
+  const ov = await as(T2, CT2, `select public.teacher_study_overview() r`); const cl = await as(T2, CT2, `select public.teacher_study_class(2, 8) r`);
+  expect('선생님 스터디 현황: 반별 합계 + 이름별 기록', ov.ok && Array.isArray(ov.rows[0]?.r?.classes) && ov.rows[0]?.r?.daily?.length === 14 && (cl.rows[0]?.r ?? []).some((x) => x.name === '이호원'));
+  const so = await as(A, CA, `select public.teacher_study_class(2, 8)`); expect('학생(관리자여도)은 이름별 기록 못 봄', !so.ok);
+  const sg2 = await as(T2, CT2, `select count(*)::int n from public.suggestion_mod_queue`); expect('관리자 아닌 선생님은 익명 건의 관리 못 함', !sg2.ok || sg2.rows[0]?.n === 0);
+  // 관리자 관리
+  const lt = await as(A, CA, `select public.admin_list_teachers() r`); expect('선생님 계정 목록', (lt.rows[0]?.r?.accounts ?? []).some((x) => x.name === '김선생'));
+  const ga = await as(A, CA, `select public.admin_set_teacher_admin('${T2}', true)`); const ga2 = await q(`select role from public.profiles where id='${T2}'`); expect('선생님에게 관리자 권한', ga.ok && ga2.rows[0]?.role === 'admin');
+  const gs = await as(A, CA, `select public.admin_set_teacher_admin('${B}', true)`); expect('학생은 이 방법으로 관리자 불가', !gs.ok);
+  await as(T3, CT3, `select public.register_teacher('행정실')`);
+  const bk = await as(A, CA, `select public.admin_block_teacher('${T3}', true)`); const b3 = await as(T3, CT3, `select public.is_teacher() v, public.can_be_teacher() c`);
+  expect('공용 계정 선생님 해제 → 다시 등록 불가', bk.ok && b3.rows[0]?.v === false && b3.rows[0]?.c === false && !(await as(T3, CT3, `select public.register_teacher('행정실')`)).ok);
+  const ub = await as(A, CA, `select public.admin_block_teacher('${T3}', false)`); const u3 = await as(T3, CT3, `select public.can_be_teacher() c`); expect('해제 풀기', ub.ok && u3.rows[0]?.c === true);
+}
+
+{ // 11-12: 처리할 일 개수
+  const ta = await as(A, CA, `select public.my_todo() r`); const r = ta.rows[0]?.r ?? {};
+  expect('관리자 처리할 일: 의견·검토·정정 포함', ta.ok && 'feedback' in r && 'notices' in r && 'enrollment' in r && typeof r.total === 'number');
+  const PL = '99999999-9999-9999-9999-999999996601', CPL = 'plain@unjung.hs.kr';
+  await q(`insert into auth.users values ('${PL}','${CPL}')`); await as(PL, CPL, `select public.register_enrollment('10110','평범')`);
+  const tb = await as(PL, CPL, `select public.my_todo() r`); expect('일반 학생은 처리할 일 없음', tb.ok && tb.rows[0]?.r?.total === 0 && !('feedback' in tb.rows[0].r));
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr';
+  const t1 = await as(P, CP, `select public.my_todo() r`); await as(P, CP, `select public.mark_seen('suggestions')`); const t2 = await as(P, CP, `select public.my_todo() r`);
+  expect('기획행정부: 새 건의는 본 뒤 0', t1.ok && 'suggestions_new' in (t1.rows[0]?.r ?? {}) && t2.rows[0]?.r?.suggestions_new === 0);
+}
+
+{ // 11-12: 인기 게임 · 역대 순위 · 주간 보상 제외
+  const gs = await as(A, CA, `select public.game_status() r`); expect('게임 상태에 인기 게임', gs.ok && Array.isArray(gs.rows[0]?.r?.popular));
+  const ga = await as(A, CA, `select public.game_ranking_all('tower') r`); expect('역대 최고 순위', ga.ok && ga.rows[0]?.r?.all_time === true && Array.isArray(ga.rows[0]?.r?.top));
+  const nr = await q(`select value from public.app_config where key = 'no_weekly_reward'`); expect('학교 한 바퀴 주간 보상 제외', nr.rows[0]?.value === 'campus_walk');
+}
+
+// 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
+if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
 process.exit(failed ? 1 : 0);

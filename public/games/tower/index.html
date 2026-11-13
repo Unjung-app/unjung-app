@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>운중고 타워 쌓기</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #1a2a3a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #0f172a;
+    }
+    #ui {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #scoreBox {
+      position: absolute;
+      top: 12px; left: 0; right: 0;
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a3a5c;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    }
+    #scoreBox .best {
+      font-size: 14px;
+      font-weight: 600;
+      color: #3b5a7c;
+      opacity: 0.9;
+      margin-left: 10px;
+    }
+    #hint {
+      position: absolute;
+      top: 48px; left: 0; right: 0;
+      text-align: center;
+      font-size: 14px;
+      color: #2a4a6c;
+      opacity: 0.85;
+    }
+    #startOverlay, #gameOverOverlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 20, 40, 0.82);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      color: #fff;
+      text-align: center;
+      padding: 24px;
+    }
+    #gameOverOverlay.hidden { display: none; }
+    #startOverlay h1, #gameOverOverlay h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    #startOverlay p, #gameOverOverlay p {
+      font-size: 16px;
+      line-height: 1.5;
+      opacity: 0.9;
+      margin-bottom: 6px;
+    }
+    #finalScore {
+      font-size: 48px;
+      font-weight: 800;
+      margin: 16px 0 24px;
+      color: #7dd3fc;
+    }
+    #startBtn, #retryBtn {
+      pointer-events: auto;
+      margin-top: 12px;
+      padding: 14px 40px;
+      font-size: 18px;
+      font-weight: 700;
+      border: none;
+      border-radius: 28px;
+      background: #3b82f6;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(59,130,246,0.45);
+      cursor: pointer;
+    }
+    #startBtn:active, #retryBtn:active { transform: scale(0.96); }
+    .schoolBadge {
+      font-size: 13px;
+      opacity: 0.7;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="ui">
+    <div id="scoreBox"><span id="curScore">0</span><span class="best">최고 <span id="bestScore">0</span></span></div>
+    <div id="hint">화면을 탭해서 떨어뜨리세요</div>
+  </div>
+
+  <div id="startOverlay">
+    <h1>🏫 운중고 타워 쌓기</h1>
+    <p>운중고등학교 건물을<br>높이 쌓아보세요!</p>
+    <p style="font-size:13px;opacity:0.75;margin-top:8px;">완벽한 정렬이면 보너스 점수</p>
+    <button id="startBtn">시작하기</button>
+    <div class="schoolBadge">운중고등학교 · 고등학생 타워 챌린지</div>
+  </div>
+
+  <div id="gameOverOverlay" class="hidden">
+    <h1>타워 완성!</h1>
+    <p>운중고 건물을 쌓은 높이</p>
+    <div id="finalScore">0</div>
+    <p id="resultMsg" style="font-size:15px;"></p>
+    <button id="retryBtn">다시 도전</button>
+    <div class="schoolBadge">운중고등학교</div>
+  </div>
+
+  <script>
+/* ===================== 앱 연결 코드 (고치지 마세요) =====================
+   앱 안에서 열리면 진짜 앱과 연결되고, 그냥 브라우저·AI 미리보기에서 열면
+   가짜(연습용)로 동작합니다. 그래서 앱 없이도 게임을 끝까지 만들어 볼 수 있어요.
+
+   UnjungGame.player            → { nickname: '닉네임', grade: 2 }  (연습용에선 '테스트')
+   UnjungGame.submitScore(n)    → 게임이 끝날 때 점수(정수)를 보냄. 결과: Promise<{ best }>
+   UnjungGame.save(obj)         → 이어하기용 저장(작은 데이터, 10KB까지). Promise
+   UnjungGame.load()            → 저장한 것 불러오기. Promise<obj | null>
+   UnjungGame.onPause(fn)       → 앱이 게임을 멈출 때(수업 시작 등) 부름
+   UnjungGame.exit()            → 앱으로 돌아가기
+========================================================================== */
+(function () {
+  const inApp = window.parent !== window && /[?&]unjung=1/.test(location.search);
+  const listeners = { pause: [] };
+  let seq = 0; const waiting = {};
+  function ask(type, data) {
+    if (!inApp) return Promise.resolve(null);
+    return new Promise((resolve) => { const id = ++seq; waiting[id] = resolve; window.parent.postMessage({ unjung: 1, id, type, data }, '*'); setTimeout(() => { if (waiting[id]) { delete waiting[id]; resolve(null); } }, 8000); });
+  }
+  window.addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.unjung !== 1) return;
+    if (m.reply && waiting[m.reply]) { waiting[m.reply](m.data); delete waiting[m.reply]; }
+    if (m.type === 'player') Object.assign(api.player, m.data || {});
+    if (m.type === 'pause') listeners.pause.forEach((f) => f());
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) listeners.pause.forEach((f) => f()); });
+  const KEY = 'unjung-game-practice';
+  const api = {
+    inApp,
+    player: { nickname: inApp ? '' : '테스트', grade: 2 },
+    submitScore(n) {
+      n = Math.max(0, Math.floor(Number(n) || 0));
+      if (inApp) return ask('score', { score: n }).then((r) => r || { best: n });
+      let best = n; try { best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best); } catch (e) {}
+      return Promise.resolve({ best });
+    },
+    save(obj) { const s = JSON.stringify(obj ?? null); if (s.length > 10000) return Promise.reject(new Error('저장 데이터가 너무 커요(10KB까지)'));
+      if (inApp) return ask('save', s); try { localStorage.setItem(KEY + ':save', s); } catch (e) { return Promise.resolve(false); } return Promise.resolve(true); },
+    load() { if (inApp) return ask('load').then((s) => (s ? JSON.parse(s) : null)); try { return Promise.resolve(JSON.parse(localStorage.getItem(KEY + ':save'))); } catch { return Promise.resolve(null); } },
+    onPause(fn) { listeners.pause.push(fn); },
+    exit() { if (inApp) ask('exit'); },
+  };
+  window.UnjungGame = api;
+  ask('ready');
+})();
+/* ======================= 앱 연결 코드 끝 ======================= */
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const curScoreEl = document.getElementById('curScore');
+    const bestScoreEl = document.getElementById('bestScore');
+    const hintEl = document.getElementById('hint');
+    const startOverlay = document.getElementById('startOverlay');
+    const gameOverOverlay = document.getElementById('gameOverOverlay');
+    const finalScoreEl = document.getElementById('finalScore');
+    const resultMsgEl = document.getElementById('resultMsg');
+    const startBtn = document.getElementById('startBtn');
+    const retryBtn = document.getElementById('retryBtn');
+
+    const HS_KEY = 'unjung_stack_best';
+    let bestScore = 0;
+    try {
+      bestScore = parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0;
+    } catch (e) { bestScore = 0; }
+    bestScoreEl.textContent = bestScore;
+
+    function updateScoreUI() {
+      curScoreEl.textContent = score;
+      bestScoreEl.textContent = bestScore;
+      const floors = Math.max(0, blocks.length - 1);
+      const phase = Math.min(1, floors / 28);
+      const scoreBoxEl = document.getElementById('scoreBox');
+      if (!scoreBoxEl) return;
+      if (phase > 0.4) {
+        scoreBoxEl.style.color = '#e2e8f0';
+        scoreBoxEl.style.textShadow = '0 1px 3px rgba(0,0,0,0.6)';
+        const best = scoreBoxEl.querySelector('.best');
+        if (best) best.style.color = '#94a3b8';
+      } else {
+        scoreBoxEl.style.color = '#1a3a5c';
+        scoreBoxEl.style.textShadow = '0 1px 2px rgba(255,255,255,0.8)';
+        const best = scoreBoxEl.querySelector('.best');
+        if (best) best.style.color = '#3b5a7c';
+      }
+    }
+
+    let W, H, dpr;
+    // [11-08] 앱 안(iframe)에서는 처음 실행될 때 화면 크기가 0으로 읽히는 휴대폰이 있다
+    // → 캔버스가 0×0이 되어 화면이 비는 문제. 실제 크기를 여러 방법으로 읽고, 바뀌면 다시 맞춘다.
+    function viewSize() {
+      const r = document.documentElement.getBoundingClientRect();
+      return {
+        w: Math.round(window.innerWidth || document.documentElement.clientWidth || r.width || 0),
+        h: Math.round(window.innerHeight || document.documentElement.clientHeight || r.height || 0),
+      };
+    }
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const v = viewSize();
+      W = v.w;
+      H = v.h;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (!baseY) baseY = H - 80;
+    }
+    window.addEventListener('resize', resize);
+    if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(document.documentElement);
+
+    // Game state
+    let score = 0;
+    let gameRunning = false;
+    let gameOver = false;
+    let blocks = [];          // stacked blocks {x, y, w, h, color}
+    let current = null;       // moving block
+    let dir = 1;              // 1 right, -1 left
+    let speed = 2.2;
+    let baseY = 0;
+    let cameraY = 0;
+    let perfectStreak = 0;
+    let startTime = 0;
+    let paused = false;
+    let zoomingOut = false;
+    let zoomScale = 1;
+    let zoomCamY = 0;
+    let zoomStartTime = 0;
+    const ZOOM_DURATION = 2000; // ms
+
+    const BLOCK_H = 36;
+    const MIN_W = 28;
+    // 이전 블록 양옆으로 나가는 거리
+    const MOVE_EXTRA = 130;
+    const COLORS = [
+      '#3b82f6', '#2563eb', '#1d4ed8',
+      '#0ea5e9', '#0284c7', '#0369a1',
+      '#6366f1', '#4f46e5', '#4338ca'
+    ];
+
+    resize(); // baseY 선언 이후 초기화
+
+    function initGame() {
+      score = 0;
+      perfectStreak = 0;
+      speed = 2.2;
+      cameraY = 0;
+      zoomingOut = false;
+      zoomScale = 1;
+      gameOver = false;
+      gameRunning = true;
+      startTime = Date.now();
+      updateScoreUI();
+      hintEl.style.opacity = '1';
+      hintEl.textContent = '화면을 탭해서 떨어뜨리세요';
+
+      resize();
+      baseY = H - 80;
+      blocks = [];
+      // Base platform (school ground)
+      const baseW = Math.min(W * 0.70, 250);
+      blocks.push({
+        x: (W - baseW) / 2,
+        y: baseY,
+        w: baseW,
+        h: BLOCK_H + 8,
+        color: '#1e40af',
+        isBase: true
+      });
+
+      spawnNext();
+    }
+
+    function spawnNext() {
+      const last = blocks[blocks.length - 1];
+      const w = last.w;
+      // 이전 블록 기준으로 적당히 양옆을 왕복
+      let leftBound = last.x - MOVE_EXTRA;
+      let rightBound = last.x + last.w + MOVE_EXTRA - w;
+      // 화면 밖으로 너무 나가지 않게 클램프
+      leftBound = Math.max(leftBound, -w * 0.3);
+      rightBound = Math.min(rightBound, W - w * 0.7);
+      if (rightBound < leftBound + 20) {
+        leftBound = last.x - 40;
+        rightBound = last.x + last.w + 40 - w;
+      }
+      const startX = dir > 0 ? leftBound : rightBound;
+      current = {
+        x: startX,
+        y: last.y - BLOCK_H - 2,
+        w: w,
+        h: BLOCK_H,
+        color: COLORS[blocks.length % COLORS.length],
+        leftBound: leftBound,
+        rightBound: rightBound
+      };
+      // 높이 올라갈수록 속도 증가
+      const floor = Math.max(0, blocks.length - 1);
+      speed = Math.min(2.2 + floor * 0.15, 6.5);
+    }
+
+    function drop() {
+      if (!gameRunning || !current || gameOver) return;
+
+      const last = blocks[blocks.length - 1];
+      const left = Math.max(current.x, last.x);
+      const right = Math.min(current.x + current.w, last.x + last.w);
+      const overlap = right - left;
+
+      if (overlap < MIN_W * 0.55) {
+        // Missed – game over
+        endGame();
+        return;
+      }
+
+      // Perfect check
+      const diff = Math.abs(current.x - last.x);
+      const isPerfect = diff < 4;
+
+      let newW = overlap;
+      let newX = left;
+
+      if (isPerfect) {
+        newW = last.w;
+        newX = last.x;
+        perfectStreak++;
+
+        // 콤보 점수: 연속이 길수록 더 많이
+        // 1~2: +2, 3~4: +3, 5~7: +5, 8+: +8 + 추가
+        let add = 2;
+        if (perfectStreak >= 8) add = 8 + Math.min(perfectStreak - 8, 6); // 8~14
+        else if (perfectStreak >= 5) add = 5;
+        else if (perfectStreak >= 3) add = 3;
+        score += add;
+
+        // 8연속 이상: 플랫폼이 조금씩 커짐 (최대 화면 너비의 85%)
+        if (perfectStreak >= 8) {
+          const maxW = Math.min(W * 0.85, last.w + 14);
+          const grow = Math.min(6, maxW - last.w);
+          if (grow > 0) {
+            newW = last.w + grow;
+            newX = last.x - grow / 2;
+            // 화면 밖으로 안 나가게
+            if (newX < 4) newX = 4;
+            if (newX + newW > W - 4) newX = W - 4 - newW;
+          }
+          hintEl.textContent = '🔥 COMBO x' + perfectStreak + ' 플랫폼 확장! +' + add;
+        } else if (perfectStreak >= 3) {
+          hintEl.textContent = '🔥 COMBO x' + perfectStreak + ' +' + add;
+        } else {
+          hintEl.textContent = '✨ 완벽 정렬! +' + add;
+        }
+      } else {
+        perfectStreak = 0;
+        score += 1;
+        // Cut the overhang
+        current.w = newW;
+        current.x = newX;
+        hintEl.textContent = '좋아요! +1';
+      }
+
+      updateScoreUI();
+      blocks.push({
+        x: newX,
+        y: current.y,
+        w: newW,
+        h: BLOCK_H,
+        color: current.color
+      });
+
+      // 카메라는 loop에서 부드럽게 따라감 (여기서 바로 점프하지 않음)
+
+      current = null;
+      dir *= -1;
+
+      // Next block after short delay
+      setTimeout(() => {
+        if (gameRunning && !gameOver) spawnNext();
+      }, 150);
+    }
+
+    function endGame() {
+      gameRunning = false;
+      gameOver = true;
+      current = null;
+
+      // 최고 점수 갱신
+      if (score > bestScore) {
+        bestScore = score;
+        try { localStorage.setItem(HS_KEY, String(bestScore)); } catch (e) {}
+      }
+      updateScoreUI();
+
+      // 2초 줌아웃으로 전체 타워 보여주기
+      zoomingOut = true;
+      zoomScale = 1;
+      zoomCamY = cameraY;
+      zoomStartTime = Date.now();
+      hintEl.textContent = '완성된 운중고 타워 🏫';
+    }
+
+    function finishZoomAndShowResult() {
+      zoomingOut = false;
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+      let msg = '';
+      if (score >= 40) msg = '운중고 최고의 건축가! 🏆';
+      else if (score >= 25) msg = '멋진 타워예요! 학교 자랑거리 🏗️';
+      else if (score >= 12) msg = '잘했어요! 조금 더 높이 도전!';
+      else msg = '다시 한 번 쌓아볼까요?';
+      if (score > 0 && score === bestScore) msg = '🎉 신기록! ' + msg;
+
+      finalScoreEl.textContent = score;
+      resultMsgEl.textContent = msg + ' (' + elapsed + '초)';
+      gameOverOverlay.classList.remove('hidden');
+      gameOverOverlay.style.display = 'flex';
+
+      try {
+        UnjungGame.submitScore(score);
+      } catch (e) {
+        console.log('submitScore error', e);
+      }
+    }
+
+    // Drawing helpers
+    function shadeColor(hex, amt) {
+      // hex #rrggbb → lighten/darken by amt (-1~1 approx via 0-100)
+      let r = parseInt(hex.slice(1, 3), 16);
+      let g = parseInt(hex.slice(3, 5), 16);
+      let b = parseInt(hex.slice(5, 7), 16);
+      r = Math.max(0, Math.min(255, r + amt));
+      g = Math.max(0, Math.min(255, g + amt));
+      b = Math.max(0, Math.min(255, b + amt));
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
+
+    function drawSchoolBlock(b, cam) {
+      const y = b.y - cam;
+      const x = b.x;
+      const w = b.w;
+      const h = b.h;
+      const r = 3;
+
+      // Drop shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      roundRect(x + 3, y + 4, w, h, r);
+      ctx.fill();
+
+      // Main body
+      ctx.fillStyle = b.color;
+      roundRect(x, y, w, h, r);
+      ctx.fill();
+
+      // Right side shade
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(x + w * 0.72, y + 1, w * 0.28, h - 2);
+
+      // Top ledge / cornice
+      ctx.fillStyle = shadeColor(b.color, 40);
+      ctx.fillRect(x - 1, y, w + 2, 5);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(x, y + 1, w, 2);
+
+      // Bottom edge dark
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(x + 2, y + h - 3, w - 4, 3);
+
+      if (b.isBase) {
+        // Base: school entrance style
+        // Pillars
+        const pillarW = Math.max(6, w * 0.06);
+        ctx.fillStyle = shadeColor(b.color, 50);
+        ctx.fillRect(x + 6, y + 6, pillarW, h - 10);
+        ctx.fillRect(x + w - 6 - pillarW, y + 6, pillarW, h - 10);
+
+        // Door
+        const doorW = Math.min(28, w * 0.22);
+        const doorH = h * 0.55;
+        const doorX = x + (w - doorW) / 2;
+        const doorY = y + h - doorH - 2;
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(doorX, doorY, doorW, doorH);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(doorX + 2, doorY + 2, doorW / 2 - 3, doorH - 4);
+        ctx.fillRect(doorX + doorW / 2 + 1, doorY + 2, doorW / 2 - 3, doorH - 4);
+        // Door handle
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(doorX + doorW / 2 - 2, doorY + doorH * 0.45, 4, 3);
+
+        // Sign board — 가시성 높은 볼드 간판
+        const signW = Math.min(w - 12, 150);
+        const signH = 18;
+        const signX = x + (w - signW) / 2;
+        const signY = y + 4;
+        // 간판 배경
+        ctx.fillStyle = '#0f172a';
+        roundRect(signX, signY, signW, signH, 3);
+        ctx.fill();
+        // 노란 테두리
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2;
+        roundRect(signX, signY, signW, signH, 3);
+        ctx.stroke();
+        // 글씨 (볼드 + 그림자)
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillText('운중고등학교', x + w / 2 + 1, signY + signH / 2 + 1);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillText('운중고등학교', x + w / 2, signY + signH / 2);
+        ctx.textBaseline = 'alphabetic';
+
+        // Steps
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(x + w * 0.25, y + h - 2, w * 0.5, 4);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(x + w * 0.28, y + h, w * 0.44, 3);
+      } else {
+        // Regular floor: windows with frames
+        const winCols = Math.max(2, Math.floor(w / 20));
+        const winRows = h > 40 ? 2 : 1;
+        const winW = Math.min(10, (w - 12) / winCols - 4);
+        const winH = winRows === 2 ? 9 : Math.min(14, h - 14);
+        const totalWinW = winCols * winW + (winCols - 1) * 4;
+        const startX = x + (w - totalWinW) / 2;
+        const startY = y + (h - winRows * winH - (winRows - 1) * 4) / 2;
+
+        for (let row = 0; row < winRows; row++) {
+          for (let col = 0; col < winCols; col++) {
+            const wx = startX + col * (winW + 4);
+            const wy = startY + row * (winH + 4);
+
+            // Window frame
+            ctx.fillStyle = 'rgba(15,23,42,0.35)';
+            ctx.fillRect(wx - 1, wy - 1, winW + 2, winH + 2);
+
+            // Glass (slightly varied brightness)
+            const bright = 0.75 + ((col + row) % 3) * 0.08;
+            ctx.fillStyle = 'rgba(255, 250, 220, ' + bright + ')';
+            ctx.fillRect(wx, wy, winW, winH);
+
+            // Cross frame
+            ctx.fillStyle = 'rgba(15,23,42,0.25)';
+            ctx.fillRect(wx + winW / 2 - 0.5, wy, 1, winH);
+            if (winH > 8) ctx.fillRect(wx, wy + winH / 2 - 0.5, winW, 1);
+
+            // Glass shine
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.fillRect(wx + 1, wy + 1, winW * 0.35, winH * 0.35);
+          }
+        }
+
+        // Floor line (story divider)
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.fillRect(x + 3, y + h - 1, w - 6, 1);
+      }
+
+      // Left highlight edge
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillRect(x + 1, y + 5, 2, h - 8);
+    }
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function lerpColor(a, b, t) {
+      t = Math.max(0, Math.min(1, t));
+      const ar = parseInt(a.slice(1, 3), 16), ag = parseInt(a.slice(3, 5), 16), ab = parseInt(a.slice(5, 7), 16);
+      const br = parseInt(b.slice(1, 3), 16), bg = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16);
+      const r = Math.round(ar + (br - ar) * t);
+      const g = Math.round(ag + (bg - ag) * t);
+      const bl = Math.round(ab + (bb - ab) * t);
+      return 'rgb(' + r + ',' + g + ',' + bl + ')';
+    }
+
+    function getSkyPhase() {
+      const floors = Math.max(0, blocks.length - 1);
+      return Math.min(1, floors / 28);
+    }
+
+    function getSkyColors() {
+      const phase = getSkyPhase();
+      const topDay = '#5eb0ef', midDay = '#b8e0f8', botDay = '#e8f6ff';
+      const topEve = '#1e3a5f', midEve = '#c45c26', botEve = '#f4a261';
+      const topNgt = '#0b1026', midNgt = '#1a1440', botNgt = '#2d1b4e';
+      let topC, midC, botC;
+      if (phase < 0.45) {
+        const t = phase / 0.45;
+        topC = lerpColor(topDay, topEve, t);
+        midC = lerpColor(midDay, midEve, t);
+        botC = lerpColor(botDay, botEve, t);
+      } else {
+        const t = (phase - 0.45) / 0.55;
+        topC = lerpColor(topEve, topNgt, t);
+        midC = lerpColor(midEve, midNgt, t);
+        botC = lerpColor(botEve, botNgt, t);
+      }
+      return { phase, topC, midC, botC };
+    }
+
+    // 줌아웃 시에도 화면 전체를 덮는 하늘 (스케일 없이)
+    function drawSkyOnly() {
+      const { phase, topC, midC, botC } = getSkyColors();
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, topC);
+      sky.addColorStop(0.45, midC);
+      sky.addColorStop(1, botC);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      if (phase < 0.5) {
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.55 - phase * 0.4) + ')';
+        const clouds = [
+          [0.1, 0.12, 40], [0.55, 0.08, 55], [0.8, 0.18, 35],
+          [0.3, 0.22, 28], [0.7, 0.28, 32]
+        ];
+        for (const c of clouds) {
+          const cx = c[0] * W, cy = c[1] * H, r = c[2];
+          ctx.beginPath();
+          ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2);
+          ctx.arc(cx + r * 0.45, cy + 4, r * 0.4, 0, Math.PI * 2);
+          ctx.arc(cx - r * 0.4, cy + 6, r * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        const starAlpha = Math.min(1, (phase - 0.5) * 2.2);
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.5 * starAlpha) + ')';
+        for (let i = 0; i < 40; i++) {
+          const sx = ((i * 97 + 31) % 100) / 100 * W;
+          const sy = ((i * 53 + 17) % 100) / 100 * H * 0.7;
+          const sr = 1 + (i % 3) * 0.6;
+          ctx.beginPath();
+          ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (phase > 0.6) {
+          const mx = W * 0.82, my = H * 0.12;
+          ctx.fillStyle = 'rgba(255,245,200,' + Math.min(1, (phase - 0.6) * 2) + ')';
+          ctx.beginPath();
+          ctx.arc(mx, my, 18, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = topC;
+          ctx.beginPath();
+          ctx.arc(mx + 7, my - 3, 14, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    function drawGroundOnly(cam) {
+      if (!baseY || !isFinite(baseY)) return;
+      const gy = baseY + BLOCK_H + 6 - cam;
+
+      // 줌아웃 시 가장자리가 비지 않도록 좌우·아래로 넓게
+      const pad = Math.max(W, H);
+      const groundGrad = ctx.createLinearGradient(0, gy, 0, gy + 160);
+      groundGrad.addColorStop(0, '#6b8f3c');
+      groundGrad.addColorStop(0.15, '#5a9c3a');
+      groundGrad.addColorStop(0.5, '#4a8c32');
+      groundGrad.addColorStop(1, '#3d6b28');
+      ctx.fillStyle = groundGrad;
+      ctx.fillRect(-pad, gy, W + pad * 2, H + pad);
+
+      ctx.strokeStyle = 'rgba(30, 90, 30, 0.35)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 50; i++) {
+        const gx = (i * 73 + 11) % W;
+        const gyy = gy + 6 + ((i * 19) % 40);
+        ctx.beginPath();
+        ctx.moveTo(gx, gyy);
+        ctx.lineTo(gx + 1, gyy - 4 - (i % 3));
+        ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.translate(W / 2, gy + 70);
+      ctx.scale(1, 0.38);
+      ctx.strokeStyle = 'rgba(180, 90, 60, 0.45)';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.arc(0, 0, W * 0.42, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(220, 120, 80, 0.3)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(0, 0, W * 0.36, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      const pathW = Math.min(W * 0.28, 110);
+      const pathX = (W - pathW) / 2;
+      ctx.fillStyle = '#c4b8a0';
+      ctx.fillRect(pathX, gy, pathW, 90);
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 8; i++) {
+        ctx.beginPath();
+        ctx.moveTo(pathX, gy + i * 12);
+        ctx.lineTo(pathX + pathW, gy + i * 12);
+        ctx.stroke();
+      }
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(pathX + i * (pathW / 3), gy);
+        ctx.lineTo(pathX + i * (pathW / 3), gy + 90);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#a89880';
+      ctx.fillRect(pathX - 3, gy, 3, 90);
+      ctx.fillRect(pathX + pathW, gy, 3, 90);
+
+      function drawTree(tx, ty, sc) {
+        ctx.fillStyle = '#5c4033';
+        ctx.fillRect(tx - 3 * sc, ty - 18 * sc, 6 * sc, 20 * sc);
+        ctx.fillStyle = '#2d6a2d';
+        ctx.beginPath();
+        ctx.arc(tx, ty - 28 * sc, 14 * sc, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#3d8a3d';
+        ctx.beginPath();
+        ctx.arc(tx - 8 * sc, ty - 22 * sc, 10 * sc, 0, Math.PI * 2);
+        ctx.arc(tx + 8 * sc, ty - 22 * sc, 10 * sc, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      drawTree(W * 0.12, gy + 8, 1);
+      drawTree(W * 0.88, gy + 10, 1.1);
+      drawTree(W * 0.08, gy + 35, 0.75);
+      drawTree(W * 0.92, gy + 40, 0.8);
+
+      ctx.fillStyle = '#8b4513';
+      ctx.fillRect(pathX - 28, gy + 4, 22, 10);
+      ctx.fillRect(pathX + pathW + 6, gy + 4, 22, 10);
+      ctx.fillStyle = '#e11d48';
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(pathX - 18 + i * 6, gy + 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(pathX + pathW + 12 + i * 6, gy + 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawBackground(cam) {
+      drawSkyOnly();
+      if (!baseY || !isFinite(baseY)) return;
+      drawGroundOnly(cam);
+    }
+
+    function drawStudent(cam) {
+      if (blocks.length === 0) return;
+      const base = blocks[0];
+      const sx = base.x + base.w / 2;
+      const sy = base.y + base.h + 32 - cam;
+      ctx.font = '22px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🧑‍🎓', sx - 16, sy);
+      ctx.fillText('👩‍🎓', sx + 16, sy);
+    }
+
+    function loop() {
+      const v = viewSize();
+      if (v.w > 0 && v.h > 0 && (v.w !== W || v.h !== H)) {
+        resize();
+        if (!gameRunning && !zoomingOut) baseY = H - 80;
+        else if (gameRunning && blocks.length === 1 && score === 0) initGame(); // 시작하자마자 크기가 바뀌면 바닥부터 다시 놓기
+      }
+      ctx.clearRect(0, 0, W, H);
+
+      // 줌아웃 연출 (게임 종료 후 2초)
+      if (zoomingOut && blocks.length > 0) {
+        const t = Math.min(1, (Date.now() - zoomStartTime) / ZOOM_DURATION);
+        const ease = 1 - Math.pow(1 - t, 2.5);
+
+        const top = blocks[blocks.length - 1];
+        const bottom = blocks[0];
+        const towerH = (bottom.y + bottom.h) - top.y + 80;
+        const targetScale = Math.min(1, (H * 0.70) / Math.max(towerH, 1));
+        zoomScale = 1 + (targetScale - 1) * ease;
+
+        // 타워 전체가 화면 중앙에 오도록 카메라
+        const midY = (top.y + bottom.y + bottom.h) / 2;
+        const targetCam = midY - (H / 2) / zoomScale;
+        zoomCamY = cameraY + (targetCam - cameraY) * ease;
+
+        // 1) 스케일 없이 전체 화면 하늘 먼저 채움 (잘림 방지)
+        drawSkyOnly();
+
+        // 2) 타워·바닥만 줌
+        ctx.save();
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(zoomScale, zoomScale);
+        ctx.translate(-W / 2, -H / 2);
+
+        // 스케일된 좌표계에서 배경이 화면을 덮도록 넉넉히 그림
+        drawGroundOnly(zoomCamY);
+        for (const b of blocks) {
+          drawSchoolBlock(b, zoomCamY);
+        }
+        drawStudent(zoomCamY);
+        ctx.restore();
+
+        if (t >= 1) {
+          finishZoomAndShowResult();
+        }
+
+        requestAnimationFrame(loop);
+        return;
+      }
+
+      // 카메라: 맨 위 블록이 화면 상단 근처로 올라가면 시야를 따라 올림
+      if (blocks.length > 0 && gameRunning) {
+        const top = blocks[blocks.length - 1];
+        const desiredScreenY = H * 0.28;
+        const target = Math.min(0, top.y - desiredScreenY);
+        cameraY += (target - cameraY) * 0.12;
+      }
+
+      drawBackground(cameraY);
+
+      // Stacked blocks
+      for (const b of blocks) {
+        drawSchoolBlock(b, cameraY);
+      }
+
+      // Moving block
+      if (current && gameRunning) {
+        if (!paused) current.x += dir * speed;
+        // 이전 블록 기준 양옆을 왕복
+        if (current.x >= current.rightBound) { current.x = current.rightBound; dir = -1; }
+        if (current.x <= current.leftBound) { current.x = current.leftBound; dir = 1; }
+        drawSchoolBlock(current, cameraY);
+      }
+
+      drawStudent(cameraY);
+
+      // Height indicator
+      if (blocks.length > 2 && gameRunning) {
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText((blocks.length - 1) + '층', 12, 30);
+      }
+
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // Input
+    function handleTap(e) {
+      e.preventDefault();
+      if (!gameRunning || gameOver) return;
+      if (paused) { paused = false; hintEl.textContent = '화면을 탭해서 떨어뜨리세요'; return; }
+      drop();
+    }
+    canvas.addEventListener('pointerdown', handleTap, { passive: false });
+    canvas.addEventListener('touchstart', handleTap, { passive: false });
+
+    startBtn.addEventListener('click', () => {
+      startOverlay.style.display = 'none';
+      startOverlay.classList.add('hidden');
+      initGame();
+    });
+
+    retryBtn.addEventListener('click', () => {
+      gameOverOverlay.classList.add('hidden');
+      gameOverOverlay.style.display = 'none';
+      initGame();
+    });
+
+    UnjungGame.onPause(() => { if (gameRunning && !gameOver) { paused = true; hintEl.textContent = '⏸ 잠깐 멈춤 · 탭하면 계속'; } });
+
+    // Prevent scroll
+    document.body.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  </script>
+</body>
+</html>

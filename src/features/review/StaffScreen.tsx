@@ -4,6 +4,8 @@ import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { parseStudentNo } from '@/lib/student';
+import { EnrollmentAdmin } from './EnrollmentAdmin';
+import { TeacherAdmin } from './TeacherAdmin';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { fontStyle } from '@/theme/fonts';
@@ -21,8 +23,9 @@ type Found = {
   nickname: string | null;
   is_planner?: boolean;
   balance?: number;
+  is_study_manager?: boolean;
 };
-type Staff = { user_id: string; name: string | null; student_no: string | null; role: Role; is_planner?: boolean };
+type Staff = { user_id: string; name: string | null; student_no: string | null; role: Role; is_planner?: boolean; teacher?: boolean };
 const ROLE: Record<Role, string> = { student: '학생', reviewer: '검토위원', admin: '관리자' };
 type Msg = { ok: boolean; text: string } | null;
 
@@ -30,7 +33,8 @@ const friendly = (m?: string) => (m && /[가-힣]/.test(m) ? m : '처리하지 �
 
 /**
  * 관리자: 학생 관리.
- *  · 학번·닉네임·이메일로 찾기
+ *  · 학적 정정 요청 처리 · 직책 명단 확인 · 학적 변경 기록 (EnrollmentAdmin)
+ *  · 학번·이름·닉네임·이메일로 찾기
  *  · 직책: 검토위원·기획행정부 지정/해제 (관리자 지정은 보안상 SQL로만)
  *  · 학적 정정(잘못 입력한 학번·이름), 학적 지우기(남의 학번을 등록한 계정), 닉네임 지우기, 토큰 보정
  */
@@ -85,15 +89,17 @@ export function StaffScreen() {
       <AppText variant="body" color={color.inkMuted}>
         학생을 찾아 직책을 정하거나 학적·닉네임·토큰을 바로잡아요. 검토위원은 공지·신고·분실물 사진을, 기획행정부는 운중 보이스 설문과 건의 확인을 맡아요.
       </AppText>
+      <EnrollmentAdmin />
+      <TeacherAdmin onChanged={loadStaff} />
       <Card>
-        <AppText variant="label">학번 · 닉네임 · 이메일로 찾기</AppText>
+        <AppText variant="label">학번 · 이름 · 닉네임 · 이메일로 찾기</AppText>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <TextInput
-            accessibilityLabel="학번, 닉네임 또는 이메일"
+            accessibilityLabel="학번, 이름, 닉네임 또는 이메일"
             value={query}
             onChangeText={(t) => setQuery(t.slice(0, 60))}
             onSubmitEditing={search}
-            placeholder="예) 20818 · 구름위"
+            placeholder="예) 20818 · 홍길동 · 구름위"
             placeholderTextColor={color.inkFaint}
             autoCapitalize="none"
             style={{ ...input, flex: 1, minWidth: 0, minHeight: 48, fontSize: 17, ...fontStyle('semibold') }}
@@ -102,7 +108,7 @@ export function StaffScreen() {
         </View>
         {found !== null && found.length === 0 ? (
           <AppText variant="caption" color={color.inkMuted}>
-            찾는 학생이 없어요. 학번은 5자리, 닉네임·이메일은 정확히 입력해 주세요.
+            찾는 학생이 없어요. 학번은 5자리, 이름·닉네임·이메일은 정확히 입력해 주세요.
           </AppText>
         ) : null}
         {(found ?? []).map((f) => (
@@ -116,7 +122,7 @@ export function StaffScreen() {
       </Card>
 
       <AppText variant="heading" style={{ marginTop: space.sm }}>
-        지금 직책을 맡은 학생
+        지금 직책을 맡은 사람
       </AppText>
       <View style={{ backgroundColor: color.surface, borderRadius: radius.card, overflow: 'hidden' }}>
         {(staff ?? []).map((s, i) => (
@@ -124,6 +130,7 @@ export function StaffScreen() {
             <AppText variant="bodyStrong" style={{ flex: 1 }}>
               {s.name ?? '학번 미등록'} {s.student_no ? `· ${s.student_no}` : ''}
             </AppText>
+            {s.teacher ? <Badge label="👩‍🏫 선생님" tone="muted" /> : null}
             {s.role !== 'student' ? <Badge label={ROLE[s.role]} tone={s.role === 'admin' ? 'accent' : 'success'} /> : null}
             {s.is_planner && s.role !== 'admin' ? <Badge label="기획행정부" tone="success" /> : null}
           </View>
@@ -150,6 +157,7 @@ function StudentCard({ f, me, act }: { f: Found; me: string; act: (fn: string, a
         <AppText variant="heading">{f.name ?? '학적 없음'}</AppText>
         <Badge label={ROLE[f.role]} tone={f.role === 'student' ? 'muted' : 'accent'} />
         {f.is_planner ? <Badge label="기획행정부" tone="success" /> : null}
+        {f.is_study_manager ? <Badge label="스터디 윗미 관리" tone="success" /> : null}
       </View>
       <AppText variant="caption" color={color.inkMuted}>
         {f.student_no ? `${f.grade}학년 ${f.class_no}반 · ${f.student_no}` : '올해 학번 미등록'} · {f.email} · 닉네임 {f.nickname ?? '없음'} · 🪙 {f.balance ?? 0}
@@ -166,6 +174,13 @@ function StudentCard({ f, me, act }: { f: Found; me: string; act: (fn: string, a
             label={f.is_planner ? '기획행정부 빼기' : '기획행정부 지정'}
             variant="soft"
             onPress={() => act('admin_set_planner', { p_user: f.user_id, p_on: !f.is_planner }, f.is_planner ? '기획행정부에서 뺐어요' : '기획행정부로 지정했어요')}
+          />
+          <Button
+            label={f.is_study_manager ? '스터디 관리 해제' : '스터디 윗미 관리자'}
+            variant="soft"
+            onPress={() =>
+              act('admin_set_study_manager', { p_user: f.user_id, p_on: !f.is_study_manager }, f.is_study_manager ? '스터디 윗미 관리자에서 뺐어요' : '스터디 윗미 관리자로 지정했어요')
+            }
           />
         </View>
       ) : null}

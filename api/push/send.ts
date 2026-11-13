@@ -47,7 +47,7 @@ async function handle() {
         const results = await Promise.all(
           it.subs.map((s) =>
             webpush
-              .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 6 * 3600, urgency: 'normal' })
+              .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 6 * 3600, urgency: 'high' /* 절전 중인 폰도 바로 깨워 잠금화면에 띄운다 */ })
               .then(() => (ok.add(s.endpoint), 'ok' as const))
               .catch((e: { statusCode?: number }) => {
                 if (e?.statusCode === 404 || e?.statusCode === 410) {

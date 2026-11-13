@@ -1,4 +1,4 @@
-# 운중고 스마트 캠퍼스 (v1.0.0)
+# 운중고 스마트 스쿨 (v1.0.0)
 
 운중고 학생 전용 학교 앱. **iOS · Android 앱 + 웹을 한 코드로** 만든다.
 Expo SDK 58 (React Native 0.88) · Expo Router · TypeScript · Vercel(웹 + 서버 함수)
@@ -88,3 +88,16 @@ npm run app          # 앱 실행 (웹, 8081) — Codespaces에서는 자동 실
 - `lead/*` : 리드 에이전트 작업. PR → 대표 승인 → 병합
 - `feat/*` : 참여원 작업 (`npm run save`가 만듦). Vercel 미리보기 배포는 끔
 - `main`  : 배포 버전 (unjung-app.vercel.app)
+
+## 2학년 개인 시간표
+
+- `20261114000000_personal_timetable.sql`을 Supabase에 적용한 뒤 앱을 배포한다.
+- `timetable_configs`에 2026학년도 2학기 A~D·교양·예술 과목과 1~8반 배치가 들어 있다.
+  새로운 학기는 별도 행으로 등록한다. 다른 학기까지 이 배치를 자동 연장하지 않는다.
+- 학적이 등록된 2학년은 시간표를 처음 열면 6개 과목을 선택한다.
+  `timetable_choices`에 계정·학년도·학기별로 저장하며 ‘과목 재설정’으로 변경한다.
+- 기존 NEIS 조회·캐시·로그인은 유지한다. 홈의 현재·다음 수업 위젯과 시간표 탭의 주간/하루 화면에서
+  기존 수업 칸의 과목명을 반영하고 교실은 숨긴다. 빈 날의 수업을 새로 만들지 않으며,
+  보강 등 태그가 붙은 수업과 자율·진로·동아리 등 특별활동은 유지한다.
+- DB 적용 전이나 연결 실패 시 안내와 기존 반 시간표를 표시한다.
+- 검증: `npm run check`, `npm run test:db`, `npm run test:timetable`.

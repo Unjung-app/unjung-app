@@ -4,6 +4,7 @@ import { ComingSoonScreen } from './ComingSoonScreen';
 import { LibraryScreen } from './library/LibraryScreen';
 import { MealScreen } from './meal/MealScreen';
 import { GamesScreen } from './games/GamesScreen';
+import { GalleryScreen } from './gallery/GalleryScreen';
 import { LostScreen } from './lost/LostScreen';
 import { NoticeScreen } from './notice/NoticeScreen';
 import { RankingScreen } from './ranking/RankingScreen';
@@ -30,6 +31,7 @@ export const FEATURE_SCREENS: Record<string, ComponentType<ScreenProps>> = {
   games: GamesScreen,
   ranking: RankingScreen,
   notice: NoticeScreen,
+  gallery: GalleryScreen,
   lost: LostScreen,
   voice: VoiceScreen,
   sports: soon('sports'),

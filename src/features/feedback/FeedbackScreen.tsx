@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { REWARD } from '@/lib/rewards';
-import { Platform, TextInput, View } from 'react-native';
+import { Platform, Pressable, TextInput, View } from 'react-native';
 import { VERSION_LABEL } from '@/lib/build';
 import { useLocalSearchParams } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -8,6 +8,10 @@ import { Badge, Button, Card } from '@/components/ui/primitives';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { LoginPrompt } from '@/features/wallet/LoginPrompt';
+import { useFeedbackStats } from '@/features/feedback/FeedbackCard';
+import { useLaunchEvent } from '@/features/launch/Launch';
+import { useWallet } from '@/state/wallet';
+import { GAME_IDS, GAMES } from '@/features/games/catalog';
 import { stampLabel } from '@/lib/date';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
@@ -36,15 +40,23 @@ function deviceInfo() {
   return `${Platform.OS} ${String(Platform.Version)}`.slice(0, 200);
 }
 
-/** 버그 제보·개선 요청. 반영되면 +10 토큰. */
+/** 버그 제보·개선 요청. 반영되면 +10 토큰(출시 기간 2배), 출시 기간에는 하루 첫 의견 +5. */
 export function FeedbackScreen() {
   const { from } = useLocalSearchParams<{ from?: string }>();
   const { status } = useAuth();
   const [kind, setKind] = useState<FeedbackKind>('bug');
+  // 무엇에 대한 의견인가: 앱 기능 또는 게임(어느 게임). 게임 화면에서 왔으면 그 게임으로 시작
+  const fromGame = typeof from === 'string' && from.startsWith('game:') ? from.slice(5) : null;
+  const [about, setAbout] = useState<'app' | 'game'>(fromGame ? 'game' : 'app');
+  const [game, setGame] = useState<string | null>(fromGame);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [mine, setMine] = useState<Mine[] | null>(null);
+  const { stats, reload: reloadStats } = useFeedbackStats(status === 'ready');
+  const { mult } = useLaunchEvent();
+  const { refresh } = useWallet();
+  const doneReward = REWARD.feedbackDone * mult;
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('feedback').select('id,kind,body,status,reply,created_at').order('created_at', { ascending: false }).limit(30);
@@ -61,18 +73,21 @@ export function FeedbackScreen() {
   const submit = async () => {
     setBusy(true);
     setMsg(null);
-    const { error } = await supabase.rpc('submit_feedback', {
+    const { data, error } = await supabase.rpc('submit_feedback', {
       p_kind: kind,
       p_body: body.trim(),
-      p_screen: typeof from === 'string' ? from.slice(0, 100) : '',
+      p_screen: about === 'game' && game ? `game:${game}` : typeof from === 'string' && !from.startsWith('game:') ? from.slice(0, 100) : '',
       p_app_version: VERSION_LABEL.slice(0, 30),
       p_device: deviceInfo(),
     });
     setBusy(false);
     if (error) return setMsg({ ok: false, text: /[가-힣]/.test(error.message) ? error.message : '잠시 뒤 다시 시도해 주세요.' });
     setBody('');
-    setMsg({ ok: true, text: `보냈어요! 개발팀이 확인하고 답할게요. 반영되면 +${REWARD.feedbackDone} 토큰을 드려요.` });
+    const bonus = Number((data as { bonus?: number } | null)?.bonus ?? 0);
+    if (bonus) refresh(`의견 보내기 +${bonus}`);
+    setMsg({ ok: true, text: `보냈어요!${bonus ? ` 출시 기념 +${bonus} 토큰을 받았어요.` : ''} 개발팀이 확인하고 답할게요. 반영되면 +${doneReward} 토큰을 드려요.` });
     load();
+    reloadStats();
   };
 
   return (
@@ -80,7 +95,51 @@ export function FeedbackScreen() {
       <AppText variant="body" color={color.inkMuted}>
         앱을 쓰다가 이상한 점이나 바라는 점이 있으면 알려 주세요. 운중고 앱 학생 개발팀이 직접 읽어요.
       </AppText>
+      {stats?.launch ? (
+        <Card tone="muted" style={{ gap: 4 }}>
+          <AppText variant="bodyStrong">🎉 출시 2주 의견 이벤트</AppText>
+          <AppText variant="caption" color={color.inkMuted}>
+            {stats.bonus_today ? '오늘 보너스는 받았어요. 내일 또 보내면 +5!' : '오늘 처음 보내는 의견(10자 이상)에 바로 +5 토큰.'} 반영되면 +{doneReward} 토큰을 더 드려요.
+            {stats.total ? ` 지금까지 의견 ${stats.total}개 · ${stats.done}개 반영.` : ''}
+          </AppText>
+        </Card>
+      ) : null}
       <Card>
+        <Segmented
+          label="무엇에 대한 의견인가요?"
+          value={about}
+          onChange={setAbout}
+          options={[
+            { value: 'app', label: '📱 앱 기능' },
+            { value: 'game', label: '🎮 게임' },
+          ]}
+        />
+        {about === 'game' ? (
+          <View style={{ gap: space.sm }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+              {GAME_IDS.map((id) => {
+                const on = game === id;
+                const g = GAMES[id];
+                return (
+                  <Pressable
+                    key={id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={g.title}
+                    onPress={() => setGame(id)}
+                    style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: space.md, borderRadius: radius.chip, borderWidth: 1, borderColor: on ? color.accent : color.line, backgroundColor: on ? color.accentSoft : color.surface }}>
+                    <AppText variant="label" color={on ? color.accentInk : color.ink}>
+                      {g.emoji} {g.title}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <AppText variant="caption" color={game ? color.inkMuted : color.danger}>
+              {game ? '이 게임을 만든 학생 개발자가 직접 읽어요.' : '어느 게임인지 골라 주세요.'}
+            </AppText>
+          </View>
+        ) : null}
         <Segmented
           label="종류"
           value={kind}
@@ -122,7 +181,7 @@ export function FeedbackScreen() {
             {msg.text}
           </AppText>
         ) : null}
-        <Button label={busy ? '보내는 중…' : '보내기'} disabled={busy || len < 5} onPress={submit} />
+        <Button label={busy ? '보내는 중…' : '보내기'} disabled={busy || len < 5 || (about === 'game' && !game)} onPress={submit} />
       </Card>
 
       <AppText variant="heading" style={{ marginTop: space.sm }}>

@@ -1,3 +1,3 @@
 // 웹 푸시 VAPID 공개 키(공개해도 되는 키). 짝이 되는 비밀 키는 Vercel 환경변수 VAPID_PRIVATE_KEY에만 있다.
-// 키를 바꾸면 모든 학생이 알림을 다시 켜야 하므로 바꾸지 않는다.
-export const VAPID_PUBLIC_KEY = 'BCGShxcG3qBImpmz_JPncMtvWvx_wmBFgaVlSbT0J1jSRek4QP8JfJD5MzW9-fnbegCJV0ZJixSkRMahKj6TwoM';
+// 11-08 새 키로 교체(옛 비밀 키를 잃어버림). 이미 알림을 켠 기기는 앱을 열 때 새 키로 자동 재구독된다(lib/push.ts syncPush).
+export const VAPID_PUBLIC_KEY = 'BClyOv-WQhubtkVdbrHTBjiYdC7BKQ7x9caJWX4Ninh4gkucggT53mkwoyyzw3wKnhra1GWYGb70SaI4PcacVZs';

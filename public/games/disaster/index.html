@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<script>
+/* ===================== 앱 연결 코드 (고치지 마세요) =====================
+   앱 안에서 열리면 진짜 앱과 연결되고, 그냥 브라우저·AI 미리보기에서 열면
+   가짜(연습용)로 동작합니다. 그래서 앱 없이도 게임을 끝까지 만들어 볼 수 있어요.
+
+   UnjungGame.player            → { nickname: '닉네임', grade: 2 }  (연습용에선 '테스트')
+   UnjungGame.submitScore(n)    → 게임이 끝날 때 점수(정수)를 보냄. 결과: Promise<{ best }>
+                                  앱은 1.5초 뒤 결과 화면(한 판 더 / 나가기)으로 게임을 덮어요.
+   UnjungGame.submitScore(n, { hold: true }) → 점수만 기록하고, 게임의 결과 화면을 계속 보여 줘요.
+                                  그 화면의 '계속' 버튼에서 UnjungGame.done() 을 부르면 앱 결과 화면이 떠요.
+   UnjungGame.done()            → (hold로 보낸 뒤) 앱 결과 화면 열기
+   UnjungGame.getStudyMinutes() → 오늘 스터디 윗미 공부 시간(분). Promise<number> (연습용에선 0)
+   UnjungGame.save(obj)         → 이어하기용 저장(작은 데이터, 10KB까지). Promise
+   UnjungGame.load()            → 저장한 것 불러오기. Promise<obj | null>
+   UnjungGame.onPause(fn)       → 앱이 게임을 멈출 때(수업 시작 등) 부름
+   UnjungGame.exit()            → 앱으로 돌아가기
+========================================================================== */
+(function () {
+  const inApp = window.parent !== window && /[?&]unjung=1/.test(location.search);
+  const listeners = { pause: [] };
+  let seq = 0; const waiting = {};
+  function ask(type, data) {
+    if (!inApp) return Promise.resolve(null);
+    return new Promise((resolve) => { const id = ++seq; waiting[id] = resolve; window.parent.postMessage({ unjung: 1, id, type, data }, '*'); setTimeout(() => { if (waiting[id]) { delete waiting[id]; resolve(null); } }, 8000); });
+  }
+  window.addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.unjung !== 1) return;
+    if (m.reply && waiting[m.reply]) { waiting[m.reply](m.data); delete waiting[m.reply]; }
+    if (m.type === 'player') Object.assign(api.player, m.data || {});
+    if (m.type === 'pause') listeners.pause.forEach((f) => f());
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) listeners.pause.forEach((f) => f()); });
+  const KEY = 'unjung-game-practice';
+  const api = {
+    inApp,
+    player: { nickname: inApp ? '' : '테스트', grade: 2 },
+    submitScore(n, opts) {
+      n = Math.max(0, Math.floor(Number(n) || 0));
+      if (inApp) return ask('score', { score: n, hold: !!(opts && opts.hold) }).then((r) => r || { best: n });
+      let best = n; try { best = Math.max(n, Number(localStorage.getItem(KEY + ':best')) || 0); localStorage.setItem(KEY + ':best', best); } catch (e) {}
+      return Promise.resolve({ best });
+    },
+    save(obj) { const s = JSON.stringify(obj ?? null); if (s.length > 10000) return Promise.reject(new Error('저장 데이터가 너무 커요(10KB까지)'));
+      if (inApp) return ask('save', s); try { localStorage.setItem(KEY + ':save', s); } catch (e) { return Promise.resolve(false); } return Promise.resolve(true); },
+    load() { if (inApp) return ask('load').then((s) => (s ? JSON.parse(s) : null)); try { return Promise.resolve(JSON.parse(localStorage.getItem(KEY + ':save'))); } catch { return Promise.resolve(null); } },
+    onPause(fn) { listeners.pause.push(fn); },
+    exit() { if (inApp) ask('exit'); },
+    done() { if (inApp) ask('done'); },
+    getStudyMinutes() { return inApp ? ask('study').then((m) => Math.max(0, Math.floor(Number(m) || 0))) : Promise.resolve(0); },
+  };
+  window.UnjungGame = api;
+  ask('ready');
+})();
+/* ======================= 앱 연결 코드 끝 ======================= */
+</script>
+<script>
+/* 앱 안에서는 localStorage가 막혀 있어서 앱 계정 저장으로 대신한다(엔딩·최고 기록·숙이기 키). */
+(function () {
+  if (!window.UnjungGame || !UnjungGame.inApp) return;
+  var mem = {}, t = 0, KEEP = ['uj', 'ujb', 'ujk'];
+  function flush() { t = 0; var o = {}; KEEP.forEach(function (k) { if (k in mem) o[k] = mem[k]; }); UnjungGame.save(o).catch(function () {}); }
+  var LS = { getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+    setItem: function (k, v) { mem[k] = String(v); if (KEEP.indexOf(k) >= 0 && !t) t = setTimeout(flush, 1000); },
+    removeItem: function (k) { delete mem[k]; }, clear: function () { mem = {}; },
+    key: function (i) { return Object.keys(mem)[i] || null; }, get length() { return Object.keys(mem).length; } };
+  try { Object.defineProperty(window, 'localStorage', { value: LS, configurable: true }); } catch (e) {}
+  window.__ujLoad = UnjungGame.load().then(function (d) { if (d && typeof d === 'object') Object.assign(mem, d); return mem; });
+  addEventListener('pagehide', function () { if (t) { clearTimeout(t); flush(); } });
+})();
+</script>
+
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>운중고 재난 시뮬레이션</title>
+<style>
+:root{--bg:#f1f5f9;--fg:#0f172a;--pn:#fff;--mu:#475569;--ac:#dc2626;box-sizing:border-box}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--fg:#e2e8f0;--pn:#1e293b;--mu:#94a3b8;--ac:#f87171}}
+:root[data-theme="dark"]{--bg:#0b1220;--fg:#e2e8f0;--pn:#1e293b;--mu:#94a3b8;--ac:#f87171}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:"Pretendard","Noto Sans KR",system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+canvas{position:fixed;left:0;top:0;display:block}button{touch-action:manipulation}
+#hud{position:fixed;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top,0px) + 8px) 56px 0 10px;pointer-events:none;color:#e2e8f0;text-shadow:0 1px 3px #000}
+#fl{font-weight:800;font-size:15px}#ob{display:block;font-size:13px;margin-top:2px}
+#bar{height:7px;background:#0008;border-radius:4px;margin-top:6px;max-width:320px;overflow:hidden}
+#sm{display:block;height:100%;width:0;background:#a3a3a3}
+#pr{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);text-align:center;color:#fde68a;font-weight:700;text-shadow:0 1px 3px #000;pointer-events:none}
+#ts{pointer-events:none;position:fixed;left:50%;top:30%;transform:translateX(-50%);background:#000c;color:#fff;padding:8px 14px;border-radius:8px;font-size:14px;display:none;max-width:80%;text-align:center}
+.b{font:inherit;border:0;border-radius:12px;background:var(--pn);color:var(--fg);padding:12px 14px;text-align:left;cursor:pointer;box-shadow:0 0 0 1px #64748b66}
+.b:focus-visible{outline:3px solid var(--ac)}
+#bs{position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);right:8px;width:42px;height:42px;padding:0;text-align:center;font-size:20px}
+#pad{display:none}
+.tc #pad{display:block}#js{opacity:.5;pointer-events:none}#jz{position:fixed;left:0;bottom:0;width:58%;height:58%;touch-action:none}#pn .b{min-height:46px;font-size:15px}
+#js{position:fixed;left:18px;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);width:120px;height:120px;border-radius:50%;background:#ffffff22;border:2px solid #ffffff55;touch-action:none}
+#kn{position:absolute;left:36px;top:36px;width:48px;height:48px;border-radius:50%;background:#ffffffaa}
+.ab{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 34px);width:78px;height:78px;border-radius:50%;text-align:center;padding:0;font-weight:800;font-size:15px;touch-action:none}
+#ba{right:20px;background:var(--ac);color:#fff}#bc{right:112px;width:64px;height:64px;font-size:13px}#bc.on{background:#f59e0b;color:#000}
+body{-webkit-touch-callout:none}
+.tc .tl{width:46px;height:46px}.tc .lk{width:46px;height:46px}
+.tc #pn .b{min-height:50px;font-size:16px}.tc #pn p{font-size:15px}
+.tc #pr{font-size:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 128px)}
+#ba.rdy{box-shadow:0 0 0 4px #fde68a,0 0 22px #fde68acc;animation:rdy 1s ease-in-out infinite}
+@keyframes rdy{50%{transform:scale(1.07)}}
+.tc #js{opacity:.75}
+#ov{z-index:50;position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:16px}
+#pn{touch-action:pan-y;background:var(--pn);color:var(--fg);border-radius:16px;padding:20px;max-width:440px;width:100%;max-height:90%;overflow:auto;display:flex;flex-direction:column;gap:10px;line-height:1.55}
+#pn h2{margin:0;font-size:22px}#pn p{margin:0;font-size:14px;word-break:keep-all}.mu{color:var(--mu)}
+.tip{background:#f59e0b22;border-radius:10px;padding:10px;font-size:13px}
+
+.tl{width:40px;height:40px;border-radius:8px;border:0;color:#fff;font-weight:800;cursor:pointer;margin:0 6px 6px 0}.tg{background:#047857}.tr2{background:#b91c1c}.lk{width:40px;height:40px;border-radius:8px;background:#33415599;display:inline-flex;align-items:center;justify-content:center;margin:0 6px 6px 0}.cd{background:#0f172a55;border:1px solid #64748b66;border-radius:12px;padding:10px;text-align:left}.cd b{display:block;margin-bottom:6px;font-size:13px}
+
+:root{--sc:#dc2626;--pb:#1a2438}:root[data-sc=fire],:root[data-sc=quake],:root[data-sc=typhoon],:root[data-sc=zombie],:root[data-sc=raid]{--pb:var(--sc)}
+:root[data-sc=fire]{--sc:#ea580c}:root[data-sc=quake]{--sc:#facc15}:root[data-sc=typhoon]{--sc:#38bdf8}:root[data-sc=zombie]{--sc:#84cc16}:root[data-sc=raid]{--sc:#dc2626}
+:root[data-sc=quake] #fl,:root[data-sc=typhoon] #fl,:root[data-sc=zombie] #fl{color:#0b1220;text-shadow:none}
+#hud{background:linear-gradient(#0b1220cc,#0b122000);padding-bottom:12px}
+#fl{display:inline-block;background:var(--sc);color:#fff;padding:2px 10px;border-radius:6px;text-shadow:none;box-shadow:0 2px 0 #0006;transition:background .4s}
+#ob{margin-top:5px}#bar{border:1px solid #ffffff33;box-shadow:0 1px 0 #0006}
+#ov{backdrop-filter:blur(2px)}#pn{border-top:4px solid var(--pb);box-shadow:0 12px 40px #000a}
+.b{transition:transform .08s,box-shadow .15s}.b:hover{box-shadow:0 0 0 1px var(--sc)}.b:active{transform:scale(.98)}
+#ecg{left:auto;top:calc(env(safe-area-inset-top,0px) + 88px);right:8px;width:88px;height:26px;border-radius:8px;background:#0b1220b3;border:1px solid #ffffff22;pointer-events:none;opacity:0;transition:opacity .4s}
+#pn:has(.cd)>p.mu{color:var(--fg);opacity:.85}.cd .mu{color:#cbd5e1}
+.cd{background:#16213a;border:1px solid #3b4f73;border-left:4px solid var(--cc,#64748b);border-radius:12px}
+.cd b{color:var(--cc,#f1f5f9)}.cd:nth-of-type(1){--cc:#fb923c}.cd:nth-of-type(2){--cc:#facc15}.cd:nth-of-type(3){--cc:#38bdf8}.cd:nth-of-type(4){--cc:#a3e635}.cd:nth-of-type(5){--cc:#f87171}
+.tg{background:#059669}.tr2{background:#dc2626}
+.lk{background:#0e1730;border:1px dashed #3f5578;color:#8aa0c4}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud"><b id="fl"></b><span id="ob"></span><div id="bar"><i id="sm"></i></div></div>
+<canvas id="ecg" width="176" height="52"></canvas><div id="pr"></div><div id="ts"></div>
+<button class="b" id="bs" aria-label="설정" onclick="sets()">⚙</button>
+<div id="pad"><div id="jz"></div><div id="js"><div id="kn"></div></div><button class="b ab" id="bc">숙이기</button><button class="b ab" id="ba">행동</button></div>
+<div id="ov"><div id="pn"></div></div>
+<script>
+const $=i=>document.getElementById(i),cv=$('c'),g=cv.getContext('2d');
+let W,H,DPR;function rs(){DPR=Math.min(devicePixelRatio||1,2);W=Math.round(innerWidth);H=Math.round(innerHeight);cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px'}addEventListener('resize',rs);addEventListener('orientationchange',()=>setTimeout(rs,250));window.visualViewport&&visualViewport.addEventListener('resize',rs);rs();
+if(matchMedia('(pointer:coarse)').matches||'ontouchstart'in window)document.documentElement.classList.add('tc');
+/* ---------- 맵 데이터 (피난안내도 기반, 2~5층 본관) ---------- */
+const L={1:['시청각실','시청각실','시청각실','보건실','보건실','행정실','교장실','창고','운영사무실','동사실'],2:['휴게실','휴게실','방송실','생활인권','본교무실','전산실','과학실3','교실','컴퓨터실','도서실'],
+3:['1학년 교실','교실','교실','교실','전환교육실','교무실(1학년)','교실','교실','교실','교실'],
+4:['교실','교실','교실','교실','자율실','교무실(2학년)','교실','교실','교실','교실'],
+5:['교실','교실','교실','교실','책임실','교무실(3학년)','교실','교실','교실','교실']};
+const WK=f=>{if(f==9)return[[300,300,700,420]];if(f==7||f==8)return[[300,-200,800,24]];if(f==0)return[[100,215,1000,520],[300,-330,810,-210],[100,-330,330,230],[790,-330,960,30],[300,20,870,100],[456,20,584,225],[860,20,960,520]];if(f==6)return[[300,40,900,240],[276,140,300,172]];
+const a=[f==1?[44,140,452,180]:[40,140,1080,180],f==1?[14,128,36,204]:[14,128,40,190],[620,100,670,140],[580,100,620,140]];
+if(f==3)a.push([60,180,140,260]);if(f==1)a.push([588,140,1080,180],[560,60,670,100]);if(f>1&&f<5&&S.sc!='fire')a.push([520,20,550,140],[f==2?300:520,-200,800,24]);if(f==5)a.push([520,24,550,140]);return a};
+const OB=[{f:3,x:70,y:200,e:'🧰',t:'청소도구함',a:'locker'},{f:3,x:120,y:254,e:'🪟',t:'창문',a:'window'},
+{f:3,x:690,y:150,e:'🧯',t:'소화전',a:'hyd'},{f:3,x:1068,y:160,e:'🪢',t:'완강기함',a:'rap'},
+{f:5,x:690,y:150,e:'🔑',t:'비상 열쇠함',a:'key'},{f:5,x:535,y:34,e:'🚪',t:'옥상 철문',a:'door'},
+{f:6,x:288,y:156,e:'🚪',t:'계단실 문',a:'stairin'},{f:6,x:880,y:58,e:'🚩',t:'바람 위쪽 구석',a:'signal'},
+{f:6,x:600,y:234,e:'🚧',t:'난간',a:'rail'},{f:6,x:892,y:150,e:'🏢',t:'옆 건물 쪽',a:'jump'}];
+[2,3,4,5].forEach(f=>OB.push({f,x:600,y:118,e:'🛗',t:'엘리베이터',a:'elev'},{f,x:645,y:118,e:'🪜',t:'중앙계단',a:'stair'},{f,x:27,y:160,e:'🪜',t:'비상계단',a:'stair'}));OB.push({f:0,x:560,y:430,e:'🚩',t:'운동장 중앙 집결',a:'gather',q:1},{f:0,x:515,y:222,e:'🏫',t:'건물 안으로 돌아가기',a:'qreenter',q:1},{f:0,x:130,y:340,e:'🧱',t:'담장 옆',a:'qwall',q:1},{f:3,x:120,y:254,e:'🪟',t:'교실 창문',a:'twin',s:'typhoon'},{f:3,x:70,y:238,e:'📏',t:'유리창 테이프',a:'ttape',s:'typhoon'},{f:2,x:700,y:-60,e:'🧱',t:'복도 안쪽 내벽',a:'tsafe',s:'typhoon'},{f:3,x:1068,y:160,e:'⚡',t:'분전반',a:'tbox',s:'typhoon'},{f:1,x:632,y:80,e:'🔧',t:'PS실(배관·전기)',a:'tps',s:'typhoon zombie raid'},{f:1,x:658,y:80,e:'📦',t:'창고',a:'tstore',s:'typhoon raid'},{f:2,x:330,y:-100,e:'🪟',t:'체육관 대형 유리창',a:'tgym',s:'typhoon'},{f:3,x:300,y:150,e:'🔔',t:'비상벨',a:'zalarm',s:'zombie'},{f:1,x:672,y:160,e:'🏆',t:'교장실 장식장',a:'zfake',s:'zombie'},{f:1,x:710,y:160,e:'🗄️',t:'교장실 책상 서랍',a:'zdrawer',s:'zombie'},{f:1,x:748,y:160,e:'🔐',t:'교장실 금고',a:'zsafe',s:'zombie'},{f:0,x:700,y:-262,e:'🥫',t:'빈 캔',a:'zcan',s:'zombie'},{f:0,x:590,y:-250,e:'🎯',t:'캔 던질 곳',a:'zthrow',s:'zombie'},{f:0,x:470,y:-300,e:'🚪',t:'재활용장 철문',a:'zdoor',s:'zombie'},{f:0,x:560,y:500,e:'🏫',t:'정문(넓은 길)',a:'zfront',s:'zombie'},{f:3,x:120,y:254,e:'🪟',t:'교실 창문',a:'nglass',s:'raid'},{f:1,x:575,y:80,e:'⬇️',t:'지하 대피소 입구',a:'bunker',s:'raid'},{f:9,x:400,y:380,e:'👕',t:'오염된 옷·신발 밀봉',a:'nseal',s:'raid'},{f:9,x:650,y:330,e:'🌀',t:'환기구',a:'nvent',s:'raid'},{f:9,x:500,y:330,e:'📻',t:'라디오',a:'nradio',s:'raid'},{f:9,x:330,y:380,e:'🚪',t:'대피소 출입문(밖)',a:'nout',s:'raid'});[[7,720,-110],[2,650,-80],[3,580,-150],[4,580,-150]].forEach(([f,x,y])=>OB.push({f,x,y,e:'🪜',t:'별관 계단',a:'astair',s:'quake typhoon zombie raid'}));
+OB.push({f:1,x:645,y:118,e:'🪜',t:'중앙계단',a:'stair'},{f:1,x:27,y:160,e:'🪜',t:'비상계단',a:'stair'});
+const GS='quake zombie typhoon raid';OB.push({f:1,x:25,y:197,e:'🚪',t:'비상계단 밖으로 나가는 문',a:'gt',d:[0,125,218],out:1,s:GS});
+OB.push({f:7,x:570,y:18,e:'🚪',t:'현관 문(밖으로)',a:'gt',d:[0,570,62],out:1,s:GS},{f:7,x:430,y:18,e:'🚪',t:'급식실 문(밖으로)',a:'gt',d:[0,430,62],out:1,s:GS},{f:7,x:640,y:-192,e:'🚪',t:'재활용장 문',a:'gt',d:[0,640,-238],out:1,s:GS},
+{f:0,x:570,y:40,e:'🚪',t:'별관 현관 문',a:'gt',d:[7,570,0],s:GS},{f:0,x:430,y:40,e:'🚪',t:'급식실 문',a:'gt',d:[7,430,0],s:GS},{f:0,x:640,y:-215,e:'🚪',t:'별관 1층 뒷문',a:'gt',d:[7,640,-170],s:GS},
+{f:0,x:462,y:160,e:'🚪',t:'시청각실·보건실 쪽 출입문',a:'gt',d:[1,430,160],s:GS},{f:0,x:578,y:160,e:'🚪',t:'본관 출입문(행정실 쪽)',a:'gt',d:[1,612,160],s:GS},
+{f:1,x:444,y:160,e:'🚪',t:'밖으로 나가는 문',a:'gt',d:[0,520,160],out:1,s:GS},{f:1,x:598,y:160,e:'🚪',t:'밖으로 나가는 문(현관)',a:'gt',d:[0,520,160],out:1,s:GS});
+OB.push({f:2,x:320,y:-170,e:'🧹',t:'청소도구함',a:'zmop',s:'zombie'},{f:2,x:760,y:-30,e:'📢',t:'교내 방송 스피커',a:'tfin',s:'typhoon'},{f:2,x:260,y:162,e:'🎙️',t:'방송실',a:'tbroad',s:'typhoon'},{f:1,x:645,y:80,e:'🚪',t:'PS실 창고',a:'qps',s:'quake'},{f:6,x:560,y:48,e:'🪢',t:'로프',a:'rope',s:'zombie'},{f:8,x:700,y:-150,e:'🚪',t:'옥상 계단실 문',a:'wlock',s:'zombie'},{f:8,x:560,y:-110,e:'🚩',t:'구조 대기 지점',a:'zwait',s:'zombie'},{f:4,x:580,y:-190,e:'🚪',t:'별관 옥상 문',a:'wlock'});
+const FO=['locker','window','hyd','rap','key','door','stairin','signal','rail','jump'];
+OB.push({f:3,x:450,y:146,e:'🧣',t:'젖은 수건',a:'towel',s:'fire'});
+const hid=o=>o.a=='towel'&&S.tl?true:o.s?!o.s.includes(S.sc):o.q?S.sc!='quake':!(S.sc=='fire'||(S.sc=='zombie'&&(o.a=='key'||o.a=='door')))&&FO.includes(o.a);
+const D={locker:['청소도구함에 숨어 구조를 기다리다 교실로 스며든 유독가스에 질식했습니다.','숨는 것은 대피가 아닙니다. “불이야!”를 외치고 119에 신고한 뒤 즉시 대피로로 이동하세요.'],
+window:['창문을 열자 신선한 산소가 들어가 불길이 거세졌고, 연기도 교실로 밀려들었습니다.','창문을 열면 산소가 공급되어 불이 커집니다. 닫은 채로 대피하세요.'],
+elev:['엘리베이터는 정전으로 멈췄고, 갇히고 말았습니다.','화재·지진 시 엘리베이터는 절대 타지 말고 계단을 이용하세요.'],
+down:['계단실은 굴뚝처럼 가장 짙은 유독가스가 모이는 곳입니다. 내려가던 중 의식을 잃었습니다.','계단실은 연기가 모이는 굴뚝이 될 수 있습니다. 아래가 막혔다면 옥상이나 완강기 같은 다른 출구를 찾으세요.'],
+ext:['소화기 한 대로는 이미 번진 불길을 끌 수 없었고, 유독가스 속으로 들어가고 말았습니다.','소화기는 불이 작은 초기에만 쓸 수 있습니다. 번졌다면 진압 대신 대피하세요.'],
+curtain:['커튼 매듭이 풀리며 추락해 큰 부상을 입었습니다.','임시로 만든 줄은 매우 위험합니다. 설치된 완강기를 사용하세요.'],
+smoke:['연기를 너무 오래 들이마셔 정신을 잃었습니다. 골든타임을 놓쳤습니다.','연기는 위로 모입니다. 자세를 낮추고 젖은 수건으로 코와 입을 막으며 빠르게 이동하세요.'],
+bash:['철문은 꿈쩍도 하지 않았고, 그 사이 연기가 계단실을 가득 채웠습니다.','비상구와 옥상 문, 비상 열쇠함의 위치를 미리 확인해 두세요.'],
+rail:['난간 위에 올라 SOS를 외치다 돌풍에 중심을 잃고 추락했습니다.','난간에 올라서면 안 됩니다. 낮은 자세로 구조대에 신호를 보내세요.'],
+jump:['옆 건물까지의 거리는 생각보다 훨씬 멀었습니다.','무리한 점프는 금물입니다. 제자리에서 구조를 기다리세요.'],
+stairin:['계단실로 연기가 모여 올라와 질식하고 말았습니다.','연기가 오는 계단실이 아니라, 반대쪽 바람 위쪽에서 대기하세요.'],
+belt:['벨트 없이 로프만 잡고 내려가다 손을 놓쳐 추락했습니다.','벨트는 겨드랑이 아래 가슴 높이에서 단단히 조여야 합니다.'],
+grip:['줄을 꽉 쥐고 내려가다 마찰 화상과 함께 추락했습니다.','하강할 때 줄을 잡지 않습니다. 줄을 쥐면 마찰 화상과 추락 위험이 커집니다.'],
+qshake:['흔들리는 동안 서 있거나 뛰어다니다 낙하물과 넘어짐으로 큰 부상을 입었습니다.','흔들림이 멈출 때까지 몸을 낮추고 창문·형광등·높은 가구에서 떨어지세요.'],
+qreenter:['여진이 오는 건물에 다시 들어갔다가 낙하물에 맞았습니다.','한 번 나온 건물에는 다시 들어가지 않습니다.'],
+qwall:['담장 옆에 모여 있다가 여진에 담장이 무너졌습니다.','건물, 담장, 나무, 전선에서 멀리 떨어진 넓은 곳으로 모이세요.'],
+twin:['창가에 다가선 순간 강풍에 유리창이 깨져 파편이 쏟아졌습니다.','태풍 때는 유리창에서 최대한 떨어지세요. 유리 파편은 매우 위험합니다.'],
+ttape:['창문에 X자 테이프를 붙이다가 유리가 깨지며 파편에 크게 다쳤습니다.','X자 테이프는 파편 비산을 막는 효과가 거의 없습니다. 창문에서 떨어지는 것이 먼저입니다.'],
+tout:['태풍 속에 밖으로 나섰다가 날아온 간판과 돌풍에 휩쓸렸습니다.','태풍 중에는 외출, 옥상, 운동장이 모두 금물입니다. 실내에 머무르세요.'],
+tbox:['물에 젖은 상태로 분전반을 만지다 감전되고 말았습니다.','젖은 상태로 전기 설비나 분전반을 만지면 감전됩니다. 정전·누수 시 전기 설비에서 멀리 떨어지세요.'],
+tswitch:['젖은 손으로 스위치를 만지다 감전되고 말았습니다.','젖은 손으로 전기 설비를 만지지 마세요. 정전 때는 침착하게 마른 곳에서 대기하세요.'],
+tdebris:['낙하하는 잔해를 막지 못해 머리를 크게 다쳤습니다.','강풍에 천장 구조물이 떨어질 수 있습니다. 머리와 목을 감싸고 낮은 자세를 유지하세요.'],
+teye:['태풍의 눈이 지나가자 반대편 강풍이 다시 몰아쳐 밖에서 휩쓸렸습니다.','태풍의 눈이 지나가도 반대편 강풍이 다시 불어옵니다. 특보 해제 안내가 있을 때까지 실내에 머무르세요.'],
+thome:['귀가하던 중 되돌아온 강풍에 날아온 물체에 맞았습니다.','귀가는 특보 해제 후에 하세요. 태풍의 눈에 속지 마세요.'],
+tps:['좁은 PS실은 배관과 전기 설비가 몰려 있어 누수에 감전되거나 갇히고 말았습니다.','PS(배관)실은 대피 공간이 아닙니다. 전기·배관 설비가 있는 곳은 피하세요.'],
+tgym:['다목적체육관의 큰 유리창이 강풍에 깨지며 파편이 쏟아졌습니다.','체육관처럼 큰 유리창이 있는 공간은 태풍 때 피하세요.'],
+zcatch:['소리를 내며 움직이다 좀비 무리에게 따라잡혔습니다.','위급할수록 소음과 밀집이 위험을 키웁니다. 숙여서 조용히 이동하세요.'],
+zfront:['넓은 정문 쪽에는 좀비 떼가 몰려 있었고, 순식간에 포위되었습니다.','넓은 정문과 개방된 공간은 사람이 한꺼번에 몰려 위험합니다. 대피 경로가 몇 개인지 평소 알아 두세요.'],
+zgun:['위험한 물건을 찾아 헤매는 사이 대피 시간을 놓쳤습니다.','가장 안전한 선택은 즉시 거리를 벌리고 대피로로 이동하는 것입니다.'],
+zalarm:['비상벨 소리에 좀비들이 한꺼번에 몰려들었습니다.','소리는 위험을 불러옵니다. 위급할수록 큰 소리를 내지 않고 침착하게 행동하세요.'],
+zgate:['철문을 열자 큰 소리가 나 좀비 떼가 몰려왔습니다.','소리가 위험을 부릅니다. 먼저 좀비를 다른 곳으로 유인한 뒤 조용히 이동하세요.'],
+nglass:['섬광 순간 창가에서 밖을 구경하다 눈을 다치고, 폭풍파에 날아온 유리 파편에 맞았습니다.','섬광은 절대 쏘다보지 말고 즉시 엎드려 눈을 감고 귀를 막으세요. 창문에서 멀리 떨어진 내벽 쪽이 상대적으로 안전합니다.'],
+nblast:['폭풍파가 닥칠 때 서 있거나 움직이다 날아온 물체에 크게 다쳤습니다.','섬광이 보이면 엎드려 눈을 감고 귀를 막고, 폭풍파가 지나갈 때까지 움직이지 마세요.'],
+nvent:['환기를 위해 환기구를 열자 방사성 낙진이 대피소로 들어왔습니다.','환기는 금물입니다. 낙진이 실내로 유입될 수 있으니 밀폐를 유지하세요.'],
+nout:['낙진 수치가 아직 위험한데 밖으로 나갔다가 피폭되었습니다.','실내에 머물며 정부의 공식 안내를 따르세요. 확인되지 않은 소문을 믿고 움직이면 안 됩니다.'],
+nrumor:['그 소문은 과학이 아니었습니다. 밖으로 나갔다가 낙진에 피폭되었습니다.','방사능이 3시간이면 사라진다는 말은 사실이 아닙니다. 공식 안내를 따르세요.']};
+const CL={FIRE_CLEAR:'옥상에서 헬기 구조',RAPPEL:'[히든] 완강기 탈출',QCLEAR:'운동장 집결 생존',HQ:'[히든] PS실 창고 대피 후 잔해 돌파',TCLEAR:'태풍 속 실내 생존',HT2:'[히든] 방송실 스튜디오 대피',ZCLEAR:'재활용장으로 탈출',HZ:'[히든] 창고에 숨어 구조 대기',HB:'[히든] 후문 탈출',HROPE:'[히든] 로프를 타고 별관 옥상으로',HDE:'[히든] 교장실의 데저트 이글',RCLEAR:'지하 대피소 생존',HR:'[히든] 창고 내부 대피'};let seen=[];try{seen=JSON.parse(localStorage.getItem('uj')||'[]')}catch(e){}let sm={};try{sm=JSON.parse(localStorage.getItem('ujm')||'{}')}catch(e){}
+const TCH=matchMedia('(pointer:coarse)').matches||'ontouchstart'in window;
+const CT=TCH?'👆 왼쪽 아래 화면을 누르고 끌면 이동\n🔴 행동 버튼: 문·물건 사용(꾹 누르기도 돼요). 쓸 수 있는 게 있으면 버튼이 빛나요\n⚪ 숙이기 버튼: 누를 때마다 켜짐/꺼짐\n⚙ 설정: 잠깐 멈추기':'PC: WASD·방향키 이동 / E·Space 행동 / Shift 또는 Ctrl(설정에서 선택)·C 숙이기 / Esc 설정 / M 소리\n모바일: 왼쪽 조이스틱 이동, 행동 버튼, 숙이기 버튼(누르면 켜짐/꺼짐), ⚙ 설정';
+/* ---------- 상태 ---------- */
+let P,S={st:'title',p:true},keys={},jx=0,jy=0,tc=false,near=null,ch=[],tm=0,fs=0,cg=0;
+function reset(){CP=null;P={f:3,x:100,y:215};S={st:'play',p:false,sm:0,hyd:0,plan:'',key:0,bash:0}}
+/* ---------- 사운드 ---------- */
+let AC,vol=.6,snd=true,al=0;
+function A(){if(!AC)try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}AC&&AC.state=='suspended'&&AC.resume()}
+function bp(f,d=.1,ty='square',v=.15,at=0){if(!AC||!snd)return;const o=AC.createOscillator(),n=AC.createGain(),t=AC.currentTime+at;o.type=ty;o.frequency.value=f;n.gain.setValueAtTime(v*vol,t);n.gain.exponentialRampToValueAtTime(1e-4,t+d);o.connect(n).connect(AC.destination);o.start(t);o.stop(t+d)}
+setInterval(()=>{if(S.st=='play'&&!S.p&&S.sc=='fire'){al^=1;bp(al?880:660,.3,'square',.05)}else if(S.st=='play'&&!S.p&&S.sc=='typhoon')bp(100+Math.random()*60,.5,'sawtooth',.08);else if(S.st=='play'&&!S.p&&S.sc=='zombie')bp(60+Math.random()*30,.6,'sawtooth',.04);else if(S.st=='play'&&!S.p&&S.sc=='raid'&&!S.nb){al^=1;bp(al?700:500,.4,'sine',.1)}},500);
+/* ---------- UI ---------- */
+function show(h){ch=[];keys={};$('pn').innerHTML=h;$('ov').style.display='flex'}function hide(){ch=[];$('ov').style.display='none';const a=document.activeElement;a&&a.blur&&a.blur();window.focus()}
+function toast(t){const e=$('ts');e.textContent=t;e.style.display='block';clearTimeout(e.k);e.k=setTimeout(()=>e.style.display='none',2200)}
+function toTitle(){S.st='title';S.p=true;show(`<h2>🔥 운중고 탈출</h2><p>재난이 시작됩니다. 움직이고, 선택하고, 살아남으세요.</p><p class="mu" style="white-space:pre-line">${CT}</p><button class="b" onclick="start('fire')">🔥 화재 시나리오</button><button class="b" onclick="start('quake')">🌍 지진 시나리오</button><button class="b" onclick="start('typhoon')">🌪️ 태풍 시나리오</button><button class="b" onclick="start('zombie')">🧟 좀비 시나리오</button><button class="b" onclick="start('raid')">☢️ 공습 시나리오</button><button class="b" onclick="openCodex()">🏆 엔딩 도감</button>`)}
+const ST={"EARTHQUAKE_1": {"d": "4층 일반 교실에서 수업을 듣던 중, 건물이 굉음을 내며 심하게 요동치기 시작했습니다. 천장의 형광등이 떨어질 듯 흔들리고 책상 위의 물건들이 쏟아집니다!", "c": [["지진이 멈출 때까지 가방을 메고 복도로 뛰쳐나간다", "흔들리는 건물에서 복도로 달려나가다 위에서 떨어진 유리 파편과 구조물에 크게 다쳤습니다.", ""], ["가장 튼튼해 보이는 창문 틀에 몸을 기댄다", "건물이 뒤틀리며 창문 유리가 산산조각 나 치명적인 상처를 입었습니다.", ""], ["즉시 책상 밑으로 들어가 다리를 꽉 잡고 몸을 웅크린다", "", "EARTHQUAKE_2"], ["교탁 위로 올라가 높은 곳에서 상황을 살핀다", "교탁 위는 천장 낙하물과 형광등에 가장 먼저 노출되는 위치였습니다.", ""], ["창문을 열고 4층에서 밖으로 뛰어내린다", "4층 높이에서 뛰어내리다 크게 다치고 말았습니다.", ""], ["흔들리는 형광등 아래에서 휴대폰으로 영상을 찍는다", "떨어진 형광등이 렌즈보다 먼저 당신을 찾았습니다.", ""], ["흔들림이 끝나기 전에 책상 밑에서 나와 친구들을 도우러 간다", "여진이 이어지는 중에 책상 밑을 벗어나다 쏟아진 형광등과 천장재에 맞고 말았습니다.", ""]]}, "EARTHQUAKE_2": {"d": "수 분 후, 가장 컸던 1차 진동이 멈췄습니다. 언제 여진이 올지 모르는 상황이므로 신속하게 학교 건물을 빠져나가야 합니다.", "c": [["엘리베이터를 타고 1층으로 신속히 내려간다", "지진으로 인해 끊어진 전력망 때문에 엘리베이터 안에 갇혀 고립되었습니다.", ""], ["가장 높은 5층 옥상으로 올라가 구조 헬기를 기다린다", "지진 발생 시 옥상은 붕괴 위험이 가장 크며, 고립되기 쉬운 최악의 장소입니다.", ""], ["가방으로 머리를 감싸고 계단으로 이동한다", "", "EARTHQUAKE_3"], ["교실 창가에서 선생님의 지시가 있을 때까지 대기한다", "여진으로 깨진 창문 유리와 낙하물이 쏟아졌습니다.", ""], ["휴대폰으로 부모님께 영상통화를 걸며 자리에 머문다", "통화에 정신이 팔린 사이 여진으로 천장 구조물이 무너져 내렸습니다.", ""]]}, "EARTHQUAKE_3": {"d": "계단을 내려가던 중, 강한 여진이 다시 찾아왔습니다. 계단이 크게 흔들립니다!", "c": [["놀라서 계단을 두세 칸씩 뛰어 내려간다", "균형을 잃고 계단에서 굴러떨어졌습니다.", ""], ["앞사람을 밀치며 먼저 내려가려 한다", "서로 뒤엉켜 넘어지며 계단에서 모두 큰 부상을 입었습니다.", ""], ["난간과 벽을 잡고 몸을 낮춘 채 가방으로 머리를 보호하며 멈출 때까지 기다린다", "", "EARTHQUAKE_4"], ["계단 한가운데 가만히 서서 눈을 질끈 감는다", "그대로 서 있다가 흔들림에 중심을 잃고 넘어졌습니다.", ""]]}, "EARTHQUAKE_4": {"d": "여진이 멈춘 뒤 운동장에 도착했습니다. 학생들이 하나둘 모여들고 있고, 건물 외벽에서는 콘크리트 파편이 간간이 떨어지고 있습니다.", "c": [["건물 외벽 바로 옆에 모여 앉아 쉰다", "외벽에서 떨어지는 콘크리트 파편에 맞고 말았습니다.", ""], ["두고 온 가방을 가지러 교실로 다시 올라간다", "가방은 소중했지만, 여진 속의 건물은 훨씬 더 위험했습니다.", ""], ["담장 옆 큰 나무 아래에서 쉰다", "여진으로 담장이 무너지며 나무와 함께 쓰러졌습니다.", ""], ["건물에서 멀리 떨어진 운동장 중앙으로 이동해 인원을 확인한다", "", "EARTH_CLEAR"], ["여진이 두려워 근처 건물 지하 주차장으로 들어가 숨는다", "지하 주차장 입구가 여진으로 무너지며 그 안에 고립되고 말았습니다.", ""]]}, "ZOMBIE_1": {"d": "2층 강당(체육관)에 모여있던 중, 3층 과학실 쪽에서 끔찍한 비명소리가 들려왔습니다. 정체불명의 바이러스가 퍼졌는지 피를 뒤집어쓴 좀비들이 계단을 통해 2층 복도로 쏟아져 내려오고 있습니다! 당장 이곳을 벗어나야 합니다.", "c": [["옥상으로 도망쳐 문을 굳게 잠근다", "옥상은 도망칠 곳이 없는 막다른 길입니다. 결국 문을 부수고 들어온 좀비들에게 당했습니다.", ""], ["중앙계단으로 내려가 1층 본관 교장실에 숨어들어 권총을 찾아본다", "", "ZOMBIE_GUN"], ["방송실로 가서 학교 전체에 구조 요청 방송을 한다", "방송실의 스피커 소리가 학교 안의 모든 좀비들을 방송실 앞으로 불러모으고 말았습니다.", ""], ["농구공과 배드민턴 라켓을 들고 좀비들에게 맞선다", "라켓은 한 번 휘두르자 부러졌고, 소란에 더 많은 좀비들이 몰려왔습니다.", ""], ["좀비들이 내려오는 반대 방향인 급식실 쪽 계단으로 내려간다", "", "ZOMBIE_2"], ["3층 과학실로 올라가 바이러스의 원인을 직접 조사한다", "호기심은 과학자의 덕목이지만, 오늘만큼은 생존자의 덕목이 아니었습니다.", ""], ["친구들과 소리치며 각자 흩어져 도망친다", "큰 소리가 좀비를 끌어들였고, 흩어진 사람들은 차례로 따라잡혔습니다.", ""], ["화재경보기를 눌러 학교 전체에 비상을 알린다", "경보음이 좀비들을 일제히 불러모았고, 도망칠 틈도 없이 둘러싸였습니다.", ""]]}, "ZOMBIE_2": {"d": "가까스로 1층 급식실에 도착했지만, 정문 쪽 복도에서도 이미 기괴한 울음소리와 함께 좀비들이 몰려드는 소리가 들립니다. 학교 밖으로 완전히 빠져나가려면 서둘러야 합니다.", "c": [["가장 문이 넓은 1층 운동장 정문으로 향한다", "가장 눈에 띄는 정문에는 이미 수많은 좀비들이 몰려있어 돌파가 불가능했습니다.", ""], ["넓고 시야가 트인 주차장 쪽으로 달린다", "사방이 뚫린 주차장에서는 은폐할 곳이 없어 달려오는 좀비들의 표적이 되었습니다.", ""], ["급식실 대형 냉동고 안으로 들어가 문을 닫고 숨는다", "냉동고는 안쪽에서 열리지 않는 경우가 많아 그 안에 갇히고 말았습니다.", ""], ["재활용장 뒷문을 이용해 몰래 빠져나간다", "", "ZOMBIE_3"], ["정문 쪽 복도에 남은 친구를 구하러 되돌아간다", "구하려던 친구는 이미 감염된 뒤였고, 몰려온 좀비들에게 둘러싸였습니다.", ""]]}, "ZOMBIE_3": {"d": "재활용장에 도착했습니다. 담장 너머로 도로가 보이지만 철문은 굵은 빗장으로 잠겨 있고, 철문 근처에서는 좀비 한 명이 어슬렁거리고 있습니다.", "c": [["철문을 발로 걷어차 부순다", "굉음이 학교 전체에 울려 퍼졌고, 사방에서 좀비들이 몰려왔습니다.", ""], ["빈 캔을 반대편으로 던져 좀비를 유인하고 소리 없이 빗장을 연다", "", "ZOMBIE_4"], ["재활용 수거함 뒤에 숨어 날이 밝기만 기다린다", "숨은 곳은 좀비들이 돌아다니는 길목이었고, 결국 발견되고 말았습니다.", ""], ["좀비에게 다가가 “혹시 아직 정상이세요?”라고 말을 걸어본다", "대답은 으르렁거림이었습니다. 대화는 실패했습니다.", ""]]}, "ZOMBIE_4": {"d": "재활용장을 빠져나와 학교 밖 골목에 섰습니다. 멀리서 비명소리와 사이렌이 뒤섞여 들립니다. 이제 어디로 가야 할까요?", "c": [["큰길로 전력질주해 버스 정류장에서 버스를 기다린다", "시끄러운 달리기에 좀비들이 몰려왔고, 버스는 끝내 오지 않았습니다.", ""], ["눈앞의 편의점에 들어가 유리문을 잠그고 숨는다", "유리문은 좀비들 앞에서는 얇은 종이와 다름없었습니다.", ""], ["두고 온 친구가 걱정되어 학교로 돌아간다", "마음은 따뜻했지만 상황은 냉정했습니다. 학교 안은 이미 좀비로 가득했습니다.", ""], ["골목길을 따라 조용히 이동해 인근 대피소로 향한다", "", "ZOMBIE_CLEAR"], ["안전해 보이는 아파트 단지로 들어가 현관 벨을 모두 누른다", "벨 소리에 놀란 이웃들이 문을 열었고, 소란을 듣고 달려온 좀비들까지 따라 들어왔습니다.", ""]]}, "TYPHOON_1": {"d": "역대급 강풍을 동반한 태풍이 상륙했습니다. 당신은 창문이 많은 미술실에 고립되어 있습니다. 비바람이 거세지며 커다란 창문들이 금방이라도 깨질 듯 무섭게 휘어집니다.", "c": [["창문이 깨지지 않게 몸으로 창틀을 꽉 누르며 버틴다", "결국 돌풍을 이기지 못한 유리가 산산조각 나며 파편에 치명상을 입었습니다.", ""], ["비를 맞더라도 1층 야외 운동장 중앙으로 뛰어 나간다", "운동장으로 날아온 날카로운 지붕 강판과 간판 파편에 휩쓸렸습니다.", ""], ["커튼으로 몸을 감싸고 창문 바로 옆 책상 밑에 숨는다", "깨진 유리 파편이 커튼과 책상 사이로 날아들어 다치고 말았습니다.", ""], ["창문에서 최대한 멀리 떨어진 복도 안쪽 내벽으로 이동해 낮은 자세로 몸을 숨긴다", "", "TYPHOON_2"], ["창문이 없는 중앙계단 지하 PS실 창고로 내려가 문을 닫는다", "폭우로 배수구가 넘치자 가장 낮은 지하 PS실 창고부터 순식간에 침수되었습니다. 좁은 공간에서 빠져나오지 못하고 갇히고 말았습니다.", ""], ["창문에 X자로 테이프를 붙이고 창가에서 지켜본다", "테이프는 유리가 깨지는 것을 막아주지 못했고, 파편이 그대로 날아왔습니다.", ""], ["돌풍이 잠잠해진 틈에 옥상으로 올라가 상황을 살핀다", "옥상에서 다시 몰아친 돌풍에 휩쓸리고 말았습니다.", ""], ["창문이 흔들리는 모습을 SNS 라이브로 중계한다", "시청자 수는 늘었지만, 깨진 창문 유리가 가장 먼저 중계 화면을 덮쳤습니다.", ""]]}, "TYPHOON_2": {"d": "창문에서 떨어진 안쪽 벽으로 대피하여 유리 파편의 위험은 피했습니다. 하지만 강풍으로 인해 노후된 건물이 버티지 못하고 복도 천장의 무거운 에어컨 닥트가 당신의 머리 위로 무너져 내리기 시작합니다!", "c": [["떨어지는 무거운 구조물을 양손으로 뻗어 막아낸다", "철제 닥트의 엄청난 무게를 맨몸으로 감당하지 못하고 압사당하고 말았습니다.", ""], ["머리를 두 팔로 감싸며 구석 바닥으로 납작 엎드린다", "", "TYPHOON_3"], ["무너지는 것을 보고 다시 창문이 있는 미술실로 도망친다", "미술실로 되돌아가는 순간 깨진 유리 파편과 강풍에 휩쓸려 쓰러졌습니다.", ""], ["휴대폰 손전등으로 천장 위를 비추며 상황을 살핀다", "살피는 사이 닥트가 그대로 낙하해 피할 틈이 없었습니다.", ""]]}, "TYPHOON_3": {"d": "닥트는 간신히 피했지만 곧 정전이 되었습니다. 게다가 천장 틈에서 물이 뚝뚝 떨어지며 바닥의 전선 쪽으로 번지고 있습니다.", "c": [["젖은 손으로 분전반을 열어 전원을 다시 올린다", "물과 전기의 조합은 최악이었습니다. 감전되고 말았습니다.", ""], ["물이 번지는 바닥을 걸어 전기 설비 쪽으로 향한다", "물에 젖은 바닥을 지나다 끊어진 전선에 감전되었습니다.", ""], ["전기 설비와 물이 번지는 곳에서 떨어진 벽쪽 마른 자리로 이동해 대기한다", "", "TYPHOON_4"], ["창가로 다가가 바깥 정전 상황을 확인한다", "돌풍에 창문 유리가 깨지며 파편이 얼굴로 날아들었습니다.", ""]]}, "TYPHOON_4": {"d": "거짓말처럼 바람이 잠잠해졌습니다. 태풍의 눈이 지나가고 있는 것 같습니다. 이제 어떻게 해야 할까요?", "c": [["이제 끝난 줄 알고 밖으로 나가 구경한다", "태풍의 눈이 지나가자 반대 방향에서 더 강한 후면 바람이 몰아쳤습니다.", ""], ["운동장에 떨어진 전선을 사진으로 남긴다", "끊어진 전선에는 아직 전기가 흐르고 있었습니다.", ""], ["우산을 펴고 집으로 하교한다", "우산은 0.5초 만에 날아갔고, 당신도 함께 날아갔습니다.", ""], ["아직 끝나지 않았다고 판단하고 안내방송이 있을 때까지 실내에서 대기한다", "", "TYPHOON_CLEAR"], ["피해 상황이 궁금해 건물 외벽을 따라 한 바퀴 돌아본다", "외벽에서 떨어진 간판과 타일 조각에 맞고 말았습니다.", ""]]}, "NUKES_1": {"d": "1층 행정실에 심부름을 온 순간, 고막을 찢을 듯한 요란한 민방위 사이렌과 함께 \"핵 미사일 공습 경보\"가 발령되었습니다. 폭발의 섬광과 치명적인 폭풍파가 덮치기 전까지 단 몇 초밖에 남지 않았습니다!", "c": [["창밖으로 미사일이 떨어지는 위치를 재빨리 확인한다", "핵폭발의 엄청난 열복사선과 섬광에 맨눈이 노출되어 즉각적으로 시력을 잃고 불탔습니다.", ""], ["행정실 나무 책상 밑으로 완전히 들어가 몸을 숨긴다", "거대한 폭풍파로 인해 건물 잔해와 책상이 부서지며 그 밑에 깔려버렸습니다.", ""], ["휴대폰을 꺼내 폭발 장면을 촬영한다", "렌즈를 향해 쏟아진 섬광에 시력을 잃었고, 폭풍파를 그대로 맞았습니다.", ""], ["창문 반대쪽 내벽에 팔꿈치와 무릎을 바닥에 대고 엎드려 배를 띄운다", "", "NUKES_2"], ["창가로 가서 유리가 깨지지 않게 커튼을 친다", "커튼은 폭풍파가 만든 유리 파편을 막아주지 못했습니다.", ""], ["옥상으로 올라가 높은 곳에서 대피한다", "옥상은 폭풍파와 열복사에 그대로 노출되는 가장 위험한 장소입니다.", ""]]}, "NUKES_2": {"d": "폭풍파가 지나가고 건물은 크게 흔들렸지만 무너지지는 않았습니다. 곧 방사성 낙진이 내릴 것으로 보입니다. 지금 어떻게 해야 할까요?", "c": [["바로 밖으로 나가 상황을 확인한다", "밖으로 나가자마자 방사성 낙진에 그대로 노출되었습니다.", ""], ["가족이 걱정되어 집으로 달려간다", "낙진이 내리는 거리를 달리다 치명적인 방사선에 노출되었습니다.", ""], ["유리창이 없는 건물 안쪽, 가능한 한 깊은 지하로 이동한다", "", "NUKES_3"], ["창문을 열어 연기가 어디로 가는지 확인한다", "열린 창문으로 방사성 먼지가 그대로 들어왔습니다.", ""], ["폭발 지점 방향으로 가서 피해를 직접 확인한다", "폭발 중심에 가까워질수록 방사선량이 급격히 높아졌고, 다시 돌아오지 못했습니다.", ""]]}, "NUKES_3": {"d": "지하에 도착했습니다. 겉옷과 신발에는 낙진 먼지가 묻어 있을 수 있습니다. 어떻게 해야 할까요?", "c": [["옷을 그대로 입은 채 매점에서 챙겨온 과자를 먹는다", "옷에 묻은 낙진이 음식과 함께 몸속으로 들어갔습니다.", ""], ["환기를 위해 지하 출입문을 열어 둔다", "열린 문틈으로 낙진이 계속 들어왔습니다.", ""], ["선반에 있던 소독약을 마신다", "소독약은 방사능 해독제가 아닙니다. 상황이 더 나빠졌을 뿐입니다.", ""], ["겉옷과 신발을 벗어 비닐봉지에 밀봉하고 몸의 먼지를 씻어낸다", "", "NUKES_4"]]}, "NUKES_4": {"d": "지하에서 하루가 지났습니다. 라디오에서는 지지직거리는 안내 방송이 흘러나옵니다. 이제 어떻게 해야 할까요?", "c": [["하루 지났으니 괜찮겠지 하고 밖으로 나가본다", "낙진 수치는 아직 위험한 수준이었습니다.", ""], ["친구가 말한 “방사능은 3시간이면 사라진다”를 믿고 나간다", "그 소문은 과학이 아니었습니다.", ""], ["라디오로 정부 안내 방송을 확인하며 지시가 있을 때까지 대피소에 머문다", "", "NUKES_CLEAR"], ["라디오를 끄고 잠을 자며 알아서 괜찮아지길 기다린다", "이동 지시를 놓쳐 대피 시기를 놓치고 말았습니다.", ""], ["답답하다며 마스크 하나만 쓰고 잠깐 바람을 쐬러 나간다", "마스크는 방사성 낙진 먼지를 완전히 막지 못했고, 잠깐의 외출이 치명적이었습니다.", ""]]}},TP={"EARTHQUAKE_1": "지진이 나면 몸을 낮추고(Drop), 머리를 보호하고(Cover), 흔들림이 멈출 때까지 버티세요(Hold on). 창문과 형광등, 높은 가구 근처는 피해야 합니다.", "EARTHQUAKE_2": "흔들림이 멈춘 뒤에는 엘리베이터 대신 계단으로 이동하고, 가방이나 방석으로 머리를 보호하세요. 옥상은 붕괴와 고립 위험이 큽니다.", "EARTHQUAKE_3": "이동 중 여진이 오면 난간과 벽을 잡고 몸을 낮추세요. 서로 밀고 뛰면 도미노처럼 넘어지는 2차 사고가 납니다.", "EARTHQUAKE_4": "밖으로 나오면 건물, 담장, 나무, 전선에서 멀리 떨어진 넓은 곳으로 모이세요. 한 번 나온 건물에는 다시 들어가지 않습니다.", "ZOMBIE_1": "위급 상황에서는 소음과 밀집이 위험을 키웁니다. 실제 감염병이나 재난에서도 침착하게 사람이 몰리지 않는 경로로 이동하는 것이 중요합니다.", "ZOMBIE_2": "넓은 정문과 개방된 공간은 사람이 한꺼번에 몰려 위험해집니다. 평소 비상구와 대피 경로가 몇 개인지 알아 두세요.", "ZOMBIE_3": "소리는 위험을 불러옵니다. 위급할수록 큰 소리를 내지 않고 침착하게 행동해야 합니다.", "ZOMBIE_4": "대피한 뒤에는 충동적으로 위험한 곳으로 돌아가지 말고, 지정 대피소와 구조 기관의 안내를 따르세요.", "TYPHOON_1": "태풍 때는 유리창에서 최대한 떨어지세요. 유리창에 X자로 붙이는 테이프는 파편 비산을 막는 효과가 거의 없습니다. 외출, 옥상, 운동장은 모두 금물입니다.", "TYPHOON_2": "강풍으로 천장 구조물이 떨어질 수 있습니다. 머리와 목을 감싸고 낮은 자세를 유지하세요.", "TYPHOON_3": "물에 젖은 상태로 전기 설비나 분전반을 만지면 감전됩니다. 정전과 누수가 함께 있으면 전기 설비에서 멀리 떨어지세요.", "TYPHOON_4": "태풍의 눈이 지나가도 반대편의 강풍이 다시 불어옵니다. 특보 해제와 안내방송이 있을 때까지 실내에 머무르세요.", "NUKES_1": "섬광은 절대 쳐다보지 말고 즉시 엎드려 눈을 감고 귀를 막으세요. 창문에서 멀리 떨어진 내벽 쪽이 상대적으로 안전합니다.", "NUKES_2": "폭풍파가 지나간 직후에도 바로 밖으로 나가지 말고, 두꺼운 벽으로 둘러싸인 건물 안쪽이나 지하로 이동하세요.", "NUKES_3": "낙진이 묻었을 수 있는 겉옷과 신발은 벗어 밀봉하고 몸을 씻으면 피폭량을 크게 줄일 수 있습니다. 환기는 금물입니다.", "NUKES_4": "실내에 머물며 정부의 공식 안내(라디오, 재난문자)를 따르세요. 확인되지 않은 소문을 믿고 움직이면 안 됩니다.", "ZOMBIE_GUN": "위험한 물건을 찾아 헤매느라 대피 시간을 놓치는 것이 가장 큰 위험입니다. 가장 안전한 선택은 즉시 거리를 벌리고 대피로로 이동하는 것입니다."};
+Object.assign(ST,{
+TFLOOD:{d:'정전된 복도 바닥으로 빗물이 번지기 시작합니다. 방송에서는 “1층 배수구가 역류해 저지대부터 침수 중”이라는 안내가 지직거리며 들립니다. 어떻게 할까요?',c:[['1층 현관 쪽으로 내려가 침수 상황을 직접 확인한다','1층으로 내려가자마자 불어난 빗물이 순식간에 차올라 휩쓸리고 말았습니다.',''],['물에 잠기기 전에 중앙계단 지하 PS실 창고로 내려가 문을 닫는다','폭우로 배수구가 넘치자 가장 낮은 PS실 창고부터 침수되었습니다. 좁은 공간에서 빠져나오지 못하고 갇히고 말았습니다.',''],['물이 닿지 않는 높은 층의 마른 자리에서 전기 설비와 떨어져 이동하지 않고 대기한다','','ok'],['젖은 바닥을 걸어 분전반이 있는 쪽으로 가 본다','물에 젖은 바닥을 걸어가다 끊어진 전선에 감전되었습니다.','']]},
+TFINAL:{d:'복도 스피커에서 안내방송이 흘러나옵니다. “태풍 특보가 해제되었습니다. 교직원의 안내에 따라 질서 있게 이동하세요.” 어떻게 할까요?',c:[['특보 해제라니 서둘러 운동장으로 뛰어나가 상황을 구경한다','아직 곳곳에 떨어진 전선과 파편이 남아 있었습니다. 구경하다 위험한 잔해에 맞고 말았습니다.',''],['방송이 끝나기도 전에 먼저 정문으로 달려 나간다','서두르다 미끄러운 계단에서 넘어져 크게 다쳤습니다.',''],['아직 비가 오니 방송을 무시하고 계속 숨어 있는다','구조와 안내를 놓쳐 필요한 도움을 받지 못한 채 오랜 시간 고립되었습니다.',''],['교직원의 안내에 따라 질서 있게 이동한다','','ok']]},
+ZROPE:{d:'옥상 끝 난간에 별관 옥상 쪽으로 이어진 낡은 로프가 매여 있습니다. 아래 계단실에서는 좀비들이 철문을 두드리는 소리가 들립니다. 어떻게 건널까요?',c:[['로프 위에 서서 균형을 잡으며 걸어서 건넌다','로프 위에서 균형을 잃고 그대로 추락했습니다.',''],['지지대와 매듭을 확인하고 낮은 자세로 로프에 매달려 천천히 별관 쪽으로 건넌다','','ok'],['한 손으로 로프를 잡고 다른 손으로 휴대폰 촬영을 하며 건넌다','한 손으로는 체중을 버티지 못하고 손을 놓쳤습니다.',''],['로프 상태를 확인하지 않고 힘껏 점프해 매달린다','충격을 견디지 못한 매듭이 풀리며 추락했습니다.','']]}
+});
+Object.assign(TP,{TFLOOD:'침수 위험이 있으면 지하와 저지대를 피해 높은 층의 마른 곳으로 이동하세요. 젖은 상태로 전기 설비에 가까이 가지 마세요.',TFINAL:'특보가 해제된 뒤에도 파편·끊어진 전선 같은 2차 위험이 있습니다. 교직원 안내에 따라 질서 있게 이동하세요.',ZROPE:'로프나 난간을 이용한 이동은 극히 위험합니다. 실제로는 구조대의 안내를 따르세요.'});
+Object.assign(D,{
+zfake:["그건 금도금 모형 권총 장식품이었습니다. 방아쇠를 당기자 “딸깍” 소리만 울렸고, 그 소리에 좀비들이 몰려왔습니다.","위험한 물건을 찾아 헤매느라 대피 시간을 놓치는 것이 가장 큰 위험입니다. 가장 안전한 선택은 즉시 거리를 벌리고 대피로로 이동하는 것입니다."],
+zsafe:["1234, 0000, 교장 선생님 생신까지 눌러봤지만 열리지 않았습니다. 헤매는 사이 좀비들이 문을 부수고 들어왔습니다.","위험한 물건을 찾아 헤매느라 대피 시간을 놓치는 것이 가장 큰 위험입니다. 가장 안전한 선택은 즉시 거리를 벌리고 대피로로 이동하는 것입니다."],
+qdebris:['좁은 창고 안에서 잔해를 치우지 못한 채 시간이 흘러 갇히고 말았습니다.','좁은 공간에 갇히면 벽을 두드리거나 소리를 내어 구조 신호를 보내세요.'],
+nflash:['섬광이 번쩍이는 순간 서 있어 눈과 피부가 열복사에 그대로 노출되었습니다.','섬광을 보는 즉시 엎드려 눈을 감고 귀를 막아야 합니다.'],
+tback:['후면 강풍에 창가 유리가 깨지며 파편에 다치고 말았습니다.','태풍의 눈이 지나간 뒤에는 반대편 강풍이 다시 불어옵니다. 창문에서 떨어져 낮은 자세를 유지하세요.'],
+tannounce:['“모두 운동장으로 모이세요!”라는 방송에 학생들이 태풍 속 운동장으로 몰려나가 큰 혼란이 벌어졌습니다.','대피 안내는 정확해야 합니다. 태풍 때는 실내 대기가 원칙입니다.'],
+tmonitor:['창가 쪽 모니터실에서 바깥을 중계하다 깨진 유리 파편에 맞고 말았습니다.','창가에서 바깥을 구경하거나 촬영하지 마세요.'],
+tps:['폭우로 배수구가 넘치자 가장 낮은 PS실 창고부터 순식간에 침수되었습니다. 좁은 공간에서 빠져나오지 못하고 갇히고 말았습니다.','지하·저지대 설비실은 침수와 감전 위험이 큰 곳입니다. 태풍 때는 높은 층의 안쪽 공간으로 이동하세요.']
+});
+D.nps=['좁고 어두운 PS실로 들어갔지만 배관과 전기 설비만 있는 막다른 공간이었고, 낙진을 피할 방법이 없었습니다.','PS(배관)실은 대피소가 아닙니다. 폭풍파가 지나간 뒤에는 1층 중앙계단 안쪽의 지하 대피소로 이동하세요.'];D.zps=['좁은 PS실에 숨었지만 좀비들이 소리를 듣고 문 앞으로 몰려 빠져나오지 못하고 갇히고 말았습니다.','막다른 좁은 공간은 포위당하면 탈출할 수 없습니다. 출구가 둘 이상인 경로로 이동하세요.'];delete D.zgun;
+for(const sc in ST)ST[sc].c.forEach((c,i)=>{if(c[1])D['S:'+sc+':'+i]=[c[1],TP[sc]||'']});
+function story(sc,ok){const s=ST[sc];ask(s.d,s.c.map((c,i)=>[c[0],c[1]?()=>die('S:'+sc+':'+i):()=>{ok&&ok(c[2])}]),1)}
+const SIMS=[{id:'fire',name:'🔥 화재 시뮬레이션'},{id:'quake',name:'🌍 지진 시뮬레이션'},{id:'typhoon',name:'🌪️ 태풍 시뮬레이션'},{id:'zombie',name:'🧟‍♂️ 좀비 바이러스 시뮬레이션'},{id:'raid',name:'☢️ 공습 경보 시뮬레이션'}];
+const DM={fire:'locker window elev down ext curtain smoke bash rail jump stairin belt grip',quake:'qshake qreenter qwall qdebris',typhoon:'twin ttape tout tbox tswitch tdebris teye thome tps tgym tback tannounce tmonitor',zombie:'zcatch zfront zalarm zgate zfake zsafe zps',raid:'nglass nblast nvent nout nrumor nflash nps'};
+const CLM={fire:'FIRE_CLEAR RAPPEL',quake:'QCLEAR HQ',typhoon:'TCLEAR HT2',zombie:'ZCLEAR HROPE HDE',raid:'RCLEAR HR'};
+const scSim=sc=>/^EARTH/.test(sc)?'quake':/^(TYPH|TFL|TFIN)/.test(sc)?'typhoon':/^(ZOM|ZROPE)/.test(sc)?'zombie':'raid';
+const ENDS=[];SIMS.forEach(s=>{let c=0,d=0;CLM[s.id].split(' ').forEach(k=>ENDS.push({sim:s.id,type:'c',key:k,num:++c}));DM[s.id].split(' ').filter(k=>D[k]).concat(Object.keys(D).filter(k=>k.startsWith('S:')&&scSim(k.split(':')[1])==s.id)).forEach(k=>ENDS.push({sim:s.id,type:'d',key:k,num:++d}))});
+const isS=e=>seen.includes(e.key);
+function titleOf(n){return n>=100?'👑 운중고 생존왕':n>=75?'서바이벌 마스터':n>=50?'재난 전문가':n>=25?'생존 베테랑':n>=10?'안전 지킴이':'재난 신입생'}
+const tiles=a=>a.map(e=>isS(e)?'<button class="tl '+(e.type=='c'?'tg':'tr2')+'" onclick="openEnd('+ENDS.indexOf(e)+')">'+e.num+'</button>':'<span class="lk">🔒</span>').join('');
+function openCodex(){S.st='codex';S.p=true;const T=ENDS.filter(isS).length;
+show('<h2>🏆 엔딩 도감</h2><p class="mu"><b>수집 '+T+' / '+ENDS.length+'</b> · 번호를 누르면 엔딩을 다시 볼 수 있어요</p><p class="mu">🎖️ 칭호 · '+titleOf(T)+'</p>'+SIMS.map(s=>{const m=ENDS.filter(e=>e.sim==s.id),c=m.filter(e=>e.type=='c'),d=m.filter(e=>e.type=='d');return '<div class="cd"><b>'+s.name+' · 수집 '+m.filter(isS).length+'/'+m.length+'</b><p class="mu">🎉 탈출 엔딩 '+c.filter(isS).length+'/'+c.length+'</p>'+tiles(c)+'<p class="mu">💀 사망 엔딩 '+d.filter(isS).length+'/'+d.length+'</p>'+tiles(d)+'</div>'}).join('')+'<button class="b" onclick="toTitle()">처음으로 돌아가기</button>')}
+function openEnd(i){const e=ENDS[i];if(!isS(e))return;const s=SIMS.find(x=>x.id==e.sim),c=e.type=='c',d=c?(sm[e.key]||[CL[e.key]||'','이 엔딩의 상세 기록은 다시 플레이하면 저장돼요.']):D[e.key];
+show('<p class="mu">'+s.name+' · '+(c?'탈출':'사망')+' 엔딩 #'+e.num+'</p><h2>'+(c?'🎉 생존 성공':'💀 GAME OVER')+'</h2><p>'+d[0]+'</p><p class="tip">💡 '+d[1]+'</p><button class="b" onclick="openCodex()">도감으로 돌아가기</button>')}
+function start(sc){sc=sc||S.sc||'fire';A();reset();S.sc=sc;const sp={fire:[3,100,215],quake:[4,100,160],typhoon:[2,700,-150],zombie:[2,450,-80],raid:[1,900,160]}[sc];P.f=sp[0];P.x=sp[1];P.y=sp[2];
+Z=sc=='zombie'?[[3,950,160],[3,820,160],[2,950,160],[2,150,160],[1,150,160],[1,950,160],[0,700,350],[0,850,420],[0,900,300],[0,400,-290],[7,400,-100],[7,700,-60]].map(a=>({f:a[0],x:a[1],y:a[2]})):[];hide();bp(660,.1);
+if(sc=='fire')ask('3층 교실. 갑자기 비상벨이 울리고 2층에서 올라온 매캐한 연기가 창문 쪽으로 번집니다. 초기 진압이 가능한지 소화전부터 확인해야 합니다.<br><br>💡 숙이면 느리지만 연기를 덜 마셔요. 남·여 화장실 사이의 🧣 젖은 수건을 챙기면 연기 피해가 줄어요.',[['움직이기',()=>{}]]);
+else if(sc=='quake')story('EARTHQUAKE_1',()=>{S.qt=.4});
+else if(sc=='typhoon')story('TYPHOON_1',()=>toast('창문에서 멀리! 복도 안쪽 내벽으로 이동'));
+else if(sc=='zombie')story('ZOMBIE_1',n=>{S.z1=n});
+else story('NUKES_1',()=>{S.nq=8+Math.random()*3;toast('섬광이 오기 전에(약 8~11초)! ① 1층 중앙계단 안쪽으로 이동 ② 숙이기 켜기')})}
+function shake(n,m){S.sh=n;S.bad=0;toast(m);bp(80,n,'sawtooth',.2)}
+function flash(){S.fl=1;bp(1200,.6,'sine',.3);setTimeout(()=>S.fl=0,700);if(P.f!=1||Math.hypot(P.x-645,P.y-118)>70)return die('nglass');if(!crouch())return die('nflash');S.rw=2;shake(5,'섬광! 숙이기 유지 + 행동 키(E/Space/행동 버튼) 꾹 눌러 귀 막기!')}
+let bs={};try{bs=JSON.parse(localStorage.getItem('ujb')||'{}')}catch(e){}
+const vb=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
+const BC={FIRE_CLEAR:'히든 엔딩이 숨어 있어요!',QCLEAR:'히든 엔딩이 숨어 있어요!',TCLEAR:'히든 엔딩이 숨어 있어요!',ZCLEAR:'히든 엔딩이 2개 숨어 있어요!',RCLEAR:'히든 엔딩이 숨어 있어요!'};
+const HN={nglass:'섬광 때 창문이 있는 곳에 있었어요. 1층 중앙계단 안쪽(지하 대피소)으로 이동하세요. 섬광은 시작 후 약 8~11초 뒤에 와요.',nflash:'섬광이 오는 순간 서 있었어요. 중앙계단 안쪽에 도착한 뒤 숙이기를 켜 두세요(PC: Shift, 모바일: 숙이기 버튼). 3초 전에 경고가 떠요.',nblast:'폭풍파 동안 ① 숙이기 유지 ② 움직이지 않기 ③ 행동 키(E/Space/행동 버튼)를 꾹 눌러 귀 막기, 세 가지를 모두 해야 해요. 화면 위쪽 ✅/❌ 표시를 확인하세요.',nps:'폭풍파 뒤에는 PS실이 아니라 1층 중앙계단 안쪽의 “지하 대피소 입구(⬇️)”로 가야 해요.',nvent:'대피소에서는 환기구를 열면 안 돼요. 먼저 오염된 옷 밀봉(👕) → 라디오(📻) 순서로 진행하세요.',nout:'대피소 밖으로 나가지 마세요. 옷 밀봉(👕) → 라디오(📻) 순서로 진행하세요.',nrumor:'라디오 선택지에서는 소문이 아니라 정부의 공식 안내를 따르세요.'};
+function rsum(win,id){if(!win)return'';const pt=Math.max(100,Math.round(1500-(S.t||0)*6-(S.sm||0)*4+(id[0]=='H'||id=='RAPPEL'?300:0)-(S.rt||0)*150)),rk=pt>=1200?'S':pt>=900?'A':pt>=600?'B':'C',nb=pt>(bs[S.sc]||0);if(nb){bs[S.sc]=pt;try{localStorage.setItem('ujb',JSON.stringify(bs))}catch(e){}}return `<p>⏱ ${S.t|0}초 · 점수 <b>${pt}</b> · 등급 <b>${rk}</b>${S.rt?' · 되돌리기 '+S.rt+'회(-'+S.rt*150+')':''}${nb?' 🆕 최고기록':''}${rk!='S'?'<br>다음 등급까지 '+({C:600,B:900,A:1200}[rk]-pt)+'점':''}</p>`}
+let Z=[];
+const LURE=[550,-300];
+function zup(dt){Z.forEach(z=>{if(z.f!=P.f)return;if(z.st>0){z.st-=dt;return}const dp=Math.hypot(P.x-z.x,P.y-z.y);let tx,ty;if(S.lure&&P.f==0&&Math.hypot(z.x-LURE[0],z.y-LURE[1])<520){tx=LURE[0];ty=LURE[1]}else if(dp<(crouch()?70:170)){tx=P.x;ty=P.y}else return;const d=Math.hypot(tx-z.x,ty-z.y)||1,sp=62*dt,nx=z.x+(tx-z.x)/d*sp,ny=z.y+(ty-z.y)/d*sp;if(inW(nx,z.y))z.x=nx;if(inW(z.x,ny))z.y=ny;if(dp<10&&!(S.inv>0)){const k=(P.x>=z.x?1:-1)*55;if(S.mopc>0){S.mopc--;S.inv=1.5;z.st=2.5;toast('🧹 대걸레로 좀비를 밀쳐냈다! 남은 횟수 '+S.mopc);bp(200,.15,'square',.2);if(inW(z.x-k,z.y))z.x-=k}else if(S.hit)die('zcatch');else{S.hit=1;S.hc=6;S.inv=1.5;toast('좀비에게 붙잡힐 뻔했다! 빨리 떨어져!');bp(120,.3,'sawtooth',.2);if(inW(z.x-k,z.y))z.x-=k}}})}
+function tph(){S.dk=1;bp(60,.8,'sawtooth',.2);story('TYPHOON_3',()=>story('TFLOOD',()=>eye()))}
+function eye(){S.dk=0;story('TYPHOON_4',()=>{S.tw=1;S.tb=2;toast('…바람이 거짓말처럼 잠잠하다…')})}
+let CP=null;
+function ask(t,c,sh){if(S.st=='play'){try{CP={P:JSON.parse(JSON.stringify(P)),S:JSON.parse(JSON.stringify(S)),Z:JSON.parse(JSON.stringify(Z)),t:t,c:c,sh:sh}}catch(e){CP=null}}S.p=true;if(sh)c=c.slice().sort(()=>Math.random()-.5);show(`<p>${t}</p>`+c.map((x,i)=>`<button class="b" onclick="pick(${i})">${(i+1)}. ${x[0]}</button>`).join(''));ch=c}
+function pick(i){const c=ch[i];hide();S.p=false;bp(520,.08);c[1]&&c[1]()}
+function setCk(v){ck=v;try{localStorage.setItem('ujk',v)}catch(e){}}
+function sets(){if(S.st=='set')return closeS();if(S.st!='play'||S.p)return;S.pst=S.st;S.st='set';S.p=true;
+show(`<h2>설정</h2><label><input type="checkbox" ${snd?'checked':''} onchange="snd=this.checked"> 소리 켜기</label><label>볼륨 <input type="range" min="0" max="100" value="${vol*100}" oninput="vol=this.value/100"></label>${TCH?'':`<label>숙이기 키 <select onchange="setCk(this.value)"><option value="shift" ${ck=='shift'?'selected':''}>Shift</option><option value="control" ${ck=='control'?'selected':''}>Ctrl</option></select></label><p class="mu">Ctrl 사용 시 Ctrl+W 같은 브라우저 단축키와 겹칠 수 있어요. C 키도 항상 숙이기로 쓸 수 있습니다.</p>`}<p class="mu" style="white-space:pre-line">${CT}</p><button class="b" onclick="closeS()">계속하기</button><button class="b" onclick="closeS();start()">처음부터 다시</button>`)}
+function closeS(){S.st='play';S.p=false;hide()}
+function end(win,k,h){S.st='end';S.p=true;const d=win?k:D[k];const id=win?(h||(d[1][0]=='완'?'RAPPEL':S.sc=='quake'?'QCLEAR':S.sc=='typhoon'?'TCLEAR':S.sc=='zombie'?'ZCLEAR':S.sc=='raid'?'RCLEAR':'FIRE_CLEAR')):k;let nw=0;try{if(win&&window.UnjungGame&&UnjungGame.inApp&&!S.ujSent){S.ujSent=1;UnjungGame.submitScore(Math.max(100,Math.round(1500-(S.t||0)*6-(S.sm||0)*4+(id[0]=='H'||id=='RAPPEL'?300:0)-(S.rt||0)*150)),{hold:true})}}catch(e){}sm[id]=d;try{localStorage.setItem('ujm',JSON.stringify(sm))}catch(e){}if(!seen.includes(id)){seen.push(id);nw=1;try{localStorage.setItem('uj',JSON.stringify(seen))}catch(e){}}
+if(win)[523,659,784,1047].forEach((f,i)=>bp(f,.25,'triangle',.2,i*.15));else[300,220,150].forEach((f,i)=>bp(f,.3,'sawtooth',.2,i*.2));
+show(`<h2>${win?'🎉 생존 성공':'💀 GAME OVER'}</h2><p>${nw?'🆕 새 엔딩! ':''}${d[0]}</p>${rsum(win,id)}<p class="tip">💡 ${d[1]}</p>${!win&&HN[k]?`<p class="tip" style="background:#38bdf822">🧭 힌트: ${HN[k]}</p>`:''}${win&&BC[id]?`<p class="tip" style="background:#a78bfa22">🕵️ ${BC[id]}</p>`:''}${!win&&CP?'<button class="b" style="box-shadow:0 0 0 2px var(--ac)" onclick="retryCP()">↩️ 직전 선택부터 다시 (-150점)</button>':''}${window.UnjungGame&&UnjungGame.inApp?(win?'<button class="b" onclick="this.disabled=true;UnjungGame.done()">계속 ▶</button>':'<button class="b" onclick="ujFinish(this)">그만하고 기록 남기기</button>'):''}<button class="b" onclick="start()">${win?'다시 하기':'다시 도전'}</button><button class="b" onclick="toTitle()">메뉴 · 도감</button>`)}
+const die=k=>end(0,k);
+function retryCP(){const c=CP;if(!c)return;const rt=(S.rt||0)+1;P=JSON.parse(JSON.stringify(c.P));S=JSON.parse(JSON.stringify(c.S));S.rt=rt;Z=JSON.parse(JSON.stringify(c.Z));S.st='play';S.p=false;hide();toast('↩️ 직전 선택으로 돌아왔어요 (되돌리기 '+rt+'회)');ask(c.t,c.c,c.sh)}
+function ujFinish(b){if(b)b.disabled=true;let p=Promise.resolve();try{if(window.UnjungGame&&UnjungGame.inApp&&!S.ujSent){S.ujSent=1;p=UnjungGame.submitScore(0,{hold:true})}}catch(e){}p.finally(()=>{try{UnjungGame.done()}catch(e){}})}
+/* ---------- 행동 ---------- */
+function go(f){P.f=f;toast('본관 '+f+'층');bp(400,.1,'triangle');if(S.sc=='quake'&&f==2&&!S.af){S.af=1;shake(5,'여진! 몸을 낮추고 벽을 잡고 버텨!')}}
+function act(o){const a=o.a;
+if(a=='tps'&&S.sc!='typhoon')return die(S.sc=='raid'?'nps':'zps');
+if(D[a]&&a!='down')return die(a);
+if(a=='towel'){S.tl=1;bp(700,.1,'triangle',.2);vb(30);return toast('🧣 젖은 수건으로 코와 입을 막았다 (연기 피해 감소)')}
+if(a=='tfin'){if(!S.tfin)return toast('…아직 안내방송이 나오지 않는다');return story('TFINAL',()=>end(1,['안쪽 벽에서 낙하물과 누전을 피하고, 침수와 태풍의 눈, 후면 강풍까지 실내에서 버틴 뒤 안내방송에 따라 질서 있게 대피해 생존했습니다.','태풍 요약: 유리창에서 멀리 → 낙하물에서 머리 보호 → 전기와 물 조심 → 안내방송 전까지 실내 대기.']))}
+if(a=='tbroad')return ask('본관 2층 방송실 스튜디오입니다. 창문이 없고 방음벽으로 둘러싸인 안쪽 방이며, 예비전원 장비가 켜져 있습니다. 어떻게 할까요?',[['스튜디오 문을 닫고 창문 없는 안쪽에서 비상 방송으로 실내 대기를 안내한다',()=>end(1,['방송실 스튜디오는 창문이 없고 방음벽으로 둘러싸인 안쪽 공간이라 유리 파편 위험이 적었습니다. 예비전원 방송으로 침착하게 실내 대기를 안내하며 태풍이 지나가기를 기다려 생존했습니다. (히든)','태풍 때는 창문이 없는 안쪽 공간이 상대적으로 안전합니다. 방송을 할 때도 모두에게 실내 대기를 안내하세요.'],'HT2')],['마이크를 잡고 “모두 운동장으로 모이세요!”라고 방송한다',()=>die('tannounce')],['창가 쪽 모니터실에서 바깥 상황을 중계 촬영한다',()=>die('tmonitor')],['취소',null]],1);
+if(a=='zmop'){if(S.mopc)return toast('이미 대걸레를 챙겼다');S.mopc=3;return toast('🧹 대걸레를 챙겼다! 좀비에게 붙잡혀도 3번까지 밀쳐낼 수 있다')}
+if(a=='zdrawer')return end(1,['교장실 책상 서랍 깊숙한 곳을 뒤지자 금빛으로 빛나는 데저트 이글이 모습을 드러냈습니다. 진짜였습니다! 침착하게 길을 열어 좀비 무리 사이를 뚫고 학교 밖으로 빠져나가 구조대와 합류했습니다. (히든)','※ 게임 속 허구입니다. 실제 재난에서 위험한 물건을 찾아 헤매는 것은 가장 큰 위험입니다. 가장 안전한 선택은 즉시 거리를 벌리고 대피로로 이동하는 것입니다.'],'HDE');
+if(a=='rope')return story('ZROPE',()=>{P.f=8;P.x=560;P.y=12;toast('별관 옥상에 도착했다')});
+if(a=='wlock')return toast('철문이 굳게 잠겨 있다. 안쪽에서도 열 방법이 없다.');
+if(a=='zwait'){if(!crouch())return toast('낮은 자세(숙이기)로 옷을 흔들어 신호를 보내야 한다');return end(1,['5층 옥상 철문을 열쇠로 열고 별관으로 이어진 로프를 낮은 자세로 건너 별관 옥상으로 도주했습니다. 좀비들은 따라오지 못했고, 구조대가 올 때까지 안전하게 버텼습니다. (히든)','고립됐을 때는 높은 곳에서 구조를 기다리는 것도 방법입니다. 단, 로프 이동은 매우 위험하므로 실제로는 구조대의 안내를 따르세요.'],'HROPE')}
+if(a=='qps')return qps();
+if(a=='tstore'&&S.sc=='raid'){if(!S.nb)return toast('아직 섬광이 오지 않았다. 지금은 때가 아니다');if(!crouch())return toast('엎드려 조용히 들어가자');return end(1,['창문 없는 1층 창고의 두꺼운 벽 안쪽에서 폭풍파를 피하고, 낙진이 가라앉을 때까지 공식 안내를 기다려 생존했습니다. (히든)','창문이 없고 벽이 두꺼운 안쪽 공간은 폭풍파와 낙진을 피하는 데 유리합니다. 공식 안내가 있을 때까지 머무르세요.'],'HR')}
+if(a=='bunker'){if(!S.nb)return toast('아직 위험하다. 폭풍파가 지나간 뒤 이동하자');P.f=9;P.x=500;P.y=380;toast('지하 대피소에 도착했다');return story('NUKES_3',()=>{S.seal=1})}
+if(a=='nseal'){S.seal=1;return toast('겹옷과 신발을 벗어 밀봉했다. 몸도 씻었다')}
+if(a=='nradio'){if(!S.seal)return toast('먼저 오염된 겹옷과 신발을 벗어 밀봉하자');return story('NUKES_4',()=>end(1,['정확한 자세로 폭풍파를 견디고 지하로 대피했습니다. 오염된 옷을 밀봉하고 안내 방송을 기다린 덕분에 낙진 속에서도 살아남았습니다.','핵 공격 요약: 엎드려 눈 감고 귀 막기 → 건물 안쪽과 지하로 이동 → 오염된 옷 밀봉 → 공식 안내 대기.']))}
+if(a=='astair'||(a=='stair'&&S.sc!='fire'))return stairs(o);
+if(a=='gt'){if(o.out){if(S.sc=='typhoon')return die('tout');if(S.sc=='raid')return die('nout')}P.f=o.d[0];P.x=o.d[1];P.y=o.d[2];zclr();bp(400,.1,'triangle');toast(P.f==0?'밖으로 나왔다':P.f==7?'별관 1층':'본관 1층');if(P.f==0&&S.sc=='quake'&&!S.q4s){S.q4s=1;story('EARTHQUAKE_4',()=>toast('운동장 중앙으로 이동하자'))}return}
+if(a=='aexit'){if(S.sc=='typhoon')return die('tout');if(S.sc=='raid')return die('nout');P.f=0;P.x=550;P.y=-235;return toast('별관 뒤쪽 뿌란(후문 쪽)')}
+if(a=='zback')return end(1,['별관 1층을 소리 없이 지나 후문으로 빠져나와 좁은 골목길로 대피했습니다. (히든)','대피 경로가 여러 개라면 사람이 몰리는 정문보다 좁은 출구가 안전할 수 있습니다. 소리를 내지 않는 것이 핵심입니다.'],'HB');
+if(a=='tstore'){if(S.sc=='typhoon')return die('tps');if(!crouch())return toast('숙인 채로 조용히 들어가야 한다');return end(1,S.sc=='zombie'?['창고 안에서 소리를 죽이고 문을 막은 채 숨어 구조를 기다려 생존했습니다. (히든)','숨을 때는 소리를 내지 않고 문을 막는 것이 중요합니다. 구조 기관의 안내를 기다리세요.']:['창문 없는 1층 창고 안쪽에서 전기 설비를 피해 폭풍이 지나가기를 기다려 생존했습니다. (히든)','태풍 때는 창문 없는 안쪽 공간에서 전기 설비를 피해 대기하세요.'],S.sc=='zombie'?'HZ':'HT')}
+if(a=='zcan'){S.can=1;return toast('🥫 빈 캔을 주웠다')}
+if(a=='zthrow'){if(!S.can)return toast('던질 물건이 없다');S.lure=1;bp(300,.1,'square',.2);return toast('🥫 캔을 후문 쪽으로 던졌다! 좀비들이 후문으로 몰려간다')}
+if(a=='zdoor'){if(!S.lure)return die('zgate');return story('ZOMBIE_3',()=>story('ZOMBIE_4',()=>end(1,['재활용장에서 빈 캔 소리로 좀비를 유인한 뒤 조용히 빗장을 열고 골목길을 따라 인근 대피소에 도착했습니다.','위기 요약: 소리 줄이기 → 사람이 몰리는 곳 피하기 → 대피로 미리 알기 → 지정 대피소 이동.'])))}
+if(a=='tsafe'){if(S.ts)return toast('조금만 더 버티자…');return story('TYPHOON_2',()=>{S.ts=1;S.tq=1.5;toast('안쪽 벽에서 머리를 감싸고 낮은 자세로!')})}
+if(a=='exit'){P.f=0;P.x=515;P.y=232;return toast('운동장으로 나왔다')}
+if(a=='gather')return end(1,['계단으로 침착하게 내려와 건물에서 멀리 떨어진 운동장 중앙에 집결해 안전하게 살아남았습니다.','지진 요약: 진동이 멈춘 뒤 계단으로 이동(엘리베이터 금지) → 넓은 공터에 집결. 한 번 나온 건물엔 재진입 금지.']);
+if(a=='stair'){const c=[];if(P.f<5)c.push(['▲ 위층으로 올라간다',()=>go(P.f+1)]);c.push(['▼ 아래층으로 내려간다',()=>die('down')],['취소',null]);return ask('계단입니다. 아래층에서는 짙은 연기가 올라오고 있습니다.',c)}
+if(a=='hyd'){S.hyd=1;return ask('소화전을 찾았지만 2층에서 올라오는 불길이 너무 거셉니다. 초기 진압은 불가능합니다. 복도에는 검은 연기가 차오르고 있습니다. 어디로 대피할까요?',[
+['자세를 낮추고 위층(옥상) 쪽으로 대피한다',()=>{S.plan='up'}],
+['소화기를 들고 계단을 내려가며 분사한다',()=>die('ext')],['숨을 참고 계단으로 단숨에 내려간다',()=>die('down')],['커튼을 이어 묶어 창문으로 내려간다',()=>die('curtain')]],1)}
+if(a=='rap')return ask('3층 높이에서도 쓸 수 있는 완강기입니다. 연기 때문에 시간이 없습니다. 어떻게 사용할까요?',[
+['지지대에 후크 고정 → 로프를 창밖으로 → 벨트를 가슴에 조이기 → 벽을 짚고 하강',()=>end(1,['복도 끝 완강기를 정확한 순서로 사용해 연기와 불길을 피하고, 3층 창문에서 안전하게 지상으로 탈출했습니다. (히든 엔딩)','완강기 순서: 지지대 고정 → 로프 내리기 → 벨트 조이기 → 벽 짚고 하강(줄은 잡지 않기). 평소 우리 층 완강기 위치를 확인하세요.'])],
+['벨트 없이 로프만 잡고 내려간다',()=>die('belt')],['로프를 손으로 꽉 쥐고 미끄러지듯 내려간다',()=>die('grip')]],1);
+if(a=='key'){S.key=1;return toast('🔑 열쇠를 챙겼다')}
+if(a=='door'){if(!S.key){if(++S.bash>=4)return die('bash');return toast(S.bash>2?'…몸통박치기를 해볼까?':'🔒 잠겨 있다. 근처 비상 열쇠함을 찾자')}
+P.f=6;P.x=312;P.y=156;return toast(S.sc=='fire'?'옥상 도착! 연기 반대편으로 가자':'옥상 도착! 철문을 닫았다. 주변을 살펴보자')}
+if(a=='signal'){if(!crouch())return toast('낮은 자세(숙이기)로 옷을 흔들어야 한다');
+return end(1,['옥상에 올라 연기 반대편 바람 위쪽 구석에서 낮은 자세로 옷을 흔들었고, 멀리서 온 구조 헬기에 무사히 구조되었습니다.','핵심 요약: 알리고 신고 → 자세 낮추고 연기 피하기 → 엘리베이터 금지 → 옥상이나 비상 출구 활용. 옥상에서는 연기 반대쪽, 바람 위쪽에서 밝은 옷을 흔드세요.'])}
+}
+function qps(){S.p=true;S.dbn=0;S.dbt=9;show('<p>PS실 창고의 두꺼운 벽 안쪽으로 몸을 숨기자 천장과 외벽이 무너져 내리며 문 앞이 잔해로 막혔습니다! 9초 안에 잔해를 치워 길을 내세요!</p><button class="b" id="dgb" onclick="dig()">⛏ 잔해 치우기 (0/14)</button><p class="mu" id="dgt">남은 시간 9초</p>');clearInterval(S.dbi);S.dbi=setInterval(()=>{if(S.st!='play'){clearInterval(S.dbi);return}S.dbt--;const e=$('dgt');if(e)e.textContent='남은 시간 '+S.dbt+'초';if(S.dbt<=0){clearInterval(S.dbi);S.dbt=0;die('qdebris')}},1000)}
+function dig(){if(!(S.dbt>0))return;S.dbn++;bp(150+S.dbn*25,.05,'square',.15);if(S.dbn>=14){clearInterval(S.dbi);S.dbt=0;end(1,['낙하물과 외벽을 피해 1층 중앙계단 아래 PS실 창고의 두꺼운 벽 안쪽으로 대피했고, 잔해로 막힌 문 앞을 끝까지 치워 길을 열어 구조대와 합류했습니다. (히든)','지진 때는 낙하물과 외벽에서 떨어진 튼튼한 안쪽 공간이 유리합니다. 다만 좁은 공간에 갇힐 수 있으니 출구가 막히면 침착하게 길을 내거나 구조 신호를 보내세요.'],'HQ')}else{const e=$('dgb');if(e)e.textContent='⛏ 잔해 치우기 ('+S.dbn+'/14)'}}
+function stairs(o){const an=o.a=='astair',f=P.f;let up,dn;
+if(an){up=f==7?2:f<4?f+1:null;dn=f==7?null:f==2?7:f-1}else{up=f<5?f+1:null;dn=f>1?f-1:null}let blk=0;if(S.sc=='zombie'&&!an&&f==2){dn=null;blk=1}
+const mv=n=>{if(an){const t=OB.find(q=>q.a=='astair'&&q.f==n);P.f=n;P.x=t.x;P.y=t.y;toast(n==7?'별관 1층':'별관 '+n+'층');bp(400,.1,'triangle');if(n==7&&S.sc=='zombie'&&!S.z2){S.z2=1;story('ZOMBIE_2',()=>toast('재활용장 쪽으로! (현관 위쪽 문)'))}}else go(n);zclr()};
+const c=[];up&&c.push(['▲ 위층으로 올라간다',()=>mv(up)]);dn&&c.push(['▼ 아래층으로 내려간다',()=>mv(dn)]);
+if(c.length==1&&!blk)return c[0][1]();c.push(['취소',null]);ask(blk?'계단 아래에서 좀비 떼가 올라오고 있다! 내려갈 수 없다.':'계단입니다. 어느 쪽으로 갈까요?',c)}
+function zclr(){S.inv=1.5;Z.forEach(z=>{if(z.f!=P.f||Math.hypot(z.x-P.x,z.y-P.y)>130)return;for(const d of[150,200,260,320,-150,-200,-260,-320])if(inW(P.x+d,z.y)){z.x=P.x+d;break}})}
+function interact(){if(S.st!='play'||S.p||S.sh>0)return;A();if(near)act(near)}
+let ck='shift';try{ck=localStorage.getItem('ujk')||'shift'}catch(e){}
+let ab=false;const crouch=()=>keys[ck]||keys.c||tc;const ear=()=>keys.e||keys[' ']||ab;addEventListener('blur',()=>{keys={}});
+/* ---------- 입력 ---------- */
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();A();
+if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
+if(S.dbt>0){if(!e.repeat&&(k=='e'||k==' '||k=='enter'))dig();return}if(ch.length){const n=+k;if(n>=1&&n<=ch.length)pick(n-1);return}
+if(k=='escape'||k=='p')return sets();if(k=='m')return snd=!snd,toast(snd?'소리 켬':'소리 끔');
+if(!e.repeat&&(k=='e'||k==' '||k=='enter'))interact();keys[k=='shift'?'shift':k]=1});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=0;if(e.key=='Shift')keys.shift=0});
+const js=$('js'),kn=$('kn');let jid=null;
+function mv(e){const r=js.getBoundingClientRect(),R=r.width/2;let dx=e.clientX-r.left-R,dy=e.clientY-r.top-R;const m=Math.hypot(dx,dy);if(m>R){dx*=R/m;dy*=R/m}jx=dx/R;jy=dy/R;kn.style.transform=`translate(${dx}px,${dy}px)`}
+const jz=$('jz');jz.addEventListener('pointerdown',e=>{A();jid=e.pointerId;jz.setPointerCapture(jid);js.style.left=Math.max(8,Math.min(e.clientX-60,innerWidth-128))+'px';js.style.bottom=Math.max(8,innerHeight-e.clientY-60)+'px';js.style.opacity=1;mv(e)});
+jz.addEventListener('pointermove',e=>{if(e.pointerId==jid)mv(e)});
+['pointerup','pointercancel'].forEach(n=>jz.addEventListener(n,()=>{jid=null;jx=jy=0;kn.style.transform='';js.style.opacity=.5}));
+$('ba').addEventListener('pointerdown',e=>{e.preventDefault();ab=true;vb(10);interact()});['pointerup','pointercancel','pointerleave'].forEach(n=>$('ba').addEventListener(n,()=>ab=false));
+$('bc').addEventListener('pointerdown',e=>{e.preventDefault();tc=!tc;vb(10);$('bc').classList.toggle('on',tc);$('bc').textContent=tc?'숙이는 중':'숙이기'});
+/* ---------- 업데이트 ---------- */
+const inW=(x,y)=>WK(P.f).some(r=>x>=r[0]&&x<=r[2]&&y>=r[1]&&y<=r[3]);
+const okp=(x,y)=>[[-7,-7],[7,-7],[-7,7],[7,7]].every(d=>inW(x+d[0],y+d[1]));
+function tgt(){if(S.sc=='raid')return S.nb?(P.f==9?(!S.seal?[400,380]:[500,330]):P.f==1?[575,80]:P.f>1?[645,118]:null):null;
+if(S.sc=='zombie')return P.f==2?[650,-80]:P.f==7?[640,-192]:P.f==0?(!S.can?[700,-262]:!S.lure?[590,-250]:[470,-300]):null;
+if(S.sc=='typhoon')return P.f==2?(!S.ts?[700,-60]:S.tfin?[760,-30]:null):null;
+if(S.sc=='quake')return S.sh>0?null:P.f==0?[560,430]:P.f==1?[598,160]:[645,118];
+if(P.f==6)return[880,58];if(!S.hyd)return P.f==3?[690,150]:null;if(S.plan=='rap')return P.f==3?[1068,160]:null;
+if(P.f<5)return[645,118];return S.key?[535,34]:[690,150]}
+function OT(){if(S.sc=='raid')return !S.nb?(S.rw?'숙이기 '+(crouch()?'✅':'❌')+' · 귀 막기(행동 키 꾹) '+(ear()?'✅':'❌')+' · 움직이지 않기':'창문에서 먼 내벽(계단실 안쪽)으로 이동해 엎드릴 준비'):P.f==9?(!S.seal?'오염된 겹옷·신발 벗어 밀봉하기':'라디오로 공식 안내 확인하기'):'지하 대피소로 이동 (1층 중앙계단 쪽)';
+if(S.sc=='zombie')return P.f==2?'소리 내지 않고(숙이기) 별관 계단으로 내려가기':P.f==7?'현관 위쪽 문으로 재활용장 쪽으로':P.f==0?(!S.can?'재활용장 근처에서 빈 캔 줍기':!S.lure?'캔을 던져 좀비 유인하기':'재활용장 철문으로 조용히 탈출'):'소리 내지 않고(숙이기) 이동하기';
+if(S.sc=='typhoon')return S.dk?'정전! 침착하게 판단하기':S.tw?'후면 강풍에 대비하기':S.tfin?'복도 스피커로 안내방송 확인':!S.ts?'창문에서 멀리, 복도 안쪽 내벽으로 이동':'안쪽 벽에서 버티기 (움직이지 않기)';
+if(S.sc=='quake')return S.sh>0?'몸을 낮추고(숙이기) 움직이지 않고 버티기':P.f==0?'건물에서 멀리, 운동장 중앙에 집결하기':P.f==1?'현관 출구로 나가기':'중앙계단으로 1층까지 내려가기 (엘리베이터 금지)';
+if(P.f==6)return'연기 반대편(북동쪽 구석)에서 숙이고 신호하기';if(!S.hyd)return'소화전 확인하기 (중앙계단 옆 복도)';
+if(S.plan=='rap')return'복도 오른쪽 끝 완강기함으로 이동';if(P.f<5)return'중앙계단으로 5층까지 올라가기';return S.key?'옥상 철문 열기 (본관 5층 별관 쪽)':'비상 열쇠함 찾기'}
+function upd(dt){S.t=(S.t||0)+dt;let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+jx,dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0)+jy;
+const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m}const cr=crouch(),sp=150*(cr?.55:1)*dt;
+if(S.qt>0&&(S.qt-=dt)<=0)shake(7,'지진! 몸을 낮추고(숙이기) 움직이지 말고 버텨!');
+if(S.nq>0){S.nq-=dt;if(S.nq<=0)flash();else if(S.nq<3&&!S.w3){S.w3=1;toast('⚠️ 곧 섬광! 지금 숙이기를 켜 두세요')}}if(S.nw>0&&(S.nw-=dt)<=0)shake(4,'2차 충격파! 다시 엎드려(숙이기) 귀를 막아(행동 키 꾹)!');if(S.tb>0&&(S.tb-=dt)<=0)shake(5,'후면 강풍! 창문에서 떨어져 숙여서 버텨!');if(S.inv>0)S.inv-=dt;if(S.hit&&(S.hc-=dt)<=0)S.hit=0;
+if(S.tq>0&&(S.tq-=dt)<=0)shake(5,'잔해 낙하! 머리를 감싸고 숙여서 움직이지 마!');
+if(S.sh>0){S.sh-=dt;S.bad+=(!cr||m>.1||(S.sc=='raid'&&!ear()))?dt:0;if(S.bad>1.2)return die(S.sc=='quake'?'qshake':S.sc=='raid'?'nblast':S.tw?'tback':'tdebris');
+if(S.sh<=0){if(S.sc=='typhoon'){if(S.tw){S.tw=0;S.tfin=1;toast('바람이 잦아든다. 복도 스피커의 안내방송을 확인하자')}else tph()}
+else if(S.sc=='raid'){if(--S.rw>0){S.nw=3.5;toast('…조용하다. 하지만 아직 끝나지 않았을지도 모른다')}else story('NUKES_2',()=>{S.nb=1;toast('지하 대피소로! (1층 중앙계단 쪽 PS실 복도 안쪽 입구)')})}
+else if(S.sc=='quake'){if(!S.q2){S.q2=1;story('EARTHQUAKE_2',()=>toast('계단으로 내려가자'))}else if(S.af&&!S.q3){S.q3=1;story('EARTHQUAKE_3',()=>toast('조심해서 계속 내려가자'))}}}return}
+const nx=P.x+dx*sp,ny=P.y+dy*sp;if(okp(nx,P.y))P.x=nx;if(okp(P.x,ny))P.y=ny;
+if(m>.1){P.dx=dx;fs+=dt;if(fs>(cr?.5:.3)){fs=0;bp(90,.05,'triangle',.12)}}
+if(S.sc=='fire'){let r=P.f==6?(P.y<130?.2:1.1):[0,0,1.5,1.5,1.3,1.1][P.f];S.sm=Math.min(100,S.sm+r*dt*(cr?.45:1)*(S.tl?.65:1))}
+if(S.sm>70&&(cg+=dt)>1.6){cg=0;bp(140,.2,'sawtooth',.15)}
+if(S.sm>=100)return die('smoke');
+zup(dt);near=null;let b=40;OB.forEach(o=>{if(o.f!=P.f||hid(o))return;const d=Math.hypot(o.x-P.x,o.y-P.y);if(d<b){b=d;near=o}})}
+/* ---------- 그리기 ---------- */
+/* ---------- 위기 연출 (시각 전용) ---------- */
+const FX={dg:0,hp:0,sr:0,qk:0,lt:0,env:0,bpm:66},EC=$('ecg').getContext('2d');let lsc='';
+const spr=c=>{const k=document.createElement('canvas');k.width=k.height=128;const x=k.getContext('2d'),r=x.createRadialGradient(64,64,0,64,64,64);r.addColorStop(0,`rgba(${c},1)`);r.addColorStop(.5,`rgba(${c},.45)`);r.addColorStop(1,`rgba(${c},0)`);x.fillStyle=r;x.fillRect(0,0,128,128);return k};
+const SPR={smoke:spr('78,72,66'),toxic:spr('110,231,183')},gs=(x,c,w)=>Math.exp(-(((x-c)/w)**2));
+const sirenOn=()=>S.st=='play'&&S.sc=='raid'&&S.rw!==0&&!S.nb;
+function fxu(t){const dt=Math.min(.1,Math.max(0,(t-FX.lt)/1000)),sc=S.sc;FX.lt=t;let d=0;
+if(S.st=='play'&&sc){if(sc=='fire')d=Math.max(.2,S.sm/100);else if(sc=='zombie'){let m=999;Z.forEach(z=>{if(z.f==P.f)m=Math.min(m,Math.hypot(z.x-P.x,z.y-P.y))});d=S.hit?1:Math.max(.2,Math.min(1,1-(m-40)/200))}else d=S.sh>0?1:sirenOn()?.6:sc=='typhoon'?.35:.25}
+FX.dg+=(d-FX.dg)*Math.min(1,dt*2.5);FX.bpm=66+84*FX.dg;FX.hp=(FX.hp+dt*FX.bpm/60)%1;FX.env=Math.max(gs(FX.hp,.08,.05),.65*gs(FX.hp,.3,.06));
+const on=sirenOn()?1:0;FX.sr+=(on-FX.sr)*Math.min(1,dt*(on?3:1.6));
+const q=S.st=='play'&&sc=='quake'&&S.sh>0?1:0;FX.qk+=(q-FX.qk)*Math.min(1,dt*(q?6:2.5))}
+function hud2(){const sc=S.st=='play'?(S.sc||''):'';if(sc!==lsc){lsc=sc;document.documentElement.dataset.sc=sc}
+const el=$('ecg');el.style.opacity=sc?1:0;if(!sc)return;const x=EC;x.clearRect(0,0,176,52);const col=`hsl(${Math.round(135*(1-FX.dg))} 85% 62%)`;
+x.fillStyle=col;x.globalAlpha=.7+FX.env*.3;x.font='bold 17px sans-serif';x.fillText('♥ '+Math.round(FX.bpm),8,33);x.globalAlpha=1;
+x.strokeStyle=col;x.lineWidth=2.2;x.lineJoin='round';x.beginPath();for(let i=0;i<=100;i++){const p=(((i/100*1.3+FX.hp)%1)+1)%1,v=.12*gs(p,.12,.03)-.15*gs(p,.26,.008)+gs(p,.29,.01)-.3*gs(p,.32,.01)+.25*gs(p,.5,.05),px=70+i,py=36-v*26;i?x.lineTo(px,py):x.moveTo(px,py)}x.stroke()}
+function atmo(t){const sc=S.sc;if(S.st!='play'||!sc)return;const M=Math.max(W,H);
+if(sc=='fire'){const f=P.f==6?(P.y<130?.35:1):1,a=Math.min(.6,(.12+S.sm/100*.5)*f);
+for(let i=0;i<14;i++){const an=i*2.399+t/(6500+i*320),rr=.8+.2*Math.sin(i*1.7+t/4300),z=M*(.32+.16*(i%3)),x=W/2+Math.cos(an)*W*.55*rr,y=H/2+Math.sin(an)*H*.55*rr;g.globalAlpha=a*(.55+.45*Math.sin(i+t/2100));g.drawImage(SPR.smoke,x-z/2,y-z/2,z,z)}
+g.globalAlpha=1;const fl=.75+.25*Math.sin(t/110)*Math.sin(t/170),gr=g.createLinearGradient(0,H,0,H*.62);gr.addColorStop(0,`rgba(249,115,22,${.2*fl*f})`);gr.addColorStop(1,'rgba(249,115,22,0)');g.fillStyle=gr;g.fillRect(0,H*.6,W,H*.4)}
+else if(sc=='zombie'){const a=.13+FX.dg*.12,p=.5+.5*Math.sin(t/1100);
+for(let i=0;i<10;i++){const an=i*2.399-t/(11000+i*500),rr=.8+.2*Math.sin(i*1.3+t/4300),z=M*(.4+.14*(i%3)),x=W/2+Math.cos(an)*W*.55*rr,y=H/2+Math.sin(an)*H*.55*rr;g.globalAlpha=a*(.55+.45*Math.sin(i*1.9+t/2100));g.drawImage(SPR.toxic,x-z/2,y-z/2,z,z)}
+g.globalAlpha=1;const v=g.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H);v.addColorStop(0,'rgba(52,211,153,0)');v.addColorStop(1,`rgba(52,211,153,${.07+.06*p})`);g.fillStyle=v;g.fillRect(0,0,W,H)}
+else if(sc=='quake'&&FX.qk>.01){const q=FX.qk,gr=g.createLinearGradient(0,0,0,H*.5);gr.addColorStop(0,`rgba(190,170,140,${.22*q})`);gr.addColorStop(1,'rgba(190,170,140,0)');g.fillStyle=gr;g.fillRect(0,0,W,H*.5);
+for(let i=0;i<30;i++){const x=Math.abs((i*211+Math.sin(t/400+i)*12)%W),y=(t*.12*(.6+i%4*.25)+i*71)%(H+10);g.fillStyle=`rgba(214,196,168,${.5*q})`;g.fillRect(x,y,1+i%3*.8,1+i%3*.8)}}
+else if(sc=='raid'&&FX.sr>.01){g.fillStyle=`rgba(239,68,68,${(1-Math.cos(t/290))/2*.2*FX.sr})`;g.fillRect(0,0,W,H)}}
+
+
+/* ===== 그래픽(11-10): 바닥 무늬·벽·교실 가구·학생 캐릭터 — 그림 파일 없이 코드로 그림 ===== */
+const GX={};
+function pat(k){if(GX[k])return GX[k];const c=document.createElement('canvas'),q=c.getContext('2d');
+if(k=='wood'){c.width=64;c.height=32;for(let i=0;i<4;i++){q.fillStyle=['#8a6440','#936c46','#86603d','#8f6843'][i];q.fillRect(0,i*8,64,8);q.fillStyle='#0000002a';q.fillRect(0,i*8+7,64,1);q.fillRect((i*23+7)%64,i*8,1,7)}}
+else if(k=='tile'){c.width=c.height=20;q.fillStyle='#6e7987';q.fillRect(0,0,20,20);q.fillStyle='#ffffff0e';q.fillRect(1,1,9,9);q.fillRect(11,11,8,8);q.fillStyle='#00000030';q.fillRect(0,19,20,1);q.fillRect(19,0,1,20)}
+else if(k=='wc'){c.width=c.height=8;q.fillStyle='#5f8299';q.fillRect(0,0,8,8);q.fillStyle='#ffffff26';q.fillRect(0,7,8,1);q.fillRect(7,0,1,8)}
+else if(k=='grass'){c.width=c.height=48;q.fillStyle='#355e2e';q.fillRect(0,0,48,48);q.fillStyle='#3b6833';q.fillRect(0,0,48,24);for(let i=0;i<18;i++){q.fillStyle=i%2?'#2d5427':'#447a3a';q.fillRect((i*17)%48,(i*29)%48,1,3)}}
+else if(k=='sand'){c.width=c.height=24;q.fillStyle='#a88f66';q.fillRect(0,0,24,24);for(let i=0;i<12;i++){q.fillStyle=i%2?'#b49b71':'#9a825b';q.fillRect((i*7)%24,(i*11)%24,2,2)}}
+else if(k=='conc'){c.width=c.height=32;q.fillStyle='#7d848d';q.fillRect(0,0,32,32);q.fillStyle='#00000026';q.fillRect(0,31,32,1);q.fillRect(31,0,1,32)}
+else if(k=='roof'){c.width=c.height=30;q.fillStyle='#3f7058';q.fillRect(0,0,30,30);q.fillStyle='#ffffff12';q.fillRect(0,29,30,1);q.fillRect(29,0,1,30)}
+return GX[k]=g.createPattern(c,'repeat')}
+function kind(t){t=t||'';if(/옥상|대피소|\(밖\)/.test(t))return'none';if(/^(남|여)$/.test(t))return'wc';if(/계단/.test(t))return'stair';if(/승강기/.test(t))return'lift';if(/체육관/.test(t))return'gym';if(/급식/.test(t))return'cafe';if(/현관|복도/.test(t))return'hall';
+if(/교무|행정|교장|상담|협의|운영|사무|보건|방송|생활인권|동사|PS|창고/.test(t))return'office';if(/과학|기술|컴퓨터|전산|미술|음악|시청각|도서|자율|책임|전환|휴게|Wee|재활용/.test(t))return'special';return'class'}
+function rrect(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function furn(k,x,y,w,h,t){if(w<36||h<30)return;
+if(k=='class'){g.fillStyle='#1f5130';g.fillRect(x+8,y+3,w-16,3.5);g.fillStyle='#d6c08f';g.fillRect(x+w/2-7,y+9,14,5);const cols=Math.max(1,Math.floor((w-14)/15)),rows=Math.max(1,Math.floor((h-26)/12));const ox=x+(w-cols*15)/2+2.5;for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const dx=ox+c*15,dy=y+20+r*12;g.fillStyle='#c9ab78';g.fillRect(dx,dy,10,5.5);g.fillStyle='#334155';g.fillRect(dx+3,dy+6.5,4,2.5)}}
+else if(k=='office'){g.fillStyle='#b9a07a';for(let i=0;i<Math.floor((w-12)/22);i++){g.fillRect(x+8+i*22,y+h/2-8,16,7);g.fillRect(x+8+i*22,y+h/2+2,16,7)}g.fillStyle='#64748b';g.fillRect(x+4,y+4,w-8,3)}
+else if(k=='special'){g.fillStyle='#d1d5db';for(let i=0;i<Math.floor((h-20)/16);i++)g.fillRect(x+10,y+18+i*16,w-20,6);g.fillStyle='#1f5130';g.fillRect(x+8,y+3,w-16,3)}
+else if(k=='wc'){g.strokeStyle='#e2e8f080';g.lineWidth=1;for(let i=1;i<3;i++){g.beginPath();g.moveTo(x+i*w/3,y);g.lineTo(x+i*w/3,y+h*.55);g.stroke()}}
+else if(k=='stair'){g.strokeStyle='#cbd5e1';g.lineWidth=1;for(let yy=y+4;yy<y+h-2;yy+=4.5){g.beginPath();g.moveTo(x+4,yy);g.lineTo(x+w-4,yy);g.stroke()}g.fillStyle='#e2e8f0';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText('▲',x+w/2,y+h/2+4)}
+else if(k=='lift'){g.fillStyle='#9ca3af';g.fillRect(x+6,y+8,w/2-7,h-12);g.fillRect(x+w/2+1,y+8,w/2-7,h-12)}
+else if(k=='gym'){g.strokeStyle='#f8fafc99';g.lineWidth=1.2;g.strokeRect(x+20,y+20,w-40,h-40);g.beginPath();g.moveTo(x+w/2,y+20);g.lineTo(x+w/2,y+h-20);g.stroke();g.beginPath();g.arc(x+w/2,y+h/2,22,0,7);g.stroke()}
+else if(k=='cafe'){g.fillStyle='#8b97a8';for(let r=0;r<Math.floor((h-30)/26);r++)for(let c=0;c<Math.floor((w-20)/40);c++)g.fillRect(x+18+c*40,y+26+r*26,22,7)}}
+function box(x,y,w,h,t,c){const k=kind(t);
+if(!t){g.fillStyle='#475569';g.fillRect(x,y,w,h);g.fillStyle='#22c55e';g.fillRect(x+w/2-1.5,y+h/2-4,3,8);return}
+if(k!='none'){g.fillStyle=k=='wc'?pat('wc'):k=='stair'||k=='lift'?'#4b5563':k=='hall'?pat('tile'):k=='cafe'?pat('tile'):pat('wood');g.fillRect(x,y,w,h);furn(k,x,y,w,h,t);g.fillStyle='#0000001c';g.fillRect(x,y,w,h)}
+g.strokeStyle=k=='none'?'#e2e8f055':'#d7dee7';g.lineWidth=k=='none'?1:2.2;g.strokeRect(x,y,w,h);
+g.font='bold 8px sans-serif';g.textAlign='center';const tw=g.measureText(t).width+8,py=k=='stair'||k=='lift'||k=='wc'||h<40?y+h/2-5:y+h-14;
+g.fillStyle=c||'#f1f5f9';rrect(x+w/2-tw/2,py,tw,11,3);g.fill();g.fillStyle='#1e293b';g.fillText(t,x+w/2,py+8.3)}
+function tree(x,y){g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(x+4,y+5,15,10,0,0,7);g.fill();g.fillStyle='#1f4d24';g.beginPath();g.arc(x,y,14,0,7);g.fill();g.fillStyle='#2f6b33';g.beginPath();g.arc(x-3,y-3,10,0,7);g.fill();g.fillStyle='#3f8a43';g.beginPath();g.arc(x-5,y-6,5,0,7);g.fill()}
+const TREES=[[60,-260],[60,-120],[60,20],[60,160],[60,300],[60,440],[1040,-260],[1040,-100],[1040,60],[1040,240],[1040,420],[200,560],[400,560],[600,560],[800,560],[1000,560],[160,-380],[420,-390],[700,-380]];
+/* 학생·좀비: 위에서 본 사람(a: 바라보는 방향, ph: 걸음) */
+function guy(x,y,a,ph,sc,cl,zom){g.save();g.translate(x,y);g.scale(sc,sc);g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(1.5,2.5,8,6,0,0,7);g.fill();g.rotate(a);const sw=Math.sin(ph)*3.2;
+g.fillStyle=cl.leg;g.beginPath();g.ellipse(sw,-3,2.7,2,0,0,7);g.fill();g.beginPath();g.ellipse(-sw,3,2.7,2,0,0,7);g.fill();
+g.fillStyle=cl.body;if(zom){g.beginPath();g.ellipse(7,-4.5,4,1.8,0,0,7);g.fill();g.beginPath();g.ellipse(7,4.5,4,1.8,0,0,7);g.fill();g.fillStyle=cl.skin;g.beginPath();g.arc(10.5,-4.5,1.6,0,7);g.fill();g.beginPath();g.arc(10.5,4.5,1.6,0,7);g.fill();g.fillStyle=cl.body}
+else{g.beginPath();g.ellipse(-sw*.8,-6.3,2.3,2.1,0,0,7);g.fill();g.beginPath();g.ellipse(sw*.8,6.3,2.3,2.1,0,0,7);g.fill()}
+g.beginPath();g.ellipse(0,0,4.7,6.7,0,0,7);g.fill();g.fillStyle=cl.tie;g.fillRect(2.7,-.9,2.2,1.8);
+g.fillStyle=cl.skin;g.beginPath();g.arc(.6,0,4.1,0,7);g.fill();g.fillStyle=cl.hair;g.beginPath();g.arc(.3,0,4.3,Math.PI/2-.25,Math.PI*1.5+.25);g.closePath();g.fill();g.restore()}
+const ME={body:'#1e3a8a',tie:'#dc2626',skin:'#f3cfae',hair:'#1c1917',leg:'#0f172a'},ZB={body:'#57534e',tie:'#7f1d1d',skin:'#8fb07a',hair:'#3f3a2a',leg:'#1f2937'};
+function rope(x1,y1,x2,y2){g.strokeStyle='#a16207';g.lineWidth=3;g.setLineDash([8,3]);g.beginPath();g.moveTo(x1,y1);g.quadraticCurveTo((x1+x2)/2+10,(y1+y2)/2,x2,y2);g.stroke();g.setLineDash([]);g.fillStyle='#fde68a';g.font='8px sans-serif';g.textAlign='center';g.fillText('로프',x1+18,(y1+y2)/2)}
+function draw(t){g.setTransform(DPR,0,0,DPR,0,0);g.fillStyle='#0b1220';g.fillRect(0,0,W,H);if(!P)return;fxu(t);hud2();
+const CY=document.documentElement.classList.contains('tc')&&H>W?.4:.5,s=Math.max(H>W?1.9:1.5,W/620),sx=S.sh>0?(Math.random()-.5)*10:0;g.save();g.translate(W/2,H/2);g.rotate(Math.sin(t/45)*.006*FX.qk);g.translate(-W/2,-H/2);g.translate(W/2-P.x*s+sx,H*CY-P.y*s-sx);g.scale(s,s);
+{const ws=WK(P.f),out=P.f==0,roof=P.f==6||P.f==8;
+if(out){g.fillStyle=pat('grass');g.fillRect(-600,-900,2400,1800)}
+g.fillStyle=out?'#00000033':roof?'#9aa6b6':'#d3dae3';ws.forEach(r=>g.fillRect(r[0]-4,r[1]-4,r[2]-r[0]+8,r[3]-r[1]+8));
+ws.forEach(r=>{const w=r[2]-r[0],h=r[3]-r[1];g.fillStyle=out?(w>600&&h>250?pat('sand'):pat('conc')):roof?pat('roof'):P.f==9?pat('conc'):pat('tile');g.fillRect(r[0],r[1],w,h)});
+if(out){g.strokeStyle='#b4532a';g.lineWidth=12;g.beginPath();g.ellipse(560,430,330,78,0,0,7);g.stroke();g.strokeStyle='#ffffffaa';g.lineWidth=.8;[-4,0,4].forEach(d=>{g.beginPath();g.ellipse(560,430,330+d,78+d,0,0,7);g.stroke()});g.strokeStyle='#ffffff66';g.beginPath();g.moveTo(560,352);g.lineTo(560,508);g.stroke();g.beginPath();g.arc(560,430,26,0,7);g.stroke();TREES.forEach(q=>tree(q[0],q[1]))}
+if(roof){g.setLineDash([5,3]);g.strokeStyle='#e2e8f0aa';g.lineWidth=1.5;ws.forEach(r=>g.strokeRect(r[0]+3,r[1]+3,r[2]-r[0]-6,r[3]-r[1]-6));g.setLineDash([])}
+if(P.f>=1&&P.f<=5){g.fillStyle='#93c5fd55';for(let x=60;x<1060;x+=40)g.fillRect(x,137,22,2.5)}}
+if(P.f==0){g.fillStyle='#e7e5e4';g.font='9px sans-serif';g.textAlign='center';g.fillText('▲ 본관 (낙하물·유리 위험) · 아래쪽 넓은 운동장으로 집결',560,250);g.strokeStyle='#fde047';g.strokeRect(430,380,260,110);g.fillText('운동장 중앙',560,470);g.fillText('주차장',880,-100);box(420,-325,100,60,'재활용장');g.fillStyle='#e7e5e4';g.font='9px sans-serif';g.textAlign='center';g.fillText('후문 ▲',550,-322);g.fillText('별관·본관 사이 (밖)',600,60);g.fillText('통로(밖)',520,205);g.fillText('▼ 별관 · 후문 쪽 뒤뿌란 ▲',550,-250)}else if(P.f==7){box(300,-200,240,224,'급식실');box(540,-200,260,224,'현관');box(696,-136,48,52,'계단')}else if(P.f==9){box(300,300,400,120,'지하 대피소')}else if(P.f==8){box(300,-200,500,224,'별관 옥상');rope(560,24,560,70)}else if(P.f<6){L[P.f].forEach((n,i)=>box(i<5?60+i*80:560+(i-5)*100,180,i<5?80:100,80,n));
+box(460,180,100,35,P.f==2?'협의회실':P.f==1?'현관':'상담실');if(P.f!=1){box(400,100,50,40,'여');box(450,100,50,40,'남')}box(670,100,50,40,'남');box(720,100,50,40,'여');box(620,100,50,40,'중앙계단');box(580,100,40,40,'승강기');box(0,128,14,62,'');
+if(P.f<5&&P.f>1&&S.sc=='fire'){g.fillStyle='#0f172a';g.fillRect(520,24,30,86);g.fillStyle='#b91c1c';g.fillRect(520,108,30,5);g.fillStyle='#fca5a5';g.font='7px sans-serif';g.textAlign='center';g.fillText('방화셔터',535,100)}
+else if(P.f==5){box(520,10,30,14,'옥상','#fde68a')}else if(P.f>1&&P.f<5){if(P.f==2){box(300,-200,300,224,'별관 다목적체육관');box(600,-200,200,90,'미술실');box(626,-106,48,52,'계단');box(600,-50,200,74,'기술실')}else{box(520,-200,80,224,'복도');box(600,-200,200,100,P.f==3?'과학실1':'음악실');box(600,-60,200,84,P.f==3?'과학실2':'WeeClass');g.fillStyle='#94a3b8';g.font='8px sans-serif';g.fillText('다목적체육관 위쪽 빈 공간(통행 불가)',410,-80)}if(P.f!=2)box(556,-176,48,52,'계단');}
+if(P.f==1){g.fillStyle='#8da2bd';g.fillRect(36,128,8,76);box(620,60,50,40,'PS실·창고');g.fillStyle='#94a3b8';g.font='7px sans-serif';g.textAlign='center';g.fillText('(밖)',520,163)}
+if(S.sc=='fire'){g.fillStyle='#ef444466';g.fillRect(40,175+(Math.sin(t/300)*2),1040,3)}}
+else{const q=g.createLinearGradient(0,150,0,240);q.addColorStop(0,'#78787800');q.addColorStop(1,'#787878aa');g.fillStyle=q;g.fillRect(300,150,600,90);g.fillStyle='#e2e8f0';g.font='9px sans-serif';g.textAlign='center';g.fillText('옥상 · 바람 ↓(북쪽에서 불어옴) · 연기는 남쪽에서 올라옴',600,32);if(S.sc=='zombie')rope(560,40,560,-50)}
+const T=tgt();if(T){g.strokeStyle='#fde047';g.lineWidth=2;g.beginPath();g.arc(T[0],T[1],14+Math.sin(t/200)*3,0,7);g.stroke()}
+g.font='15px sans-serif';g.textAlign='center';OB.forEach(o=>{if(o.f==P.f&&!hid(o)){g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(o.x+1,o.y+7,7,3,0,0,7);g.fill();g.fillStyle='#fff';g.fillText(o.e,o.x,o.y+5)}});Z.forEach(z=>{if(z.f==P.f)guy(z.x,z.y,Math.atan2(P.y-z.y,P.x-z.x),t/140+z.x*.1,1.3,ZB,1)});g.font='15px sans-serif';g.textAlign='center';if(S.lure&&P.f==0){g.fillText('🥫',LURE[0],LURE[1]+5);g.fillText('💥',LURE[0]+12,LURE[1]-8)}
+{if(P._lx!==undefined){const dx=P.x-P._lx,dy=P.y-P._ly,d=Math.hypot(dx,dy);if(d>.05&&d<40){P._a=Math.atan2(dy,dx);P._wp=(P._wp||0)+d*.32}}P._lx=P.x;P._ly=P.y;
+const lg=g.createRadialGradient(P.x,P.y,2,P.x,P.y,46);lg.addColorStop(0,'rgba(255,244,214,.22)');lg.addColorStop(1,'rgba(255,244,214,0)');g.fillStyle=lg;g.beginPath();g.arc(P.x,P.y,46,0,7);g.fill();
+if(crouch()){g.strokeStyle='#f59e0b';g.lineWidth=1.6;g.beginPath();g.arc(P.x,P.y,10.5,0,7);g.stroke()}
+guy(P.x,P.y,P._a??-Math.PI/2,P._wp||0,crouch()?1:1.3,ME,0)}g.restore();
+atmo(t);if(S.sc=='typhoon'){g.strokeStyle='#bfdbfe66';g.lineWidth=1;g.beginPath();for(let i=0;i<70;i++){const x=(i*97+t*.9)%W,y=(i*53+t*1.4)%H;g.moveTo(x,y);g.lineTo(x-6,y+14)}g.stroke()}if(S.dk){g.fillStyle='#0008';g.fillRect(0,0,W,H)}if(S.fl){g.fillStyle='#fff';g.fillRect(0,0,W,H)}
+const a=S.sm/100;g.fillStyle=`rgba(90,90,90,${a*.6})`;g.fillRect(0,0,W,H);
+const hb=FX.env*FX.dg,jx=(Math.random()-.5)*hb*10,jy=(Math.random()-.5)*hb*10,v=g.createRadialGradient(W/2+jx,H/2+jy,H*(.3-hb*.08),W/2+jx,H/2+jy,H*.95);v.addColorStop(0,'#0000');v.addColorStop(1,`rgba(220,38,38,${.1+a*.45+FX.dg*.1+hb*.38})`);g.fillStyle=v;g.fillRect(0,0,W,H);
+$('fl').textContent=P.f==6?'🏢 옥상':P.f==8?'🏢 별관 옥상':P.f==0?'🏫 운동장·후문':P.f==7?'🏫 별관 1층':P.f==9?'🕳️ 지하 대피소':'🏫 운중고 '+((P.y<24||(P.x<390&&P.y<62&&P.f==2))&&P.f<5?'별관 ':'본관 ')+P.f+'층';$('ob').textContent='🎯 '+OT()+(S.mopc>0?'  🧹×'+S.mopc:'');$('sm').style.width=S.sm+'%';$('sm').style.background=S.sm>70?'#dc2626':S.sm>40?'#d97706':'#a3a3a3';
+{const r=!!(near&&!S.p);if(r!==window.__baR){window.__baR=r;const ba=$('ba');ba&&ba.classList.toggle('rdy',r);if(r)vb(12)}}
+$('pr').textContent=near&&!S.p?(('ontouchstart'in window)?'':'[E] ')+near.t:''}
+function loop(t){const dt=Math.min(.05,(t-tm)/1000);tm=t;if(S.st=='play'&&!S.p)upd(dt);draw(t);requestAnimationFrame(loop)}
+addEventListener('pointerdown',()=>window.focus());document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');b&&b.blur()});window.onerror=m=>{try{toast('오류: '+m)}catch(e){}};reset();S.st='title';toTitle();requestAnimationFrame(loop);
+if(window.__ujLoad)__ujLoad.then(m=>{try{seen=JSON.parse(m.uj||'[]')}catch(e){}try{bs=JSON.parse(m.ujb||'{}')}catch(e){}ck=m.ujk||ck;if(S.st=='title')toTitle()});
+try{UnjungGame.onPause(()=>{if(S.st=='play'&&!S.p)sets()})}catch(e){}
+</script></body></html>

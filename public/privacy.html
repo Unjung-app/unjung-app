@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>개인정보 처리방침 · 운중고 스마트 캠퍼스</title>
+<title>개인정보 처리방침 · 운중고 스마트 스쿨</title>
 <link rel="icon" href="/icons/icon-192.png">
 <style>
   :root { --ink:#0B1B33; --muted:#4A5872; --line:#DDE3EE; --bg:#F3F5F9; --navy:#0E2748; --accent:#F5A524; }
@@ -21,15 +21,17 @@
   th { background:#EEF2F8; font-weight:600; }
   .box { background:#fff; border-radius:16px; padding:16px 20px; border-left:4px solid var(--accent); }
   a { color:#1B4FD8; }
+  .back{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;margin-bottom:12px;border-radius:999px;background:#eef1f6;color:#1b2a4a;font-weight:600;text-decoration:none}
 </style>
 </head>
 <body>
 <main>
+  <a href="/" id="back" class="back" aria-label="앱으로 돌아가기">← 앱으로 돌아가기</a>
   <header><img src="/icons/icon-192.png" alt=""><h1>개인정보 처리방침</h1></header>
-  <p class="muted">운중고 스마트 캠퍼스 · 시행일 2026년 10월 24일</p>
+  <p class="muted">운중고 스마트 스쿨 · 시행일 2026년 10월 24일</p>
 
   <div class="box">
-    운중고 스마트 캠퍼스(이하 "앱")는 운중고등학교 앱 학생 개발팀의 학생들이 비영리로 만들고 운영하는 학생용 학교 앱입니다.
+    운중고 스마트 스쿨(이하 "앱")는 운중고등학교 앱 학생 개발팀의 학생들이 비영리로 만들고 운영하는 학생용 학교 앱입니다.
     앱은 꼭 필요한 정보만 받고, 광고나 판매 목적으로 쓰지 않습니다.
   </div>
 
@@ -85,5 +87,11 @@
   이메일: <a href="mailto:howonlee728@gmail.com">howonlee728@gmail.com</a></p>
   <p class="muted">이 방침이 바뀌면 앱 공지로 먼저 알립니다.</p>
 </main>
+<script>
+  // 앱(홈 화면 설치)에서 열면 브라우저 뒤로 가기 버튼이 없어서 직접 돌아가는 버튼을 둔다 (의견 #7)
+  document.getElementById('back').addEventListener('click', function (e) {
+    if (history.length > 1) { e.preventDefault(); history.back(); }
+  });
+</script>
 </body>
 </html>

@@ -37,7 +37,7 @@ export function LoginScreen() {
         }}>
         <Logo variant="mark-dark" size={88} />
         <AppText variant="display" color={color.onNavy} accessibilityRole="header">
-          운중고{'\n'}스마트 캠퍼스
+          운중고{'\n'}스마트 스쿨
         </AppText>
         <AppText variant="body" color={color.onNavySub}>
           학생이 만들고 학생이 운영하는 우리 학교 앱
