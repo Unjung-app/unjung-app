@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { useOpenFeature } from '@/features/hooks';
-import { ymdToIso, type Ymd } from '@/lib/date';
+import { isWeekend, ymdToIso, type Ymd } from '@/lib/date';
 import { REWARD } from '@/lib/rewards';
 import { useLaunchEvent } from '@/features/launch/Launch';
 import { supabase } from '@/lib/supabase';
@@ -44,9 +44,10 @@ export function DailyMissions({ today }: { today: Ymd }) {
 
   if (!ready || !reasons) return null;
 
+  // 주말에는 급식이 없어 한줄평 미션을 빼고 3가지만(학생 의견 #106 #110)
   const missions: Mission[] = [
     { key: 'check', emoji: '📅', label: '출석', reward: `+${REWARD.checkIn * mult}`, done: reasons.has('check_in'), feature: 'wallet' },
-    { key: 'meal', emoji: '🍱', label: '한줄평', reward: `+${REWARD.mealReview * mult}`, done: reasons.has('meal_review'), feature: 'meal' },
+    ...(isWeekend(today) ? [] : [{ key: 'meal', emoji: '🍱', label: '한줄평', reward: `+${REWARD.mealReview * mult}`, done: reasons.has('meal_review'), feature: 'meal' }]),
     { key: 'study', emoji: '⏱️', label: '공부 10분', reward: `+${mult}~`, done: reasons.has('study'), feature: 'study' },
     { key: 'game', emoji: '🎮', label: '무료 게임', reward: '무료', done: played, feature: 'games' },
   ];

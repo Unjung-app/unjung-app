@@ -114,7 +114,7 @@ export function RankingScreen({ inStack = false }: { inStack?: boolean }) {
         onChange={setKind}
         options={[
           { value: 'study', label: '공부 시간' },
-          { value: 'tokens', label: '토큰' },
+          { value: 'tokens', label: '모은 토큰' },
         ]}
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
