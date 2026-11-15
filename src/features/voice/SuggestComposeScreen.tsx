@@ -45,15 +45,24 @@ export function SuggestComposeScreen() {
   return (
     <Screen topInset={false}>
       <Card>
-        <AppText variant="label">분야</AppText>
+        <AppText variant="label">분야 · 필수</AppText>
+        <AppText variant="caption" color={color.inkMuted}>
+          건의하고자 하는 청원의 분야를 선택해 주세요.
+        </AppText>
         <ChipRow>
           {CATEGORIES.map((c) => (
             <PickChip key={c} label={`${CATEGORY_EMOJI[c]} ${CATEGORY_LABEL[c]}`} on={cat === c} onPress={() => setCat(c)} />
           ))}
         </ChipRow>
-        <AppText variant="label">제목</AppText>
+        <AppText variant="label">제목 · 필수</AppText>
+        <AppText variant="caption" color={color.inkMuted}>
+          청원의 제목을 작성해 주세요.
+        </AppText>
         <TextInput accessibilityLabel="건의 제목" value={title} onChangeText={(t) => setTitle(t.slice(0, 40))} placeholder="예) 3층 정수기를 늘려 주세요" placeholderTextColor={color.inkFaint} style={{ ...inputStyle, minHeight: 48 }} />
-        <AppText variant="label">내용 · {body.length}/500</AppText>
+        <AppText variant="label">내용 · 필수</AppText>
+        <AppText variant="caption" color={color.inkMuted}>
+          현재의 문제점과 개선이 필요한 이유, 원하는 해결 방안을 구체적으로 작성해 주세요.
+        </AppText>
         <TextInput
           accessibilityLabel="건의 내용"
           value={body}
@@ -63,6 +72,9 @@ export function SuggestComposeScreen() {
           placeholderTextColor={color.inkFaint}
           style={{ ...inputStyle, minHeight: 140, paddingVertical: space.sm, textAlignVertical: 'top' }}
         />
+        <AppText variant="caption" color={color.inkMuted}>
+          {body.length}/500
+        </AppText>
       </Card>
       <Card tone="muted" style={{ gap: 6 }}>
         <AppText variant="label">올리기 전에</AppText>
