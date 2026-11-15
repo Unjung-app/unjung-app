@@ -1,4 +1,4 @@
-import { createElement, useState } from 'react';
+import { createElement, useState, useRef } from 'react';
 import { Image, Modal, Platform, Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
@@ -15,6 +15,7 @@ export function GalleryDetailScreen() {
   const g = useGallery(status === 'ready', 60);
   const p = g.items?.find((x) => String(x.id) === String(id));
   const [open, setOpen] = useState<number | null>(null);
+  const swipeX = useRef<number | null>(null);
   const [confirm, setConfirm] = useState(false);
 
   if (!p) {
@@ -78,7 +79,22 @@ export function GalleryDetailScreen() {
 
       <Modal visible={open !== null} transparent animationType="fade" onRequestClose={() => setOpen(null)}>
         <View style={{ flex: 1, backgroundColor: F.scrim, justifyContent: 'center' }}>
-          {open !== null ? <Image source={{ uri: photoUrl(p.photos[open]) }} style={{ width: '100%', height: '80%' }} resizeMode="contain" accessibilityLabel={`사진 ${open + 1}`} /> : null}
+          {open !== null ? (
+            // 옆으로 밀어서 넘기기(학생 의견 #109)
+            <View
+              style={{ width: '100%', height: '80%' }}
+              onTouchStart={(e) => (swipeX.current = e.nativeEvent.pageX)}
+              onTouchEnd={(e) => {
+                const start = swipeX.current;
+                swipeX.current = null;
+                if (start === null) return;
+                const dx = e.nativeEvent.pageX - start;
+                if (dx < -50) setOpen((o) => (o !== null && o < p.photos.length - 1 ? o + 1 : o));
+                else if (dx > 50) setOpen((o) => (o ? o - 1 : o));
+              }}>
+              <Image source={{ uri: photoUrl(p.photos[open]) }} style={{ width: '100%', height: '100%' }} resizeMode="contain" accessibilityLabel={`사진 ${open + 1}, 옆으로 밀어서 넘기기`} />
+            </View>
+          ) : null}
           <View style={{ position: 'absolute', bottom: 40, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: space.xl }}>
             <Nav label="‹" a11y="이전 사진" disabled={!open} onPress={() => setOpen((o) => (o ? o - 1 : o))} />
             <AppText color={F.ink}>

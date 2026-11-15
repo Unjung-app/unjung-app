@@ -97,7 +97,7 @@ export function MoreScreen() {
             !!teacher && !planner && <ListRow icon="voice" title="설문 만들기" subtitle="선생님 · '선생님 설문'으로 올라가요" onPress={() => router.push('/voice/survey/new')} />,
             !!teacher && !isAdmin && <ListRow icon="ranking" title="앱 사용 현황" subtitle="선생님 · 가입·매일 접속·기능별 사용" onPress={() => router.push('/admin/usage')} />,
             planner && <ListRow icon="voice" title="설문·찬반 투표 만들기" subtitle="기획행정부 · 학생 설문 신청 승인도 여기서" right={<CountBadge n={todo?.survey_requests} />} onPress={() => router.push('/voice')} />,
-            planner && <ListRow icon="check" title="익명 건의 확인" subtitle="기획행정부 · 확인 표시·숨기기" right={<CountBadge n={(todo?.suggestions_new ?? 0) + (todo?.suggestion_reports ?? 0)} />} onPress={() => router.push('/voice?tab=suggest')} />,
+            planner && <ListRow icon="check" title="학생 동의 청원 확인" subtitle="기획행정부 · 확인 표시·숨기기" right={<CountBadge n={(todo?.suggestions_new ?? 0) + (todo?.suggestion_reports ?? 0)} />} onPress={() => router.push('/voice?tab=suggest')} />,
             dept.study && <ListRow icon="study" title="스터디 윗미 관리" subtitle="교육활동부 · 그룹 → 관리자 보기" onPress={() => openFeature('study')} />,
  !isAdmin && dept.dev && <ListRow icon="ranking" title="앱 사용 현황 · 게임별" subtitle="개발자 · 내 게임을 몇 명이 하는지" onPress={() => router.push('/admin/usage')} />,
             !isAdmin && dept.dev && <ListRow icon="settings" title="의견 관리" subtitle="개발자 · 내 게임에 온 학생 의견 확인·답변" right={<CountBadge n={todo?.feedback} />} onPress={() => router.push('/admin/feedback')} />,

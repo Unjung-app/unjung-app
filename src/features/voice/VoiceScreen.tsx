@@ -28,14 +28,14 @@ import {
 } from './data';
 import { ChipRow, PickChip } from './ui';
 
-/** 운중 보이스: 학생회 설문(참여 +3) · 익명 건의(공감, 기획행정부 확인 표시) */
+/** 운중 보이스: 학생회 설문(참여 +3) · 학생 동의 청원(익명, 동의, 기획행정부 확인 표시) */
 export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
   const { status, planner, teacher } = useAuth();
   const ready = status === 'ready';
   const [tab, setTab] = useState<'survey' | 'suggest'>(params.tab === 'suggest' ? 'suggest' : 'survey');
-  // 기획행정부가 건의 탭을 보면 '새 건의' 배지를 지운다
+  // 기획행정부가 건의 탭을 보면 '새 청원' 배지를 지운다
   useEffect(() => {
     if (tab === 'suggest' && planner && status === 'ready') markSeen('suggestions');
   }, [tab, planner, status]);
@@ -66,7 +66,7 @@ export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
         {header}
         <Card tone="navy">
           <AppText variant="heading" color={color.onNavy} style={{ fontSize: 20, lineHeight: 28 }}>
-            학교 계정으로 로그인하면{'\n'}학생회 설문에 참여하고 건의할 수 있어요
+            학교 계정으로 로그인하면{'\n'}학생회 설문과 학생 동의 청원에 참여할 수 있어요
           </AppText>
           <Button
             label={status === 'needsEnrollment' ? '학번 등록하기' : '로그인하기'}
@@ -90,7 +90,7 @@ export function VoiceScreen({ inStack = false }: { inStack?: boolean }) {
         onChange={setTab}
         options={[
           { value: 'survey', label: openCount ? `설문 · 참여할 것 ${openCount}` : '설문' },
-          { value: 'suggest', label: '건의' },
+          { value: 'suggest', label: '학생 동의 청원' },
         ]}
       />
       {tab === 'survey' ? (
@@ -211,15 +211,15 @@ function SuggestionList({ feed, planner, mod, onWrite }: { feed: Feed; planner: 
 
   return (
     <>
-      <Button label="＋ 건의 올리기" onPress={onWrite} />
+      <Button label="＋ 청원 올리기" onPress={onWrite} />
       <AppText variant="caption" color={color.inkMuted} align="center">
-        이름 없이 학년만 보여요 · 공감이 많은 건의를 기획행정부가 먼저 살펴봐요
+        이름 없이 학년만 보여요 · 동의가 많은 청원을 기획행정부가 먼저 살펴봐요
       </AppText>
 
       {planner && (mod.items?.length ?? 0) > 0 ? <ModQueue items={mod.items ?? []} onMod={async (id, show) => (await mod.mod(id, show), feed.reload())} /> : null}
 
       <ChipRow>
-        <PickChip label="공감순" on={sort === 'likes'} onPress={() => setSort('likes')} />
+        <PickChip label="동의순" on={sort === 'likes'} onPress={() => setSort('likes')} />
         <PickChip label="최신순" on={sort === 'new'} onPress={() => setSort('new')} />
       </ChipRow>
       <ChipRow>
@@ -236,7 +236,7 @@ function SuggestionList({ feed, planner, mod, onWrite }: { feed: Feed; planner: 
       ) : list.length === 0 ? (
         <Card>
           <AppText variant="body" color={color.inkMuted}>
-            {all.length ? '이 분야의 건의가 없어요.' : '아직 건의가 없어요. 학교에 바라는 점을 처음으로 남겨 보세요!'}
+            {all.length ? '이 분야의 청원이 없어요.' : '아직 청원이 없어요. 학교에 바라는 점을 처음으로 남겨 보세요!'}
           </AppText>
         </Card>
       ) : (
@@ -277,12 +277,12 @@ function SuggestionCard({ x, planner, feed }: { x: Suggestion; planner: boolean;
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ selected: x.liked, disabled: x.mine }}
-          accessibilityLabel={`공감 ${x.like_count}개${x.liked ? ', 내가 공감함' : ''}`}
+          accessibilityLabel={`동의 ${x.like_count}명${x.liked ? ', 내가 동의함' : ''}`}
           disabled={x.mine}
           onPress={() => run(feed.like(x.id, !x.liked))}
           style={{ minHeight: 44, minWidth: 44, paddingHorizontal: space.md, borderRadius: radius.round, justifyContent: 'center', backgroundColor: x.liked ? color.accentSoft : color.surfaceMuted }}>
           <AppText variant="label" color={x.liked ? color.accentInk : color.ink}>
-            👍 {x.like_count}
+            ✋ 동의 {x.like_count}
           </AppText>
         </Pressable>
         {planner ? (
@@ -327,7 +327,7 @@ function SuggestionCard({ x, planner, feed }: { x: Suggestion; planner: boolean;
 function ModQueue({ items, onMod }: { items: ModSuggestion[]; onMod: (id: number, show: boolean) => Promise<unknown> }) {
   return (
     <Card tone="muted" style={{ gap: space.sm }}>
-      <AppText variant="bodyStrong">🚩 신고된 건의 {items.length}건 (기획행정부)</AppText>
+      <AppText variant="bodyStrong">🚩 신고된 청원 {items.length}건 (기획행정부)</AppText>
       {items.map((x) => (
         <View key={x.id} style={{ backgroundColor: color.surface, borderRadius: radius.control, padding: space.md, gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>

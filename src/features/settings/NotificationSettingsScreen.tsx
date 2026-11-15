@@ -13,7 +13,7 @@ import { color, radius, space } from '@/theme/tokens';
 type Prefs = { mine: boolean; deadline: boolean; morning: boolean; survey: boolean; staff?: boolean; staff_roles?: string[]; devices: number };
 type PrefKey = 'mine' | 'deadline' | 'morning' | 'survey' | 'staff';
 const ROWS: { key: PrefKey; title: string; desc: string }[] = [
-  { key: 'mine', title: '내 글 소식', desc: '공지 승인·반려, 분실물 응답, 건의 확인, 토큰 받음' },
+  { key: 'mine', title: '내 글 소식', desc: '공지 승인·반려, 분실물 응답, 청원 확인, 토큰 받음' },
   { key: 'deadline', title: '과제 마감 전날', desc: '우리 반 게시판에 내일 마감이 있으면 저녁 7시에' },
   { key: 'morning', title: '아침 급식·시간표', desc: '학교 가는 날 아침 7시 30분에 1교시와 점심 메뉴' },
   { key: 'survey', title: '새 학생회 설문', desc: '기획행정부가 설문을 올리면' },

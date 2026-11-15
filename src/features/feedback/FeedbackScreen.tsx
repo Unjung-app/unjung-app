@@ -18,9 +18,9 @@ import { useAuth } from '@/state/auth';
 import { fontStyle } from '@/theme/fonts';
 import { color, radius, space } from '@/theme/tokens';
 
-export type FeedbackKind = 'bug' | 'idea' | 'other';
+export type FeedbackKind = 'bug' | 'idea' | 'question' | 'other';
 export type FeedbackStatus = 'new' | 'seen' | 'done' | 'wontfix';
-export const KIND_LABEL: Record<FeedbackKind, string> = { bug: '버그', idea: '개선 제안', other: '기타' };
+export const KIND_LABEL: Record<FeedbackKind, string> = { bug: '버그', idea: '개선 제안', question: '질문', other: '기타' };
 export const STATUS_LABEL: Record<FeedbackStatus, string> = { new: '접수됨', seen: '확인 중', done: '반영 완료', wontfix: '보류' };
 export const STATUS_TONE: Record<FeedbackStatus, 'muted' | 'accent' | 'success'> = { new: 'muted', seen: 'accent', done: 'success', wontfix: 'muted' };
 
@@ -29,6 +29,7 @@ type Mine = { id: number; kind: FeedbackKind; body: string; status: FeedbackStat
 const PLACEHOLDER: Record<FeedbackKind, string> = {
   bug: '어느 화면에서, 무엇을 했을 때, 어떻게 됐는지 적어 주세요.\n예) 급식 탭에서 금요일을 누르면 화면이 하얗게 돼요',
   idea: '있으면 좋겠는 기능이나 바뀌었으면 하는 점을 적어 주세요.\n예) 시간표에 교실 위치도 보였으면 좋겠어요',
+  question: '앱 쓰는 법이 궁금하면 물어보세요. 답변은 이 화면 아래 내 의견에 달려요.\n예) 시간표에서 다른 반은 어떻게 봐요?',
   other: '앱에 대해 하고 싶은 말을 자유롭게 적어 주세요.',
 };
 
@@ -85,7 +86,7 @@ export function FeedbackScreen() {
     setBody('');
     const bonus = Number((data as { bonus?: number } | null)?.bonus ?? 0);
     if (bonus) refresh(`의견 보내기 +${bonus}`);
-    setMsg({ ok: true, text: `보냈어요!${bonus ? ` 출시 기념 +${bonus} 토큰을 받았어요.` : ''} 개발팀이 확인하고 답할게요. 반영되면 +${doneReward} 토큰을 드려요.` });
+    setMsg({ ok: true, text: `보냈어요!${bonus ? ` 출시 기념 +${bonus} 토큰을 받았어요.` : ''} 개발팀이 확인하고 답할게요.${kind === 'question' ? ' 답변은 아래 내 의견에 달려요.' : ` 반영되면 +${doneReward} 토큰을 드려요.`}` });
     load();
     reloadStats();
   };
@@ -147,6 +148,7 @@ export function FeedbackScreen() {
           options={[
             { value: 'bug', label: '🐞 버그' },
             { value: 'idea', label: '💡 개선 제안' },
+            { value: 'question', label: '❓ 질문' },
             { value: 'other', label: '기타' },
           ]}
         />

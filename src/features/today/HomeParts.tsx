@@ -77,8 +77,8 @@ export function CouncilSection() {
       <NoticeStrip />
       <SurveyStrip />
       <View style={{ flexDirection: 'row', gap: space.md }}>
-        <MiniTile emoji="📢" title="학생회에 건의" sub="익명 · 공감 많으면 안건으로" onPress={() => router.push('/voice/suggest')} />
-        <MiniTile emoji="🗳️" title="설문·건의 보기" sub="참여하면 토큰" onPress={() => open('voice')} />
+        <MiniTile emoji="📢" title="학생 동의 청원" sub="익명 · 동의 많으면 안건으로" onPress={() => router.push('/voice/suggest')} />
+        <MiniTile emoji="🗳️" title="설문·청원 보기" sub="참여하면 토큰" onPress={() => open('voice')} />
       </View>
       <FeedbackCard />
       <GalleryStrip />

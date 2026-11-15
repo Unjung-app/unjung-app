@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DEFAULT_TABS, OLD_DEFAULT_TABS, sanitizeTabs } from '@/features/registry';
 
 // 학생 개인 설정. 지금은 이 기기에만 저장하고, 로그인이 생기면 계정과 동기화한다.
@@ -42,13 +42,31 @@ function parse(raw: string | null): Prefs {
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefs] = useState<Prefs>(DEFAULTS);
   const [loaded, setLoaded] = useState(false);
+  // 저장본을 읽기 전에 들어온 변경은 기다렸다가 저장본 위에 적용한다(안 그러면 기본값으로 저장본을 덮어써 설정이 초기화됨)
+  const loadedRef = useRef(false);
+  const pending = useRef<((p: Prefs) => Prefs)[]>([]);
 
   useEffect(() => {
     let alive = true;
     AsyncStorage.getItem(KEY)
-      .then((raw) => alive && setPrefs(parse(raw)))
+      .then((raw) => {
+        if (!alive) return;
+        let next = parse(raw);
+        const queued = pending.current;
+        pending.current = [];
+        for (const fn of queued) next = fn(next);
+        setPrefs(next);
+        if (queued.length) AsyncStorage.setItem(KEY, JSON.stringify({ ...next, tabsV: 2 })).catch(() => {});
+      })
       .catch(() => {})
-      .finally(() => alive && setLoaded(true));
+      .finally(() => {
+        loadedRef.current = true;
+        if (!alive) return;
+        const left = pending.current;
+        pending.current = [];
+        if (left.length) setPrefs((p) => left.reduce((acc, fn) => fn(acc), p));
+        setLoaded(true);
+      });
     return () => {
       alive = false;
     };
@@ -56,6 +74,10 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 
   // 함수형 업데이트로 저장 → setTabs/setMyClass가 항상 같은 함수라서, 이를 쓰는 쪽이 불필요하게 다시 실행되지 않는다
   const update = useCallback((fn: (p: Prefs) => Prefs) => {
+    if (!loadedRef.current) {
+      pending.current.push(fn);
+      return;
+    }
     setPrefs((prev) => {
       const next = fn(prev);
       if (next === prev) return prev;

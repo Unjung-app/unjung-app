@@ -95,8 +95,8 @@ const ITEMS: { key: keyof Todo; label: string; href: Href }[] = [
   { key: 'lost_photos', label: '분실물 사진', href: '/review' },
   { key: 'meal_reports', label: '신고된 한줄평', href: '/review' },
   { key: 'survey_requests', label: '설문 신청', href: '/voice' },
-  { key: 'suggestions_new', label: '새 익명 건의', href: '/voice?tab=suggest' },
-  { key: 'suggestion_reports', label: '신고된 건의', href: '/voice?tab=suggest' },
+  { key: 'suggestions_new', label: '새 청원', href: '/voice?tab=suggest' },
+  { key: 'suggestion_reports', label: '신고된 청원', href: '/voice?tab=suggest' },
   { key: 'enrollment', label: '학번 정정 요청', href: '/admin/staff' },
 ];
 
