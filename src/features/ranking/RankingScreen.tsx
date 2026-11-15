@@ -214,7 +214,7 @@ export function RankingScreen({ inStack = false }: { inStack?: boolean }) {
         )}
       </View>
       <AppText variant="caption" color={color.inkFaint}>
-        반 점수 = 반 합계 ÷ 앱에 학번을 등록한 학생 수. 등록 학생이 5명 이상인 반부터 순위에 들어가요.
+        반 점수 = 반 합계 ÷ 이번 주에 앱을 쓴 학생 수. 이번 주에 쓴 학생이 5명 이상인 반부터 순위에 들어가요.
       </AppText>
 
       {/* 개인 TOP 10 */}

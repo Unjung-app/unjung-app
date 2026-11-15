@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
@@ -7,6 +7,7 @@ import { ProfileCard } from '@/components/NameTag';
 import { LoginPrompt } from '@/features/wallet/LoginPrompt';
 import { seoulNow } from '@/lib/date';
 import { StudentOnly } from '@/features/auth/StudentOnly';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/state/auth';
 import { useWallet, type Equip, type ShopItem, type ShopKind } from '@/state/wallet';
 import { color, nameColor, profileTheme, radius, space } from '@/theme/tokens';
@@ -31,7 +32,14 @@ const md = (d: string) => `${Number(d.slice(5, 7))}월 ${Number(d.slice(8, 10))}
 
 export function ShopScreen() {
   const { status, teacher } = useAuth();
-  const { wallet, items, itemById, loadItems, buy, equip } = useWallet();
+  const { wallet, items, itemById, loadItems, buy, equip, refresh } = useWallet();
+  // 환불할 수 있는 상품(산 지 24시간 안, 직접 낀 적 없음 · 학생 의견 #102 #103)
+  const [refundable, setRefundable] = useState<Record<string, { until: string; price: number }>>({});
+  const [refunding, setRefunding] = useState(false);
+  const loadRefundables = useCallback(async () => {
+    const { data } = await supabase.rpc('my_refundables');
+    setRefundable(Object.fromEntries(((data as { item: string; until: string; price: number }[]) ?? []).map((x) => [x.item, { until: x.until, price: x.price }])));
+  }, []);
   const [selected, setSelected] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,6 +48,9 @@ export function ShopScreen() {
   useEffect(() => {
     if (status === 'ready' || status === 'needsEnrollment') loadItems();
   }, [status, loadItems]);
+  useEffect(() => {
+    if (status === 'ready') loadRefundables();
+  }, [status, loadRefundables, wallet?.inventory?.length, wallet?.equip]);
 
   const today = seoulNow().ymd; // YYYYMMDD
   const onSale = (i: ShopItem) =>
@@ -71,7 +82,15 @@ export function ShopScreen() {
     const r = await fn();
     setBusy(false);
     setConfirming(false);
+    setRefunding(false);
     setMessage(r.ok ? { ok: true, text: done } : { ok: false, text: r.message });
+  };
+  const refund = async (id: string): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const { error } = await supabase.rpc('refund_item', { p_item: id });
+    if (error) return { ok: false, message: /[가-힣]/.test(error.message) ? error.message : '환불하지 못했어요. 잠시 뒤 다시 시도해 주세요.' };
+    await refresh('꾸미기 환불');
+    await loadRefundables();
+    return { ok: true };
   };
 
   const isEquipped = !!sel && sel.kind !== 'shield' && wallet?.equip[EQUIP_KEY[sel.kind]] === sel.id;
@@ -150,6 +169,16 @@ export function ShopScreen() {
                 {message.text}
               </AppText>
             ) : null}
+            {isOwned && refundable[sel.id] ? (
+              refunding ? (
+                <View style={{ flexDirection: 'row', gap: space.sm }}>
+                  <Button label="취소" variant="soft" style={{ flex: 1 }} disabled={busy} onPress={() => setRefunding(false)} />
+                  <Button label={busy ? '환불 중…' : `🪙${refundable[sel.id].price} 돌려받기`} style={{ flex: 2 }} disabled={busy} onPress={() => run(() => refund(sel.id), '환불했어요. 토큰을 돌려받았어요')} />
+                </View>
+              ) : (
+                <Button label={`실수로 샀어요 · 환불하기 (${refundLeft(refundable[sel.id].until)})`} variant="ghost" disabled={busy} onPress={() => setRefunding(true)} />
+              )
+            ) : null}
             {isOwned ? (
               <Button
                 label={isEquipped ? '해제하기' : '장착하기'}
@@ -178,7 +207,7 @@ export function ShopScreen() {
                       const r = await buy(sel.id);
                       if (r.ok && sel.kind !== 'shield') await equip(sel.kind, sel.id);
                       return r;
-                    }, sel.kind === 'shield' ? '보호권을 샀어요' : '샀어요! 바로 장착했어요')
+                    }, sel.kind === 'shield' ? '보호권을 샀어요' : '샀어요! 바로 장착했어요 · 실수로 샀다면 24시간 안에 환불할 수 있어요(직접 다시 끼거나 빼면 환불 불가)')
                   }
                 />
               </View>
@@ -260,4 +289,11 @@ function ItemTile({
       )}
     </Pressable>
   );
+}
+
+/** 환불 마감까지 남은 시간 */
+function refundLeft(iso: string) {
+  const ms = new Date(iso).getTime() - Date.now();
+  const h = Math.floor(ms / 3_600_000);
+  return h >= 1 ? `${h}시간 남음` : `${Math.max(1, Math.ceil(ms / 60_000))}분 남음`;
 }
