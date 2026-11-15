@@ -1127,6 +1127,11 @@ await sub(B, CB, 'a7');
   const nr = await q(`select value from public.app_config where key = 'no_weekly_reward'`); expect('학교 한 바퀴 주간 보상 제외', nr.rows[0]?.value === 'campus_walk');
 }
 
+{ // 11-15: 학생 동의 청원 · 생활·규정 분야
+  const lf = await as(A, CA, `select public.post_suggestion('life', '두발 규정 완화', '현재 규정이 너무 엄격해서 바꿨으면 좋겠습니다') id`); expect('생활·규정 분야 청원 올리기', lf.ok);
+  const bad = await as(A, CA, `select public.post_suggestion('nope', '제목입니다', '내용입니다 내용')`); expect('없는 분야 거부', !bad.ok);
+}
+
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
 if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');

@@ -31,7 +31,7 @@ const FEATURES: [string, string][] = [
   ['game_plays', '게임 판 수'],
   ['meal_reviews', '급식 한줄평'],
   ['notices', '학생 공지 글'],
-  ['suggestions', '건의'],
+  ['suggestions', '청원'],
   ['survey_answers', '설문 응답'],
 ];
 

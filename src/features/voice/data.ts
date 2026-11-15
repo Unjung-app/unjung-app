@@ -171,12 +171,12 @@ export async function closeSurvey(id: number, del: boolean): Promise<Result> {
   return res(error);
 }
 
-// ───────── 건의 ─────────
+// ───────── 학생 동의 청원(서버 이름은 suggestions) ─────────
 
-export type SuggestionCategory = 'facility' | 'meal' | 'event' | 'study' | 'etc';
-export const CATEGORIES: SuggestionCategory[] = ['facility', 'meal', 'event', 'study', 'etc'];
-export const CATEGORY_LABEL: Record<SuggestionCategory, string> = { facility: '시설', meal: '급식', event: '행사', study: '학습', etc: '기타' };
-export const CATEGORY_EMOJI: Record<SuggestionCategory, string> = { facility: '🏫', meal: '🍱', event: '🎪', study: '📚', etc: '💬' };
+export type SuggestionCategory = 'facility' | 'meal' | 'event' | 'study' | 'life' | 'etc';
+export const CATEGORIES: SuggestionCategory[] = ['facility', 'meal', 'study', 'event', 'life', 'etc'];
+export const CATEGORY_LABEL: Record<SuggestionCategory, string> = { facility: '시설·환경', meal: '급식', study: '수업·학사', event: '행사·동아리', life: '생활·규정', etc: '기타' };
+export const CATEGORY_EMOJI: Record<SuggestionCategory, string> = { facility: '🏫', meal: '🍱', study: '📚', event: '🎪', life: '📏', etc: '💬' };
 
 export type Suggestion = {
   id: number;
