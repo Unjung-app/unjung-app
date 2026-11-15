@@ -17,6 +17,8 @@ export type Role = 'student' | 'reviewer' | 'admin';
 // 학적·역할을 기기에 저장해 둔다: 다음에 열 때 바로 보이고, 학교 와이파이가 끊겨도
 // '학번 등록' 화면으로 잘못 보내지 않는다(서버 확인에 실패하면 저장본을 그대로 쓴다).
 const PROFILE_KEY = 'unjung.profile.v1';
+/** '내 반'을 학적에서 마지막으로 맞춘 값(학적이 바뀔 때만 다시 맞춘다) */
+const CLASS_SYNC_KEY = 'unjung.classSync.v1';
 type ProfileCache = { uid: string; year: number; role: Role; planner: boolean; enrollment: Enrollment | null; teacher?: string | null; teacherInfo?: TeacherInfo | null; teacherBlocked?: boolean };
 
 /** 선생님 정보(교직원 계정) */
@@ -76,7 +78,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTeacher(c.teacher ?? null);
       setTeacherInfo(c.teacherInfo ?? null);
       setTeacherBlocked(!!c.teacherBlocked);
-      if (c.enrollment) setMyClass({ grade: c.enrollment.grade, classNo: c.enrollment.class_no });
+      // 학적의 반은 처음 한 번(또는 학적이 바뀌었을 때)만 '내 반'으로 넣는다.
+      // 앱을 열 때마다 덮어쓰면 학생이 직접 고른 반이 계속 초기화된다(학생 의견 #92)
+      if (c.enrollment) {
+        const key = `${c.enrollment.grade}-${c.enrollment.class_no}`;
+        const e = c.enrollment;
+        AsyncStorage.getItem(CLASS_SYNC_KEY)
+          .then((prev) => {
+            if (prev === key) return;
+            setMyClass({ grade: e.grade, classNo: e.class_no });
+            return AsyncStorage.setItem(CLASS_SYNC_KEY, key);
+          })
+          .catch(() => {});
+      }
       setProfileKnown(true);
     },
     [setMyClass],
