@@ -108,7 +108,8 @@ export function NoticeComposeScreen() {
     if (!kind) return;
     setBusy(true);
     setError(null);
-    const d: NoticeDraft = { kind, title, body, eventDate, scope, showFrom, days: selectedDays };
+    // 선생님은 고른 학년·반을 서버에 보낸다(학생은 자기 학년·반으로 서버가 정함)
+    const d: NoticeDraft = { kind, title, body, eventDate, scope, showFrom, days: selectedDays, grade: teacher ? tGrade : null, classNo: teacher ? tClass : null };
     const r = await submitNotice(d);
     setBusy(false);
     if (r.ok) setDone(true);
