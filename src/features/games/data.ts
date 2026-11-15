@@ -14,11 +14,17 @@ export type GameStatus = {
   next_cost: number | null;
   in_class: boolean;
   score_tokens_today?: number;
+  /** 이번 주 가장 많은 학생이 한 게임 1~2개 */
+  popular?: string[];
   best: Partial<Record<GameId, number>> | null;
 };
 
 /** 무료 판을 다 써서 다음 판이 토큰 연장인지 */
-export const isExtra = (s: GameStatus | null | undefined) => !!s && s.plays_today >= s.max_plays && s.next_cost !== null;
+export const isExtra = (s: GameStatus | null | undefined) => !!s && s.plays_today >= s.max_plays && typeof s.next_cost === 'number';
+/** 오늘 더 할 수 없음(하루 최대를 다 했거나, 연장을 모르는 옛 서버에서 무료 판을 다 씀) */
+export const isDoneToday = (s: GameStatus | null | undefined) => !!s && (s.next_cost === null || (s.plays_today >= s.max_plays && typeof s.next_cost !== 'number'));
+/** 연장 가격표(11판부터): 할수록 비싸진다 */
+export const EXTRA_PRICES = '11·12판 5 → 13·14판 8 → 15·16판 12 → 17·18판 16 → 19·20판 20토큰';
 
 export type StartResult = { id: string; game: GameId; duration_s: number; cost: number; plays_today: number };
 export type FinishResult = { score: number; best: number; new_best: boolean; reward: number; score_reward?: number };
@@ -47,13 +53,16 @@ export function useGameStatus(enabled: boolean) {
   return { status, reload: load };
 }
 
-export function useGameRanking(game: GameId, enabled: boolean) {
+/** allTime: 역대 최고 기록 순위(학생 의견 #59). 기본은 이번 주 */
+export function useGameRanking(game: GameId, enabled: boolean, allTime = false) {
   const [data, setData] = useState<GameRanking | null>(null);
   const load = useCallback(async () => {
     if (!enabled) return;
-    const { data: d } = await supabase.rpc('game_ranking', { p_game: game, p_week_start: ymdToIso(mondayOf(seoulNow().ymd)) });
+    const { data: d } = allTime
+      ? await supabase.rpc('game_ranking_all', { p_game: game })
+      : await supabase.rpc('game_ranking', { p_game: game, p_week_start: ymdToIso(mondayOf(seoulNow().ymd)) });
     if (d) setData(d as GameRanking);
-  }, [game, enabled]);
+  }, [game, enabled, allTime]);
   useEffect(() => {
     setData(null);
     load();

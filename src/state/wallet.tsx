@@ -217,8 +217,15 @@ export function useWallet() {
   return v;
 }
 
+/** 공부 화면처럼 집중해야 할 때는 토큰을 받아도 진동하지 않는다(학생 의견 #61) */
+let quietRewards = false;
+export function setQuietRewards(on: boolean) {
+  quietRewards = on;
+}
+
 /** 토큰을 받을 때 휴대폰 진동 (안드로이드 웹은 vibrate, 앱은 햅틱. 아이폰 웹은 지원 안 함) */
 function rewardHaptic() {
+  if (quietRewards) return;
   try {
     if (Platform.OS === 'web') {
       const nav = globalThis.navigator as Navigator | undefined;

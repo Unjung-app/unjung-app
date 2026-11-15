@@ -163,6 +163,12 @@ export function NotificationSettingsScreen() {
       <AppText variant="caption" color={color.inkMuted}>
         종류 설정은 내 계정의 모든 기기에 함께 적용돼요. 알림에는 이름·학번이 들어가지 않아요.
       </AppText>
+      <Card tone="muted" style={{ gap: space.xs }}>
+        <AppText variant="label">🔒 잠금화면에 안 뜨면</AppText>
+        <AppText variant="caption" color={color.inkMuted}>
+          {'아이폰: 설정 → 알림 → 운중고 → ‘잠금 화면’과 ‘배너’를 켜 주세요. 집중 모드(방해 금지)가 켜져 있으면 안 떠요.\n안드로이드: 설정 → 알림 → 앱 알림 → 크롬(또는 운중고) → 알림 허용 · ‘잠금화면에 표시’ · 중요도 ‘높음’으로.\n홈 화면에 추가한 앱에서만 알림이 와요(아이폰).'}
+        </AppText>
+      </Card>
     </Screen>
   );
 }
