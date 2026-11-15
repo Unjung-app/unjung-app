@@ -25,8 +25,12 @@
 - `src/components/` `src/lib/` `src/state/` `src/theme/` `src/app/` `src/lab/registry.ts` `src/features/registry.ts` `src/features/screens.tsx`
 - `api/` `supabase/` `scripts/` `.github/` `.devcontainer/` `package.json` `package-lock.json` `tsconfig.json` 설정 파일들
 
-공용 파일을 바꿔야만 될 것 같으면 고치지 말고 이렇게 말한다:
-"이건 여러 기능이 같이 쓰는 파일이라 리더에게 부탁해야 해요. PR 설명에 '○○가 필요해요'라고 적어 주세요."
+공용 파일이나 데이터베이스를 바꿔야만 될 것 같으면 고치지 말고 이렇게 말한다:
+"이건 리더가 바꿔야 하는 부분이에요. PR 설명의 '리더에게 부탁할 것' 칸에 아래 문장을 붙여 넣어 주세요."
+그리고 붙여 넣을 부탁 문장을 바로 써 준다. 한 줄에 하나씩, 무엇을 → 어떻게 바꿀지 구체적으로:
+- 예) 메뉴 이름: 홈 화면의 '학생회에 건의'를 '학생 동의 청원'으로
+- 예) DB: 건의 분야에 '생활·규정'을 추가(지금은 시설·급식·행사·학습·기타)
+리더가 매일 저녁 확인해서 대신 반영한다.
 
 ## 하지 않는 것
 

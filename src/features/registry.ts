@@ -27,7 +27,7 @@ export const FEATURES: Feature[] = [
   { id: 'notice', title: '학생 공지', short: '공지', desc: '학생이 올리고 검토위원이 확인한 학교 소식', icon: 'notice', status: 'live' },
   { id: 'gallery', title: '행사 사진', short: '사진', desc: '소통홍보부가 올리는 학교 행사 사진·영상', icon: 'camera', status: 'live' },
   { id: 'lost', title: '분실물', short: '분실물', desc: '잃어버린 물건·주운 물건 찾기', icon: 'search', status: 'live' },
-  { id: 'voice', title: '운중 보이스', short: '보이스', desc: '학생회 설문 참여(+3)와 익명 건의', icon: 'voice', status: 'live' },
+  { id: 'voice', title: '운중 보이스', short: '보이스', desc: '학생회 설문 참여(+3)와 학생 동의 청원', icon: 'voice', status: 'live' },
   { id: 'sports', title: '스포츠 허브', short: '스포츠', desc: '반 대항전 일정과 결과', icon: 'sports', status: 'soon' },
 ];
 

@@ -10,7 +10,7 @@ import { color, space } from '@/theme/tokens';
 import { CATEGORIES, CATEGORY_EMOJI, CATEGORY_LABEL, postSuggestion, type SuggestionCategory } from './data';
 import { ChipRow, inputStyle, PickChip } from './ui';
 
-/** 건의 올리기: 분야 · 제목 · 내용. 이름 없이 학년만 보인다. */
+/** 학생 동의 청원 올리기: 분야 · 제목 · 내용. 이름 없이 학년만 보인다. */
 export function SuggestComposeScreen() {
   const router = useRouter();
   const { status, enrollment } = useAuth();
@@ -20,12 +20,12 @@ export function SuggestComposeScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (status === 'signedOut') return <LoginPrompt what="건의 올리기" />;
+  if (status === 'signedOut') return <LoginPrompt what="청원 올리기" />;
   if (!enrollment) {
     return (
       <Screen topInset={false}>
         <AppText variant="body" color={color.inkMuted}>
-          학번을 등록하면 건의를 올릴 수 있어요.
+          학번을 등록하면 청원을 올릴 수 있어요.
         </AppText>
       </Screen>
     );
@@ -47,7 +47,7 @@ export function SuggestComposeScreen() {
       <Card>
         <AppText variant="label">분야 · 필수</AppText>
         <AppText variant="caption" color={color.inkMuted}>
-          건의하고자 하는 청원의 분야를 선택해 주세요.
+          청원의 분야를 선택해 주세요.
         </AppText>
         <ChipRow>
           {CATEGORIES.map((c) => (
@@ -58,13 +58,13 @@ export function SuggestComposeScreen() {
         <AppText variant="caption" color={color.inkMuted}>
           청원의 제목을 작성해 주세요.
         </AppText>
-        <TextInput accessibilityLabel="건의 제목" value={title} onChangeText={(t) => setTitle(t.slice(0, 40))} placeholder="예) 3층 정수기를 늘려 주세요" placeholderTextColor={color.inkFaint} style={{ ...inputStyle, minHeight: 48 }} />
+        <TextInput accessibilityLabel="청원 제목" value={title} onChangeText={(t) => setTitle(t.slice(0, 40))} placeholder="예) 3층 정수기를 늘려 주세요" placeholderTextColor={color.inkFaint} style={{ ...inputStyle, minHeight: 48 }} />
         <AppText variant="label">내용 · 필수</AppText>
         <AppText variant="caption" color={color.inkMuted}>
           현재의 문제점과 개선이 필요한 이유, 원하는 해결 방안을 구체적으로 작성해 주세요.
         </AppText>
         <TextInput
-          accessibilityLabel="건의 내용"
+          accessibilityLabel="청원 내용"
           value={body}
           onChangeText={(t) => setBody(t.slice(0, 500))}
           multiline
@@ -87,7 +87,7 @@ export function SuggestComposeScreen() {
           {error}
         </AppText>
       ) : null}
-      <Button label={busy ? '올리는 중…' : '건의 올리기'} disabled={!ready || busy} onPress={submit} style={{ minHeight: 52 }} />
+      <Button label={busy ? '올리는 중…' : '청원 올리기'} disabled={!ready || busy} onPress={submit} style={{ minHeight: 52 }} />
     </Screen>
   );
 }
