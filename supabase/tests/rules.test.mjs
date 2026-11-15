@@ -254,6 +254,7 @@ const sA4 = await start(A, '2026-10-26 21:00:00+09');
 
 // 랭킹
 await as(D, CD, `select public.set_ranking_hidden(true)`);
+await q(`insert into public.token_ledger (user_id, delta, reason, ref_id, created_at) select e.user_id, 1, 'check_in', 'rank-test:' || e.user_id, '2026-10-27 09:00+09' from public.enrollments e where e.grade = 2 and e.class_no = 8 and e.user_id is not null and not exists (select 1 from public.token_ledger l where l.ref_id = 'rank-test:' || e.user_id)`); // 11-15: 반 평균은 그 주에 앱을 쓴 학생만
 { const r = await as(A, CA, `select public.ranking('study', 2, '2026-10-28') r`, 'A 2학년 공부 랭킹'); const k = r.rows[0]?.r;
   const c8 = k?.classes?.find((c) => c.class_no === 8);
   expect('랭킹: 반 8개, 우리 반 표시, 3명이라 참여 부족', k?.classes?.length === 8 && c8?.mine === true && c8?.members === 3 && c8?.eligible === false && c8?.rank === null);
@@ -264,6 +265,9 @@ await as(D, CD, `select public.set_ranking_hidden(true)`);
 for (const [u, e, no] of [['77777777-7777-7777-7777-777777777771', 'f1@unjung.hs.kr', '20803'], ['77777777-7777-7777-7777-777777777772', 'f2@unjung.hs.kr', '20804']]) {
   await q(`insert into auth.users values ('${u}','${e}')`); await as(u, e, `select public.register_enrollment('${no}','친구')`);
 }
+{ const r = await as(A, CA, `select public.ranking('study', 2, '2026-10-26') r`); const c8 = r.rows[0]?.r?.classes?.find((c) => c.class_no === 8);
+  expect('11-15: 이번 주에 안 쓴 학생은 반 평균 인원에서 빠짐', c8?.members === 3 && c8?.eligible === false); }
+await q(`insert into public.token_ledger (user_id, delta, reason, ref_id, created_at) select e.user_id, 1, 'check_in', 'rank-test:' || e.user_id, '2026-10-27 09:00+09' from public.enrollments e where e.grade = 2 and e.class_no = 8 and e.user_id is not null and not exists (select 1 from public.token_ledger l where l.ref_id = 'rank-test:' || e.user_id)`); // 11-15: 반 평균은 그 주에 앱을 쓴 학생만
 { const r = await as(A, CA, `select public.ranking('study', 2, '2026-10-26') r`); const c8 = r.rows[0]?.r?.classes?.find((c) => c.class_no === 8);
   expect('5명이 되면 반 순위 참여, 평균 = 합계÷5', c8?.eligible === true && c8?.rank === 1 && c8?.avg === Math.round(c8.total / 5)); }
 { const r = await as(B, CB, `select public.ranking('study', 2, '2026-10-26') r`); expect('다른 학년도 볼 수 있지만 내 순위 없음', r.ok && r.rows[0]?.r?.me === null); }
@@ -1149,6 +1153,36 @@ await sub(B, CB, 'a7');
   const gs = await as(A, CA, `select public.game_status() r`); expect('게임 상태에 인기 게임', gs.ok && Array.isArray(gs.rows[0]?.r?.popular));
   const ga = await as(A, CA, `select public.game_ranking_all('tower') r`); expect('역대 최고 순위', ga.ok && ga.rows[0]?.r?.all_time === true && Array.isArray(ga.rows[0]?.r?.top));
   const nr = await q(`select value from public.app_config where key = 'no_weekly_reward'`); expect('학교 한 바퀴 주간 보상 제외', nr.rows[0]?.value === 'campus_walk');
+}
+
+{ // 11-15: 학생 동의 청원 · 생활·규정 분야
+  const lf = await as(A, CA, `select public.post_suggestion('life', '두발 규정 완화', '현재 규정이 너무 엄격해서 바꿨으면 좋겠습니다') id`); expect('생활·규정 분야 청원 올리기', lf.ok);
+  const bad = await as(A, CA, `select public.post_suggestion('nope', '제목입니다', '내용입니다 내용')`); expect('없는 분야 거부', !bad.ok);
+}
+
+{ // 11-15: 꾸미기 환불 · 질문 종류
+  const R = '99999999-9999-9999-9999-999999995501', CR = 'refund@unjung.hs.kr';
+  await q(`insert into auth.users values ('${R}','${CR}')`); await as(R, CR, `select public.register_enrollment('10120','환불')`);
+  await q(`insert into public.token_ledger (user_id, delta, reason, ref_id) values ('${R}', 200, 'admin', 'refund-test-seed')`);
+  const bal = async () => Number((await q(`select coalesce(sum(delta),0)::int b from public.token_ledger where user_id='${R}'`)).rows[0].b);
+  const b0 = await bal();
+  await as(R, CR, `select public.buy_item('e_fire')`, '환불 테스트 구매'); await as(R, CR, `select public.buy_item('e_star')`);
+  const rf = await as(R, CR, `select public.my_refundables() r`); expect('산 상품은 환불 가능 목록에', (rf.rows[0]?.r ?? []).some((x) => x.item === 'e_fire'));
+  const ok = await as(R, CR, `select public.refund_item('e_fire')`); const inv = await q(`select count(*)::int n from public.inventory where user_id='${R}' and item_id='e_fire'`);
+  expect('안 낀 상품 환불: 토큰 돌려받고 상품 사라짐', ok.ok && inv.rows[0].n === 0 && (await bal()) === b0 - 30);
+  await as(R, CR, `select public.equip_item('emoji', 'e_star')`); const auto = await as(R, CR, `select public.my_refundables() r`);
+  expect('사자마자 자동 착용은 낀 것으로 안 침', (auto.rows[0]?.r ?? []).some((x) => x.item === 'e_star'));
+  await q(`update public.inventory set acquired_at = now() - interval '2 minutes' where user_id='${R}' and item_id='e_star'`); await as(R, CR, `select public.equip_item('emoji', null)`); await as(R, CR, `select public.equip_item('emoji', 'e_star')`);
+  const no = await as(R, CR, `select public.refund_item('e_star')`); expect('한 번이라도 낀 상품은 환불 불가', !no.ok);
+  await as(R, CR, `select public.buy_item('e_moon')`); await q(`update public.inventory set acquired_at = now() - interval '25 hours' where user_id='${R}' and item_id='e_moon'`);
+  const old = await as(R, CR, `select public.refund_item('e_moon')`); expect('24시간 지나면 환불 불가', !old.ok);
+  const twice = await as(R, CR, `select public.refund_item('e_fire')`); expect('같은 상품 두 번 환불 불가', !twice.ok);
+  const qf = await as(A, CA, `select public.submit_feedback('question', '시간표에서 반은 어떻게 바꾸나요?', '홈', '1.3.0', 'test') r`); expect('질문 보내기', qf.ok);
+  const fid = qf.rows[0]?.r?.id;
+  const before = await q(`select count(*)::int n from public.token_ledger where reason = 'feedback_done' and ref_id = '${fid}'`);
+  await as(A, CA, `select public.admin_update_feedback(${fid}, 'done', '전체 → 내 반 설정에서 바꿔요')`);
+  const after = await q(`select count(*)::int n from public.token_ledger where reason = 'feedback_done' and ref_id = '${fid}'`);
+  expect('질문에 답해도 토큰은 없음', before.rows[0].n === 0 && after.rows[0].n === 0);
 }
 
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db

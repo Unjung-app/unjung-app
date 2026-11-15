@@ -105,7 +105,7 @@ function Root() {
         <Stack.Screen name="gallery/new" options={{ title: '행사 사진 올리기' }} />
         <Stack.Screen name="voice/survey/[id]" options={{ title: '설문' }} />
         <Stack.Screen name="voice/survey/new" options={{ title: '설문 만들기' }} />
-        <Stack.Screen name="voice/suggest" options={{ title: '건의 올리기' }} />
+        <Stack.Screen name="voice/suggest" options={{ title: '청원 올리기' }} />
         <Stack.Screen name="profile/[nickname]" options={{ title: '프로필' }} />
         <Stack.Screen name="study/focus" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="study/group/[id]" options={{ title: '그룹 순위' }} />
