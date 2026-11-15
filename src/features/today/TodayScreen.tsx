@@ -12,6 +12,7 @@ import { DailyMissions } from '@/features/today/DailyMissions';
 import { CouncilSection, QuickGrid, QuoteLine } from '@/features/today/HomeParts';
 import { NicknamePrompt } from '@/features/settings/NicknamePrompt';
 import { UpdateNotesCard } from '@/features/updates/UpdateNotes';
+import { StaffTodoCard } from '@/features/admin/todo';
 import { FirstMissions } from '@/features/launch/FirstMissions';
 import { useWallet } from '@/state/wallet';
 import { LaunchBanner, useLaunchEvent } from '@/features/launch/Launch';
@@ -108,6 +109,7 @@ export function TodayScreen() {
       </View>
 
       <QuoteLine today={now.ymd} />
+      <StaffTodoCard />
       {teacher ? null : <WalletStrip />}
       <UpdateNotesCard />
       <InstallBanner />
