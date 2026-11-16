@@ -112,8 +112,8 @@ canvas{display:block;width:100%}
 #dG{height:170px;margin-top:10px}
 .tag{font-size:11px;color:var(--pri);background:var(--pl);border-radius:6px;padding:1px 7px;font-weight:700}
 /* 거래창 */
-#sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:30}
-#sheet[hidden]{display:none}
+#sheet,#fund{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:30}
+#sheet[hidden],#fund[hidden]{display:none}
 .sh{width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
 .seg button{border:0;border-radius:10px;padding:10px;font-weight:700;background:var(--bg)}
@@ -124,8 +124,11 @@ canvas{display:block;width:100%}
 #sOK{width:100%;margin-top:10px;font-size:16px}
 .x{border:0;background:none;font-size:20px}
 .tip{margin-top:12px;background:var(--pl);color:var(--pri);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600}
-#help{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
-#help[hidden],#res[hidden]{display:none!important}
+#toasts{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:6px;z-index:60;pointer-events:none}
+.toast{background:rgba(25,31,40,.93);color:#fff;border-radius:12px;padding:10px 14px;font-size:13px;font-weight:600;max-width:90vw;animation:tin .2s}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#help,#over{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+#help[hidden],#over[hidden]{display:none}
 .hc{background:var(--card);border-radius:20px;padding:20px;max-width:440px;width:100%;max-height:85dvh;overflow:auto}
 .hc ol{padding-left:20px;margin:12px 0}.hc li{margin:9px 0}
 @media (min-width:900px){
@@ -133,7 +136,6 @@ canvas{display:block;width:100%}
  #det{display:flex;position:sticky;top:12px;inset:auto;height:calc(100dvh - 24px);border-radius:16px;overflow:hidden;background:var(--bg)}
  .dh{padding-top:12px}#back{display:none}
 }
-.res h2{margin:4px 0 2px;font-size:30px;letter-spacing:-.5px}.res .big{font-size:15px;margin:6px 0 14px}.res .btn{width:100%;margin-top:8px}
 </style>
 </head>
 <body>
@@ -158,29 +160,32 @@ canvas{display:block;width:100%}
       <div class="hb" id="dP"></div><div id="dC" style="font-weight:600"></div><canvas id="dG"></canvas></div>
     <div class="card"><h3>내 보유</h3><div id="dH"></div></div>
     <div class="card"><h3>📰 뉴스</h3>
-      <div class="sub">힌트를 사면 다음 변동에 대한 소식을 볼 수 있어요. 신뢰도가 높을수록 비싸고 정확해요.</div>
+      <div class="sub">힌트를 사면 다음 변동에 대한 소식을 볼 수 있어요. 신뢰도가 높을수록 비싸고 정확해요. 가격은 내 총 자산에 비례해요.</div>
       <div class="g3" id="dL"></div><div id="dF"></div></div>
   </div>
-  <div class="dbar"><button class="btn b-sell" id="dSell">매도</button><button class="btn b-buy" id="dBuy">매수</button></div>
+  <div class="dbar"><button class="btn b-sell" id="dSell">매도</button><button class="btn b-buy" id="dBuy">매수</button><button class="chip" id="dShort" style="grid-column:1/3">📉 공매도(숏) 하기</button></div>
 </div>
 </div></div>
 <div id="help" hidden><div class="hc"><h3 style="font-size:18px">📖 게임 방법</h3>
 <ol>
-<li><b>목표</b>: 현금 1억 원으로 주식과 부동산에 투자해 자산을 불려 보세요. <b>30턴(1배속 약 10분)</b>이 지나면 결산해요. 점수는 최종 자산(백만 원 단위)이에요. 🏁 버튼으로 일찍 결산할 수도 있어요.</li>
-<li><b>시간</b>: 1턴은 20초예요. 주식은 <b>매 턴</b>, 부동산은 <b>10턴마다</b> 가격이 바뀌어요. 상단 버튼으로 일시정지·배속을 할 수 있어요.</li>
+<li><b>목표</b>: 현금 1억 원으로 주식과 부동산에 투자해 자산을 불려 보세요. 게임은 <b>30턴</b> 동안 진행되고, 끝나면 최종 자산으로 결과가 나와요. 점수는 최종 자산(백만 원 단위)이에요.</li>
+<li><b>시간</b>: 1턴은 20초예요. 주식은 <b>매 턴</b>, 부동산은 <b>6턴마다</b> 가격이 바뀌어요. 상단 버튼으로 일시정지·배속을 할 수 있어요.</li>
 <li><b>거래</b>: 종목을 누르면 상세 화면이 열려요. 아래 <b>매수/매도</b>를 누르세요. 거래창이 열려 있는 동안은 시간이 멈춰요.</li>
-<li><b>뉴스</b>: 위쪽 기본 뉴스는 무료지만 애매해요. 종목 상세에서 <b>힌트</b>를 사면 다음 변동에 대한 소식을 볼 수 있고, 신뢰도가 높을수록 비싸고 정확해요.</li>
+<li><b>뉴스</b>: 위쪽 전망 뉴스는 무료이고, 앞으로 5턴 동안 주가가 오를지 내릴지 방향을 알려줘요. 긍정 뉴스면 오를 확률이, 부정 뉴스면 내릴 확률이 올라가지만 확정은 아니에요. 전망 뉴스가 없는 턴도 있어요. 종목 상세에서 <b>힌트</b>를 사면 다음 변동에 대한 소식을 볼 수 있고, 신뢰도가 높을수록 비싸고 정확해요.</li>
 <li><b>사이드카</b>: 크게 오르면 매수, 크게 내리면 매도가 잠시 멈추는 안전장치예요.</li>
 <li><b>서킷브레이커</b>: 세 학교 주식의 평균이 한 턴에 20% 이상 떨어지면 모든 주식 거래가 2턴간 멈춰요.</li>
 <li><b>상장폐지</b>: 주가가 처음보다 80% 이상 떨어지면 경고가 뜨고, 그 상태가 3턴 이어지면 상장폐지되어 보유 주식이 사라져요.</li>
+<li><b>공매도(숏)</b>: 주식 상세 화면의 '공매도' 버튼으로, 주가가 내릴 때 이익을 보는 거래를 할 수 있어요. 거래 금액만큼 증거금이 묶이고, 주가가 진입가보다 80% 오르면 강제청산돼요. 보유(롱)와 숏은 한 종목에 동시에 가질 수 없어요.</li>
 <li><b>비용</b>: 주식은 팔 때 수수료 0.2%, 부동산은 사고팔 때 각각 2%예요. 부동산은 보유하면 월세가 들어와요.</li>
 <li><b>색깔</b>: 빨강은 상승, 파랑은 하락이에요.</li>
 </ol><button class="btn b-buy" id="hOK" style="width:100%;background:var(--pri)">시작하기</button></div></div>
-<div id="res" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px"><div class="hc res" id="resC"></div></div>
+<div id="toasts"></div>
+<div id="fund" hidden><div class="sh"><div class="row"><b style="font-size:16px">💸 현금이 부족해요</b><button class="x" id="fX">✕</button></div><div class="sub" id="fI" style="margin:10px 0;line-height:1.6"></div><div id="fL"></div><div class="sub" style="text-align:center;margin-top:10px">⏸ 선택하는 동안은 시간이 멈춰요</div></div></div>
+<div id="over" hidden><div class="hc" style="text-align:center"><div style="font-size:44px">🏁</div><h3 style="font-size:20px">게임 종료!</h3><div class="sub">30턴이 모두 지났어요</div><div class="hb" id="oN" style="margin:10px 0"></div><div id="oP" style="font-weight:700"></div><div id="oG" style="margin:12px 0;font-size:18px;font-weight:800"></div><button class="btn b-buy" id="oR" style="width:100%;background:var(--pri)">다시 하기</button></div></div>
 <div id="sheet" hidden><div class="sh">
   <div class="row"><b id="sT" style="font-size:16px"></b><button class="x" id="sX">✕</button></div>
-  <div class="seg"><button id="mB" class="on">매수</button><button id="mS">매도</button></div>
-  <div class="sub" id="sI" style="margin-top:10px"></div>
+  <div class="seg"><button id="mB" class="on">매수</button><button id="mS">매도</button><button id="mH">공매도</button><button id="mC">숏 청산</button></div>
+  <div class="sub" id="sI" style="margin-top:10px"></div><div class="sub" id="sN" style="margin-top:6px"></div>
   <div class="qrow"><button id="qm">−</button><input id="qi" type="number" inputmode="numeric" min="0" placeholder="0"><button id="qp">+</button></div>
   <div class="row" id="chips" style="flex-wrap:wrap;justify-content:center;gap:6px"></div>
   <div class="sub" id="sE" style="text-align:center;margin-top:10px"></div>
@@ -188,7 +193,7 @@ canvas{display:block;width:100%}
   <button id="sOK" class="btn"></button>
 </div></div>
 <script>
-const END=30,START=1e8,DAY=20,SDT=20,RINT=10,RENT=.001,SFEE=.002,RFEE=.02;
+const START=1e8,DAY=20,SDT=20,RINT=6,RENT=.0006,MAXT=30,SFEE=.002,RFEE=.02;
 const ST=[[.60,.1,5],[.20,5,10],[.15,10,20],[.04,20,40],[.008,40,100],[.002,100,300]];
 const RT=[[.45,.1,5],[.25,5,10],[.18,10,20],[.08,20,40],[.035,40,100],[.005,100,300]];
 const DEF=[
@@ -209,17 +214,8 @@ const NS={s:[
   m:['{n} 대출 규제 영향권이라는 보도','{n} 인근 미분양 증가 보도','{n} 보유세 부담 논의']},
  {p:['[공고] {n} 개발계획 확정','[공고] {n} 광역 교통망 착공','[속보] {n} 재건축 승인'],
   m:['[공고] {n} 대규모 입주 물량 확정','[공고] {n} 개발 계획 철회','[속보] {n} 규제지역 지정']}]};
-const BN=[
- {k:'m',t:'교육청, 학교 지원 방침 조정 검토',p:'지원을 늘리는 쪽으로 이야기가 오간다고 함',m:'지원을 줄이는 쪽 이야기도 거론된다고 함'},
- {k:'m',t:'전국 학력평가 일정 발표',p:'평가 결과에 대한 기대감이 번지는 분위기',m:'평가 부담에 대한 우려가 번지는 분위기'},
- {k:'m',t:'학교 급식 단가 조정 논의',p:'단가가 오르는 쪽으로 기운다는 이야기',m:'동결 또는 삭감 쪽 분위기라는 이야기'},
- {k:'m',t:'학령인구 통계 발표 임박',p:'예상보다 나쁘지 않을 거라는 관측',m:'예상보다 좋지 않을 거라는 관측'},
- {k:'s',t:'{n} 이사회 비공개 회의 진행',p:'긍정적인 안건이 오갔다는 후문',m:'민감한 안건이 오갔다는 후문'},
- {k:'s',t:'{n} 인근 공사 소식',p:'편의시설 관련 소식으로 전해짐',m:'소음·민원 관련 소식으로 전해짐'},
- {k:'s',t:'{n} 교장 면담 일정 포착',p:'학교 발전 논의일 가능성',m:'문제 대응 논의일 가능성'},
- {k:'s',t:'{n} 졸업생 동향에 관심',p:'동문 쪽 분위기가 좋다는 이야기',m:'동문 쪽 분위기가 무겁다는 이야기'}];
 const SC={s:{th:20,dur:1},r:{th:30,dur:2}};
-let S,speed=1,paused=false,sNext,log=[],T=null,sel=0,nc=false,rs=0,HO=false;
+let S,speed=1,paused=false,sNext,log=[],T=null,sel=0,nc=false,rs=0,HO=false,FD=null,OVER=false;
 const $=id=>document.getElementById(id);
 function won(n){n=Math.round(n);const a=Math.abs(n);if(a>=1e8)return(n/1e8).toFixed(2)+'억';if(a>=1e4)return Math.round(n/1e4).toLocaleString('ko-KR')+'만';return n.toLocaleString('ko-KR')+'원'}
 function full(n){return Math.round(n).toLocaleString('ko-KR')+'원'}
@@ -228,19 +224,28 @@ function rnd(a,b){return a+Math.random()*(b-a)}
 function pick(l){return l[Math.floor(Math.random()*l.length)]}
 function move(tiers,pu){let r=Math.random(),c=0,t=tiers[tiers.length-1];for(const x of tiers){c+=x[0];if(r<c){t=x;break}}
  const m=rnd(t[1],t[2]),up=Math.random()<pu;return up?m:-Math.min(m,90)}
-function pu(a){if(a.t==='r')return .65;let p=.65;(S.batch||[]).forEach(b=>{if(b.tg==='all'||b.tg===a.i)p+=b.d});return Math.max(.15,Math.min(.92,p))}
+function pu(a,k){if(a.t==='r')return .65;let p=.65;const b=S.sched&&S.sched[k]>=0?S.batches[S.sched[k]]:[];b.forEach(x=>{if(x.tg==='all'||x.tg===a.i)p+=x.d});return Math.max(.15,Math.min(.92,p))}
 function init(){
- S={cash:START,game:0,day:0,nwh:[START],hints:[],a:DEF.map((d,i)=>({...d,i,p0:d.p,low:0,dl:false,prev:d.p,hist:[d.p],qty:0,cost:0,chg:0,next:move(d.t==='s'?ST:RT,.65)}))};
- sNext=SDT;log=[];T=null;$('sheet').hidden=true;build();newBatch();say('게임 시작! 현금 '+won(START));update();
+ S={cash:START,game:0,day:0,nwh:[START],hints:[],a:DEF.map((d,i)=>({...d,i,p0:d.p,low:0,dl:false,sq:0,sm:0,se:0,prev:d.p,hist:[d.p],qty:0,cost:0,chg:0,next:0}))};
+ sNext=SDT;log=[];T=null;OVER=false;FD=null;$('sheet').hidden=true;build();setup();say('게임 시작! 현금 '+won(START));update();
 }
 function say(t){log.unshift(t);log=log.slice(0,10);$('log').innerHTML=log.map(x=>'<div>'+x+'</div>').join('')}
-function newBatch(){
- const stocks=S.a.filter(a=>a.t==='s'),pool=[...BN].sort(()=>Math.random()-.5).slice(0,3),used=[];
- S.batch=pool.map(b=>{let tg='all',nm='';
-  if(b.k==='s'){const c=stocks.filter(a=>!used.includes(a.i)),a=pick(c.length?c:stocks);used.push(a.i);tg=a.i;nm=a.n}
-  const d=(Math.random()<.5?1:-1)*rnd(.10,.22),tone=Math.random()<.75?Math.sign(d):-Math.sign(d);
-  return{title:b.t.replace('{n}',nm),tg,d,body:b[tone>0?'p':'m']}});
- stocks.forEach(a=>a.next=move(ST,pu(a)));say('📋 새 기본 뉴스가 도착했어요');
+function toast(t){const w=$('toasts'),e=document.createElement('div');e.className='toast';e.textContent=t;w.appendChild(e);setTimeout(()=>e.remove(),3200);while(w.children.length>3)w.firstChild.remove()}
+const NPA=['교육청 학교 지원 확대 검토','전국 학력평가 기대감 확산','급식 단가 인상 논의','학령인구 통계 예상보다 양호'],NNA=['교육청 지원 축소 검토','평가 부담 우려 확산','급식 단가 동결 논의','학령인구 통계 예상보다 부진'];
+const NPS=['신규 체육관 건립 추진','외부 장학금 유치 협의','입학 경쟁률 상승','동문 발전기금 증액 논의','급식 만족도 상승'],NNS=['학생회 예산 집행 논란','시설 보수 비용 급증','지원 예산 삭감 가능성','졸업생 이탈 우려','매점 적자 누적'];
+function mkBatch(){
+ const tgs=['all',...S.a.filter(a=>a.t==='s').map(a=>a.i)].sort(()=>Math.random()-.5).slice(0,3);
+ return tgs.map(tg=>{const up=Math.random()<.5,mag=pick([.10,.18,.28]),nm=tg==='all'?'':S.a[tg].n;
+  const reason=pick(tg==='all'?(up?NPA:NNA):(up?NPS:NNS)),lab=mag===.10?'다소 ':mag===.28?'매우 ':'';
+  return{tg,d:up?mag:-mag,title:(nm?nm+', ':'')+reason,body:`전망: ${lab}${up?'긍정적':'부정적'} · ${tg==='all'?'주식 시장 전체':nm}에 영향`}});
+}
+/* 30턴을 '전망 5턴 블록 5개 + 무작위 1턴 5개'로 섞어서 배치 */
+function setup(){
+ const sc=[-2],rg=[];let k=1,b=0;
+ [...'BBBBBRRRRR'].sort(()=>Math.random()-.5).forEach(t=>{if(t==='B'){rg.push([k,k+4]);for(let i=0;i<5;i++)sc[k++]=b;b++}else sc[k++]=-1});
+ S.sched=sc;S.range=rg;S.batches=rg.map(()=>mkBatch());
+ S.a.forEach(a=>a.next=move(a.t==='s'?ST:RT,a.t==='s'?pu(a,1):.65));
+ if(sc[1]>=0)say('📋 새 전망 뉴스가 도착했어요 · 앞으로 5턴을 예상해 보세요');
 }
 function build(){
  $('list').innerHTML=S.a.map(a=>`<div class="rw" data-i="${a.i}"><div class="ic" style="background:${a.t==='s'?'#3182f6':'#00b493'}">${a.n[0]}</div><div class="rm"><div class="nm">${a.n}<span id="sc${a.i}"></span></div><div class="sub" id="rs${a.i}"></div></div><canvas class="sp" id="g${a.i}"></canvas><div class="rp"><div class="pr" id="p${a.i}"></div><div class="cg" id="c${a.i}"></div></div></div>`).join('');
@@ -249,10 +254,11 @@ function build(){
 $('back').onclick=()=>$('det').classList.remove('open');
 const unitP=a=>a.t==='s'?a.p:a.p/100;
 const held=a=>a.t==='s'?a.qty:Math.round(a.qty*100);
-const fee=(a,m)=>a.t==='r'?RFEE:(m==='s'?SFEE:0);
-const maxQ=(a,m)=>m==='b'?Math.max(0,Math.floor(S.cash/(unitP(a)*(1+fee(a,'b')))+1e-9)):held(a);
+const fee=(a,m)=>a.t==='r'?RFEE:(m==='s'||m==='co'?SFEE:0);
+const maxQ=(a,m)=>m==='b'?(a.sq>0?0:Math.max(0,Math.floor(S.cash/(unitP(a)*(1+fee(a,'b')))+1e-9))):m==='s'?held(a):m==='sh'?(a.qty>0?0:Math.max(0,Math.floor(S.cash/a.p+1e-9))):a.sq;
 const uname=a=>a.t==='s'?'주':'%';
-const why=(a,m)=>a.dl?'상장폐지된 종목이에요':(S.cb&&a.t==='s')?`서킷브레이커로 주식 거래가 정지 중이에요 (${S.cb.until-S.day}턴)`:(a.sc&&a.sc.t===m)?`${m==='b'?'매수':'매도'} 사이드카로 ${m==='b'?'매수':'매도'}가 정지 중이에요 (${a.sc.until-S.day}턴)`:'';
+const dirOf=m=>(m==='b'||m==='co')?'b':'s';
+const why=(a,m)=>{const d=dirOf(m),k=d==='b'?'매수':'매도';return a.dl?'상장폐지된 종목이에요':(S.cb&&a.t==='s')?`서킷브레이커로 주식 거래가 정지 중이에요 (${S.cb.until-S.day}턴)`:(a.sc&&a.sc.t===d)?`${k} 사이드카로 ${k}가 정지 중이에요 (${a.sc.until-S.day}턴)`:''};
 const blocked=(a,m)=>!!why(a,m);
 const priceStr=a=>a.dl?'상장폐지':a.t==='s'?a.p.toLocaleString('ko-KR')+'원':won(a.p);
 const badge=a=>(S.cb&&a.t==='s'&&!a.dl?`<span class="scb" style="background:#7b2cbf">서킷브레이커 ${S.cb.until-S.day}턴</span>`:'')+(a.sc&&!a.dl?`<span class="scb ${a.sc.t}">${a.sc.t==='b'?'매수':'매도'} 사이드카 ${a.sc.until-S.day}턴</span>`:'')+(a.low&&!a.dl?`<span class="scb" style="background:#e08a00">상장폐지 경고 ${a.low}/3</span>`:'')+(a.dl?'<span class="scb" style="background:#6b7280">상장폐지</span>':'');
@@ -261,7 +267,7 @@ function buy(a,q){
  if(blocked(a,'b')){say(why(a,'b'));return}
  if(q<=0||cost>S.cash+1e-6){say('현금이 부족합니다');return}
  S.cash=Math.max(0,Math.round(S.cash-cost));a.qty+=qty;a.cost+=cost;
- say(`${a.n} ${q}${a.t==='s'?'주':'% 지분'} 매수 (${won(cost)})`);
+ say(`${a.n} ${q}${a.t==='s'?'주':'% 지분'} 매수 (${won(cost)})`);toast(`💸 ${full(cost)} 사용 · ${a.n} ${q}${a.t==='s'?'주':'% 지분'} 매수`);
 }
 function sell(a,q){
  const h=held(a);
@@ -272,23 +278,46 @@ function sell(a,q){
  const r=(get/basis-1)*100;say(`${a.n} 매도 ${won(get)} <span class="${r>=0?'up':'dn'}">(${pct(r)})</span>`);
 }
 /* 거래창 */
+const MODES=['b','s','sh','co'],MN={b:'매수',s:'매도',sh:'공매도',co:'숏 청산'},MID={b:'mB',s:'mS',sh:'mH',co:'mC'};
+const NOTE={sh:'💡 공매도: 주식을 빌려 먼저 팔고, 값이 내려가면 싸게 되사서(숏 청산) 차액을 버는 거래예요. 거래 금액만큼 증거금이 묶이고, 진입가보다 80% 오르면 강제청산돼요.',co:'💡 숏 청산: 빌린 주식을 되사서 갚아요. 진입가보다 내렸으면 이익, 올랐으면 손실이에요.'};
+function openShort(a,q){
+ if(blocked(a,'sh')){say(why(a,'sh'));return}
+ if(a.qty>0){say('보유 중인 주식을 먼저 정리해야 해요');return}
+ const m=q*a.p;if(q<=0||m>S.cash+1e-6){say('증거금이 부족합니다');return}
+ S.cash=Math.max(0,Math.round(S.cash-m));
+ a.se=(a.se*a.sq+a.p*q)/(a.sq+q);a.sm+=m;a.sq+=q;
+ say(`${a.n} ${q}주 공매도 (증거금 ${won(m)})`);toast(`💸 ${full(m)} 증거금 묶임 · ${a.n} ${q}주 공매도`);
+}
+function coverShort(a,q,force){
+ if(!force&&blocked(a,'co')){say(why(a,'co'));return}
+ if(a.sq<=0||q<=0)return;q=Math.min(q,a.sq);
+ const part=q/a.sq,rel=a.sm*part,pnl=q*(a.se-a.p),f=force?0:q*a.p*SFEE,ret=Math.max(0,rel+pnl-f);
+ S.cash=Math.round(S.cash+ret);a.sm-=rel;a.sq-=q;if(a.sq<=0){a.sq=0;a.sm=0;a.se=0}
+ say(`${a.n} 숏 ${force?'강제 ':''}청산 · 손익 <span class="${pnl>=0?'up':'dn'}">${pnl>=0?'+':'-'}${won(Math.abs(pnl))}</span>`);
+}
 function openSheet(a,m){T={a,m,q:0};$('sheet').hidden=false;drawSheet();live()}
 function setQ(q){T.q=Math.max(0,Math.min(maxQ(T.a,T.m),Math.floor(q)||0));drawSheet()}
 function drawSheet(skip){
- if(!T)return;const a=T.a,u=uname(a),mx=maxQ(a,T.m);if(T.q>mx)T.q=mx;
+ if(!T)return;const a=T.a,u=uname(a),m=T.m,mx=maxQ(a,m);if(T.q>mx)T.q=mx;
  $('sT').textContent=a.n+' · '+priceStr(a);
- $('mB').classList.toggle('on',T.m==='b');$('mS').classList.toggle('on',T.m==='s');
- $('sI').textContent=`보유 ${held(a)}${u} · 현금 ${full(S.cash)} · 최대 ${mx}${u}`;
+ MODES.forEach(k=>$(MID[k]).classList.toggle('on',m===k));
+ ['mH','mC'].forEach(id=>$(id).style.display=a.t==='s'?'':'none');
+ $('sI').textContent=(m==='sh'||m==='co')?`숏 ${a.sq}주 · 현금 ${full(S.cash)} · 최대 ${mx}${u}`:`보유 ${held(a)}${u} · 현금 ${full(S.cash)} · 최대 ${mx}${u}`;
+ $('sN').textContent=NOTE[m]||'';
  if(!skip){$('qi').value=T.q||'';
   const st=a.t==='s'?[1,10,100]:[1,5,10];
-  $('chips').innerHTML=st.map(v=>`<button class="chip" data-c="${v}">+${v}${u}</button>`).join('')+(T.m==='b'?'<button class="chip" data-c="q25">현금 25%</button><button class="chip" data-c="q50">현금 50%</button><button class="chip" data-c="max">전부</button>':'<button class="chip" data-c="half">보유 절반</button><button class="chip" data-c="max">전량</button>')}
- const g=T.q*unitP(a),f=fee(a,T.m),tot=T.m==='b'?g*(1+f):g*(1-f);
- $('sE').textContent=(T.m==='b'?'예상 결제금액 ':'예상 수령금액 ')+won(tot)+(f?` (수수료 ${(f*100).toFixed(1)}%)`:'');
- const ok=$('sOK'),bl=blocked(a,T.m);ok.className='btn '+(T.m==='b'?'b-buy':'b-sell');
- ok.textContent=bl?'거래 정지 중':`${T.m==='b'?'매수':'매도'} ${T.q}${u}`;ok.disabled=T.q<=0||bl;if(bl)$('sE').textContent=why(a,T.m);
+  $('chips').innerHTML=st.map(v=>`<button class="chip" data-c="${v}">+${v}${u}</button>`).join('')+((m==='b'||m==='sh')?'<button class="chip" data-c="q25">현금 25%</button><button class="chip" data-c="q50">현금 50%</button><button class="chip" data-c="max">전부</button>':'<button class="chip" data-c="half">절반</button><button class="chip" data-c="max">전량</button>')}
+ const g=T.q*unitP(a),f=fee(a,m);let est;
+ if(m==='b')est='예상 결제금액 '+won(g*(1+f))+(f?` (수수료 ${(f*100).toFixed(1)}%)`:'');
+ else if(m==='s')est='예상 수령금액 '+won(g*(1-f))+(f?` (수수료 ${(f*100).toFixed(1)}%)`:'');
+ else if(m==='sh')est='묶이는 증거금 '+won(g);
+ else{const r=a.sq>0?T.q/a.sq:0,pn=T.q*(a.se-a.p);est=`예상 반환금액 ${won(Math.max(0,a.sm*r+pn-g*SFEE))} (손익 ${pn>=0?'+':'-'}${won(Math.abs(pn))})`}
+ const ok=$('sOK'),bl=blocked(a,m),cf=(m==='b'&&a.sq>0)||(m==='sh'&&a.qty>0);
+ $('sE').textContent=bl?why(a,m):cf?'롱(보유 주식)과 숏은 동시에 가질 수 없어요. 먼저 반대 포지션을 정리하세요.':est;
+ ok.className='btn '+((m==='b'||m==='co')?'b-buy':'b-sell');
+ ok.textContent=bl?'거래 정지 중':`${MN[m]} ${T.q}${u}`;ok.disabled=T.q<=0||bl;
 }
-$('mB').onclick=()=>{T.m='b';T.q=0;drawSheet()};
-$('mS').onclick=()=>{T.m='s';T.q=0;drawSheet()};
+MODES.forEach(k=>$(MID[k]).onclick=()=>{T.m=k;T.q=0;drawSheet()});
 $('qm').onclick=()=>setQ(T.q-1);$('qp').onclick=()=>setQ(T.q+1);
 $('qi').oninput=e=>{T.q=Math.max(0,Math.min(maxQ(T.a,T.m),Math.floor(+e.target.value)||0));drawSheet(true)};
 $('qi').onblur=()=>drawSheet();
@@ -296,45 +325,76 @@ $('chips').onclick=e=>{const c=e.target.dataset.c;if(!c)return;const mx=maxQ(T.a
  setQ(c==='half'?mx/2:c==='q25'?mx/4:c==='q50'?mx/2:c==='max'?mx:T.q+ +c)};
 $('sX').onclick=()=>{T=null;$('sheet').hidden=true;live()};
 $('sheet').onclick=e=>{if(e.target.id==='sheet')$('sX').onclick()};
-$('sOK').onclick=()=>{(T.m==='b'?buy:sell)(T.a,T.q);T=null;$('sheet').hidden=true;update()};
+$('sOK').onclick=()=>{({b:buy,s:sell,sh:openShort,co:coverShort})[T.m](T.a,T.q);T=null;$('sheet').hidden=true;update()};
 $('dBuy').onclick=()=>openSheet(S.a[sel],'b');
 $('dSell').onclick=()=>openSheet(S.a[sel],'s');
+$('dShort').onclick=()=>{const a=S.a[sel];openSheet(a,a.sq>0?'co':'sh')};
 /* 뉴스 */
 function bucket(x){return x<5?'5% 이내':x<10?'5~10%':x<20?'10~20%':x<40?'20~40%':x<100?'40% 이상':'100% 이상'}
-function target(a){return a.t==='s'?S.day+1:(Math.floor(S.day/RINT)+1)*RINT}
-function hintCost(a,l){return HP[l]*(a.t==='r'?3:1)}
+function target(a){return a.t==='s'?S.day+1:Math.floor((S.day-1)/RINT)*RINT+1+RINT}
+const HR=[.001,.006,.015];
+function hintCost(a,l){const b=Math.max(net(),START*.5);return Math.max(10000,Math.round(b*HR[l]/10000)*10000)*(a.t==='r'?2:1)}
 function buyHint(l){
  const a=S.a[sel],tg=target(a),c=hintCost(a,l);
  if(a.dl){say('상장폐지된 종목이에요');return}
  if(S.hints.some(h=>h.a===a.i&&h.t===tg&&h.l===l)){say('이미 구매한 뉴스예요');return}
- if(c>S.cash){say(`현금이 부족합니다 (필요 ${full(c)} / 보유 ${full(S.cash)})`);return}
+ if(c>S.cash){offerFunding(l,c);return}
  S.cash-=c;const m=a.next,truth=m>=0?1:-1,tone=Math.random()<HACC[l]?truth:-truth;
  let text=pick(NS[a.t][l][tone>0?'p':'m']).replace('{n}',a.n);
  if(l===2)text+=` (예상 변동폭 ${bucket(Math.abs(m))})`;
  if(l===1)text+=Math.abs(m)<5?' · 영향 작음':Math.abs(m)<20?' · 영향 중간':' · 영향 큼';
- S.hints.unshift({a:a.i,l,tone,text,t:tg,res:null});say(`📰 ${a.n} 뉴스 구매 (${HN[l]}, -${won(c)})`);update();
+ S.hints.unshift({a:a.i,l,tone,text,t:tg,res:null});say(`📰 ${a.n} 뉴스 구매 (${HN[l]}, -${won(c)})`);toast(`💸 ${full(c)} 사용 · ${a.n} 뉴스 힌트(${HN[l]}) 구매`);update();
 }
+function offerFunding(l,c){
+ const short=c-S.cash,opts=[];
+ S.a.forEach(a=>{if(held(a)<=0||blocked(a,'s'))return;
+  const un=unitP(a)*(1-fee(a,'s'));let q=Math.max(1,Math.ceil(short/un));while(q*un<short)q++;
+  if(q<=held(a))opts.push({a,q,get:q*un})});
+ FD={l,opts};
+ $('fI').innerHTML=`필요 <b>${full(c)}</b> · 보유 현금 <b>${full(S.cash)}</b> · 부족 <b>${full(short)}</b><br>보유 자산을 팔아서 살까요? 필요한 금액을 넘는 가장 적은 수량만 팔아요.`;
+ $('fL').innerHTML=opts.length?opts.map((o,i)=>`<button class="btn b-sell" data-f="${i}" style="width:100%;margin-top:8px">${o.a.n} ${o.q}${o.a.t==='s'?'주':'% 지분'} 매도 → 약 ${won(o.get)} 확보</button>`).join(''):'<div class="sub">보유 자산을 팔아도 부족하거나, 거래가 정지된 상태예요.</div>';
+ $('fund').hidden=false;
+}
+function closeFund(){FD=null;$('fund').hidden=true}
+$('fL').onclick=e=>{const b=e.target.closest('[data-f]');if(!b||!FD)return;const o=FD.opts[+b.dataset.f],l=FD.l;closeFund();sell(o.a,o.q);buyHint(l)};
+$('fX').onclick=closeFund;$('fund').onclick=e=>{if(e.target.id==='fund')closeFund()};
+function gameOver(){OVER=true;T=null;$('sheet').hidden=true;closeFund();
+ const n=net(),r=(n/START-1)*100;
+ $('oN').textContent=full(n);$('oP').innerHTML=`<span class="${r>=0?'up':'dn'}">${pct(r)} (${n>=START?'+':'-'}${won(Math.abs(n-START))})</span>`;
+ $('oG').textContent=r>=100?'👑 투자왕':r>=30?'🏆 투자 고수':r>=0?'🙂 무난한 투자자':r>=-30?'😥 아쉬운 투자자':'💸 깡통 위기';
+ const sc=Math.max(0,Math.round(n/1e6)),app=!!(window.UnjungGame&&UnjungGame.inApp);
+ $('oG').innerHTML+=`<div class="sub" style="margin-top:6px;font-weight:600">점수 <b style="color:var(--tx)">${sc.toLocaleString('ko-KR')}점</b> · 최종 자산(백만 원 단위)</div>`;
+ try{if(app)UnjungGame.submitScore(sc,{hold:true})}catch(e){}
+ if(app){$('oR').textContent='계속 ▶';$('oR').onclick=()=>{$('oR').disabled=true;try{UnjungGame.done()}catch(e){}}}
+ $('over').hidden=false;
+}
+$('oR').onclick=()=>{$('over').hidden=true;sel=0;$('det').classList.remove('open');init()};
 function resolve(a,tg,m){S.hints.forEach(h=>{if(h.a===a.i&&h.t===tg&&h.res===null)h.res=m})}
 $('dL').innerHTML=HN.map((n,l)=>`<button data-l="${l}">${n}<br><span class="sub">${['소문 수준','언론 보도','공식 발표'][l]}</span><br><span class="sub" id="hp${l}"></span></button>`).join('');
 $('dL').onclick=e=>{const b=e.target.closest('[data-l]');if(b)buyHint(+b.dataset.l)};
 function renderBasic(){
- $('bn').innerHTML=`<div class="row" id="bh" style="cursor:pointer"><h3 style="margin:0">📋 기본 뉴스 <span class="sub">무료 · ${5-(S.day%5)}턴 후 갱신</span></h3><span class="sub">${nc?'▸':'▾'}</span></div>`+(nc?'':S.batch.map(b=>`<div class="nl"><b>${b.title}</b><div class="sub">${b.body}</div></div>`).join(''));
- $('bh').onclick=()=>{nc=!nc;renderBasic()};
+ const k=S.day+1,b=S.sched[k],hd=t=>`<div class="row" id="bh" style="cursor:pointer"><h3 style="margin:0">📋 전망 뉴스 <span class="sub">${t}</span></h3><span class="sub">${nc?'▸':'▾'}</span></div>`;
+ let h;
+ if(b>=0){const left=S.range[b][1]-k+1;
+  h=hd(`무료 · 앞으로 ${left}턴 동안의 전망`)+(nc?'':S.batches[b].map(x=>`<div class="nl"><b>${x.title}</b><div class="sub">${x.body}</div></div>`).join(''))}
+ else h=hd('현재 전망 없음')+(nc?'':'<div class="nl"><div class="sub">지금은 뚜렷한 전망 뉴스가 없어요. 새 뉴스가 나올 때까지 주가 흐름은 예측하기 어려워요.</div></div>');
+ $('bn').innerHTML=h;$('bh').onclick=()=>{nc=!nc;renderBasic()};
 }
 function hintHtml(h){const x=S.a[h.a],ok=h.res!==null&&(h.res>=0)===(h.tone>0);
- const when=h.res!==null?`결과 ${pct(h.res)} · ${ok?'적중':'빗나감'}`:(x.t==='s'?'다음 턴 반영':`${h.t-S.day}턴 후 반영`);
+ const when=h.res!==null?`결과 ${pct(h.res)} · ${ok?'적중':'빗나감'}`:`${h.t}턴이 끝날 때 반영${x.t==='s'?'':` (${h.t-S.day}턴 후)`}`;
  return `<div class="nws"><span class="bd">${HN[h.l]}</span><span class="${h.tone>0?'up':'dn'}">${h.tone>0?'▲':'▼'}</span> ${h.text}<div class="sub">${when}</div></div>`}
 /* 시세 */
 function trig(a,m,base){const c=SC[a.t];if(Math.abs(m)<c.th)return;
  a.sc={t:m>0?'b':'s',until:base+c.dur};
  say(`🚨 ${a.n} ${m>0?'매수':'매도'} 사이드카 발동 (${pct(m)}) · ${c.dur}턴간 ${m>0?'매수':'매도'} 정지`)}
-function delist(a){a.dl=true;a.sc=null;a.qty=0;a.cost=0;say(`🪦 ${a.n} 상장폐지! 보유 주식이 모두 사라졌어요.`)}
+function delist(a){if(a.sq>0)coverShort(a,a.sq,true);a.dl=true;a.sc=null;a.qty=0;a.cost=0;say(`🪦 ${a.n} 상장폐지! 보유 주식이 모두 사라졌어요.`)}
 function stockTick(){
  S.a.filter(a=>a.t==='s'&&!a.dl).forEach(a=>{
-  const m=a.next;a.next=move(ST,pu(a));resolve(a,S.day+1,m);
+  const m=a.next;a.next=move(ST,pu(a,S.day+2));resolve(a,S.day+1,m);
   a.prev=a.p;a.p=Math.max(100,Math.round(a.p*(1+m/100)));
   a.chg=(a.p/a.prev-1)*100;a.hist.push(a.p);if(a.hist.length>80)a.hist.shift();
   trig(a,m,S.day+1);if(Math.abs(m)>=40)say(`⚡ ${a.n} 주가 <span class="${m>0?'up':'dn'}">${pct(m)}</span> 급변동!`);
+  if(a.sq>0&&a.sm+a.sq*(a.se-a.p)<=0.2*a.sm){say(`🚨 ${a.n} 숏 증거금 부족!`);coverShort(a,a.sq,true)}
   if(a.p<=a.p0*.2){a.low++;if(a.low>=3)delist(a);else say(`⚠️ ${a.n} 상장폐지 경고 ${a.low}/3 · 최초 가격 대비 80% 이상 하락이 3턴 이어지면 상장폐지돼요`)}
   else if(a.low){a.low=0;say(`✅ ${a.n} 상장폐지 경고 해제`)}
  });
@@ -355,28 +415,16 @@ function propTick(){
 function tip(){
  const n=net(),pos=S.a.map(a=>a.qty*a.p),inv=pos.reduce((x,y)=>x+y,0);
  if(S.cb)return '🚨 서킷브레이커 발동! 주식 거래가 멈췄어요. 부동산은 거래할 수 있어요.';if(S.a.some(a=>a.low&&!a.dl))return '⚠️ 상장폐지 경고 종목이 있어요. 보유 중이라면 어떻게 할지 고민해 보세요.';if(S.a.some(a=>a.sc))return '🚨 급등락으로 거래가 잠시 멈춘 종목이 있어요. 풀릴 때까지 기다려 봐요.';
- if(inv===0)return '종목을 눌러 상세 화면을 보고, 소액으로 첫 매수를 해 보세요. 기본 뉴스도 참고해 보세요!';
+ if(inv===0)return '종목을 눌러 상세 화면을 보고, 소액으로 첫 매수를 해 보세요. 전망 뉴스도 참고해 보세요!';
  if(S.cash<n*.05)return '현금이 거의 없어요. 오른 종목을 일부 팔아 현금을 확보해 두면 기회가 왔을 때 좋아요.';
  if(Math.max(...pos)>n*.7)return '한 종목에 자산이 몰려 있어요. 나눠서 투자하면 위험이 줄어요.';
- const tips=['주식은 매 턴 크게 오르내려요. 짧게 사고파는 단타에 어울려요.','부동산은 10턴마다 변동하고 월세가 들어와요. 길게 보는 투자예요.','기본 뉴스는 무료지만 애매해요. 여러 뉴스를 함께 보고 판단해 보세요.','유료 힌트는 신뢰도가 높을수록 정확해요. 큰 거래 전에 활용해 보세요.','급등한 종목에 사이드카가 걸리면 매수가 잠시 멈춰요.'];
+ const tips=['주식은 매 턴 크게 오르내려요. 짧게 사고파는 단타에 어울려요.','부동산은 6턴마다 변동하고 월세가 들어와요. 길게 보는 투자예요.','전망 뉴스는 앞으로 5턴의 방향을 알려줘요. 확률이 바뀔 뿐 확정은 아니니 분산해서 투자해 보세요.','유료 힌트는 신뢰도가 높을수록 정확해요. 큰 거래 전에 활용해 보세요.','급등한 종목에 사이드카가 걸리면 매수가 잠시 멈춰요.'];
  return tips[Math.floor(S.day/3)%tips.length];
-}
-function finish(){
- if(S.over)return;S.over=true;T=null;$('sheet').hidden=true;
- const n=net(),r=(n/START-1)*100,sc=Math.max(0,Math.round(n/1e6));
- const cm=r>=200?'🏆 판교 투자의 신! 전설의 개미예요':r>=50?'🚀 수익률 대박! 투자 감각이 남달라요':r>=10?'📈 꾸준히 불렸어요. 훌륭한 개미!':r>=0?'🙂 원금은 지켰어요. 안정형 투자자':r>-50?'📉 아쉬운 결과… 다음엔 뉴스를 더 활용해 봐요':'🪦 깡통 계좌… 분산 투자가 답이에요';
- const app=!!(window.UnjungGame&&UnjungGame.inApp);
- try{if(app)UnjungGame.submitScore(sc,{hold:true})}catch(e){}
- $('resC').innerHTML=`<div class="sub">🏁 ${Math.min(S.day,END)}턴 결산</div><h2>${won(n)}</h2><div class="${r>=0?'up':'dn'}" style="font-weight:700">${n>=START?'+':'-'}${won(Math.abs(n-START))} (${pct(r)})</div><div class="big">${cm}</div><div class="sub">점수 <b style="color:var(--tx);font-size:16px">${sc.toLocaleString('ko-KR')}점</b> · 최종 자산(백만 원 단위)</div>`+
-  (app?'<button class="btn" id="rDone" style="background:var(--pri)">계속 ▶</button>':'<button class="btn" id="rAgain" style="background:var(--pri)">다시 시작</button>');
- $('res').hidden=false;
- if($('rDone'))$('rDone').onclick=()=>{$('rDone').disabled=true;try{UnjungGame.done()}catch(e){}};
- if($('rAgain'))$('rAgain').onclick=()=>{$('res').hidden=true;sel=0;$('det').classList.remove('open');init()};
 }
 function showHelp(){HO=true;$('help').hidden=false}
 function hideHelp(){HO=false;$('help').hidden=true;try{localStorage.setItem('pg_help','1')}catch(e){}}
 $('hOK').onclick=hideHelp;$('help').onclick=e=>{if(e.target.id==='help')hideHelp()};
-function net(){return S.cash+S.a.reduce((s,a)=>s+a.qty*a.p,0)}
+function net(){return S.cash+S.a.reduce((s,a)=>s+a.qty*a.p+(a.sq>0?a.sm+a.sq*(a.se-a.p):0),0)}
 function spark(c,h,col,fill){
  if(h.length<2)h=[h[0],h[0]];
  const w=c.width=c.clientWidth*devicePixelRatio,H=c.height=c.clientHeight*devicePixelRatio,x=c.getContext('2d'),d=devicePixelRatio;
@@ -392,11 +440,11 @@ function update(){
  const n=net(),r=(n/START-1)*100;
  $('cash').textContent=full(S.cash);$('net').textContent=won(n);
  $('pl').innerHTML=`<span class="${r>=0?'up':'dn'}">${n>=START?'+':'-'}${won(Math.abs(n-START))} (${pct(r)})</span>`;
- $('date').textContent=`${Math.min(S.day+1,END)} / ${END}턴`;
+ $('date').textContent=`${Math.min(S.day+1,MAXT)} / ${MAXT}턴`;
  S.a.forEach(a=>{
   $('p'+a.i).textContent=priceStr(a);
   const c=$('c'+a.i);c.textContent=a.dl?'거래 불가':pct(a.chg);c.className='cg '+(a.chg>=0?'up':'dn');
-  $('rs'+a.i).innerHTML=(a.t==='s'?'주식':'부동산')+(a.qty>0?` · <b style="color:var(--pri)">${held(a)}${a.t==='s'?'주':'% 지분'} 보유</b> · 평가 ${won(a.qty*a.p)}`:' · 미보유');
+  $('rs'+a.i).innerHTML=(a.t==='s'?'주식':'부동산')+(a.qty>0?` · <b style="color:var(--pri)">${held(a)}${a.t==='s'?'주':'% 지분'} 보유</b> · 평가 ${won(a.qty*a.p)}`:a.sq>0?` · <b style="color:var(--dn)">숏 ${a.sq}주</b> · 손익 ${a.sq*(a.se-a.p)>=0?'+':'-'}${won(Math.abs(a.sq*(a.se-a.p)))}`:' · 미보유');
   spark($('g'+a.i),a.hist,col(a.hist),false);
  });
  document.querySelectorAll('.rw').forEach(r=>r.classList.toggle('sel',+r.dataset.i===sel));
@@ -407,11 +455,13 @@ function update(){
  $('dP').textContent=priceStr(a);
  $('dC').innerHTML=`<span class="${a.chg>=0?'up':'dn'}">직전 턴 대비 ${pct(a.chg)}</span>`+(a.sc?`<div class="sub" style="margin-top:4px">🚨 ${a.sc.t==='b'?'급등':'급락'}으로 ${a.sc.t==='b'?'매수':'매도'}가 ${a.sc.until-S.day}턴간 잠시 멈췄어요.</div>`:'');
  $('dC').innerHTML+=(S.cb&&a.t==='s'&&!a.dl?'<div class="sub" style="margin-top:4px">🚨 서킷브레이커: 주식 평균이 크게 떨어져 모든 주식 거래가 정지됐어요.</div>':'')+(a.low&&!a.dl?`<div class="sub" style="margin-top:4px">⚠️ 최초 가격 대비 80% 이상 하락했어요. ${3-a.low}턴 더 이어지면 상장폐지돼요.</div>`:'')+(a.dl?'<div class="sub" style="margin-top:4px">🪦 상장폐지된 종목이에요. 더 이상 거래할 수 없어요.</div>':'');
- $('dBuy').disabled=$('dSell').disabled=!!a.dl;
+ $('dBuy').disabled=$('dSell').disabled=!!a.dl;$('dShort').style.display=a.t==='s'?'':'none';$('dShort').disabled=!!a.dl;$('dShort').textContent=a.sq>0?'📈 숏 청산하기':'📉 공매도(숏) 하기';
  spark($('dG'),a.hist,col(a.hist),true);
  const v=a.qty*a.p,pl=a.cost>0?v-a.cost:0,pp=a.cost>0?(v/a.cost-1)*100:0;
- $('dH').innerHTML=a.qty>0?`<div class="hold"><div><span class="sub">보유</span><b>${held(a)}${a.t==='s'?'주':'% 지분'}</b></div><div><span class="sub">평가금액</span><b>${won(v)}</b></div><div><span class="sub">매수 원금</span><b>${won(a.cost)}</b></div><div><span class="sub">손익</span><b class="${pl>=0?'up':'dn'}">${pl>=0?'+':'-'}${won(Math.abs(pl))} (${pct(pp)})</b></div></div>`:'<div class="sub">아직 보유하지 않았어요. 아래 <b>매수</b> 버튼으로 시작해 보세요.</div>';
- $('dH').innerHTML+=`<div class="sub" style="margin-top:10px">${a.t==='s'?'💡 주식은 매 턴 가격이 바뀌어요. 매도할 때 수수료 0.2%가 붙어요.':'💡 부동산은 10턴마다 가격이 바뀌고, 보유하면 월세가 들어와요. 사고팔 때 각각 수수료 2%가 붙어요.'}</div>`;
+ $('dH').innerHTML=a.qty>0?`<div class="hold"><div><span class="sub">보유</span><b>${held(a)}${a.t==='s'?'주':'% 지분'}</b></div><div><span class="sub">평가금액</span><b>${won(v)}</b></div><div><span class="sub">매수 원금</span><b>${won(a.cost)}</b></div><div><span class="sub">손익</span><b class="${pl>=0?'up':'dn'}">${pl>=0?'+':'-'}${won(Math.abs(pl))} (${pct(pp)})</b></div></div>`:(a.sq>0?'':'<div class="sub">아직 보유하지 않았어요. 아래 <b>매수</b> 버튼으로 시작해 보세요.</div>');
+ $('dH').innerHTML+=`<div class="sub" style="margin-top:10px">${a.t==='s'?'💡 주식은 매 턴 가격이 바뀌어요. 매도할 때 수수료 0.2%가 붙어요.':'💡 부동산은 6턴마다 가격이 바뀌고, 보유하면 월세가 들어와요. 사고팔 때 각각 수수료 2%가 붙어요.'}</div>`;
+ if(a.sq>0){const pn=a.sq*(a.se-a.p),lq=a.se+.8*a.sm/a.sq;
+ $('dH').innerHTML+=`<div class="hold" style="margin-top:12px"><div><span class="sub">숏 보유</span><b>${a.sq}주</b></div><div><span class="sub">평균 진입가</span><b>${Math.round(a.se).toLocaleString('ko-KR')}원</b></div><div><span class="sub">묶인 증거금</span><b>${won(a.sm)}</b></div><div><span class="sub">숏 손익</span><b class="${pn>=0?'up':'dn'}">${pn>=0?'+':'-'}${won(Math.abs(pn))}</b></div><div><span class="sub">강제청산가</span><b>${Math.round(lq).toLocaleString('ko-KR')}원</b></div></div>`}
  HN.forEach((x,l)=>$('hp'+l).textContent=won(hintCost(a,l)));
  const hs=S.hints.filter(h=>h.a===a.i).slice(0,6);
  $('dF').innerHTML=hs.length?hs.map(hintHtml).join(''):'<div class="sub" style="padding-top:6px">구매한 뉴스가 없어요.</div>';
@@ -419,7 +469,7 @@ function update(){
 }
 function live(){
  $('gf').style.width=((S.game%DAY)/DAY*100)+'%';
- $('gl').textContent=`${T?'⏸ 거래 중이라 시간이 멈췄어요 · ':paused?'⏸ 일시정지 중 · ':''}다음 턴까지 ${Math.ceil(DAY-S.game%DAY)}초 · 부동산 갱신 ${RINT-(S.day%RINT)}턴 후`;
+ $('gl').textContent=`${T?'⏸ 거래 중이라 시간이 멈췄어요 · ':paused?'⏸ 일시정지 중 · ':''}다음 턴까지 ${Math.ceil(DAY-S.game%DAY)}초 · 부동산 갱신 ${Math.floor((S.day-1)/RINT)*RINT+1+RINT-S.day}턴 후`;
  if(S.cb&&S.day>=S.cb.until){S.cb=null;say('✅ 서킷브레이커 해제 · 주식 거래가 재개돼요')}
  S.a.forEach(a=>{if(a.sc&&S.day>=a.sc.until){a.sc=null;say(`✅ ${a.n} 사이드카 해제`)}
   $('sc'+a.i).innerHTML=badge(a)});
@@ -427,19 +477,19 @@ function live(){
  if(T)drawSheet(true);
 }
 function step(){
- if(paused||T||HO||S.over)return;
+ if(paused||T||HO||FD||OVER)return;
  S.game+=0.05*speed;let dirty=false;
  while(S.game>=sNext){sNext+=SDT;stockTick();dirty=true}
  const day=Math.floor(S.game/DAY);
  while(S.day<day){S.day++;S.nwh.push(net());if(S.nwh.length>400)S.nwh.shift();
-  if(S.day%RINT===0)propTick();if(S.day%5===0)newBatch();dirty=true;if(S.day>=END){update();finish();return}}
+  if(S.day%RINT===1)propTick();{const k=S.day+1,b=S.sched[k];if(b>=0&&S.sched[k-1]!==b)say('📋 새 전망 뉴스가 도착했어요 · 앞으로 5턴을 예상해 보세요')}dirty=true}
+ if(S.day>=MAXT&&!OVER){update();gameOver();return}
  if(dirty)update();live();
 }
 const ctl=$('ctl');
 const pb=document.createElement('button');pb.className='chip';pb.textContent='⏸ 일시정지';
 pb.onclick=()=>{paused=!paused;pb.textContent=paused?'▶ 재개':'⏸ 일시정지';pb.classList.toggle('on',paused);live()};
 ctl.appendChild(pb);
-const fbtn=document.createElement('button');fbtn.className='chip';fbtn.textContent='🏁 결산';let fa=0;fbtn.onclick=()=>{if(!fa){fa=1;fbtn.textContent='🏁 정말 결산?';setTimeout(()=>{fa=0;fbtn.textContent='🏁 결산'},3000)}else finish()};ctl.appendChild(fbtn);
 const hbtn=document.createElement('button');hbtn.className='chip';hbtn.textContent='❓ 방법';hbtn.onclick=()=>showHelp();ctl.appendChild(hbtn);
 [1,2,5,10].forEach(v=>{const b=document.createElement('button');b.className='chip'+(v===1?' on sp1':'');b.dataset.sp=v;b.textContent=v+'배속';
  b.onclick=()=>{speed=v;ctl.querySelectorAll('[data-sp]').forEach(c=>c.classList.remove('on'));b.classList.add('on')};ctl.appendChild(b)});
