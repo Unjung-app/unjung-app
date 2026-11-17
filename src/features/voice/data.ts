@@ -191,6 +191,8 @@ export type Suggestion = {
   mine: boolean;
   liked: boolean;
   reported: boolean;
+  /** 기획행정부 답글(누가 썼는지는 안 보임) */
+  replies?: { id: number; body: string; created_at: string }[];
 };
 
 export type ModSuggestion = {
@@ -236,6 +238,8 @@ export function useSuggestionFeed(enabled: boolean) {
     report: (id: number, reason: string) => act('report_suggestion', { p_id: id, p_reason: reason }),
     withdraw: (id: number) => act('withdraw_suggestion', { p_id: id }),
     check: (id: number, on: boolean) => act('check_suggestion', { p_id: id, p_on: on }),
+    reply: (id: number, body: string) => act('reply_suggestion', { p_id: id, p_body: body.trim() }),
+    deleteReply: (replyId: number) => act('delete_suggestion_reply', { p_reply: replyId }),
   };
 }
 

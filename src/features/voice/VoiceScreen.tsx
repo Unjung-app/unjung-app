@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, TextInput } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { AppText } from '@/components/ui/AppText';
 import { Badge, Button, Card } from '@/components/ui/primitives';
@@ -249,7 +249,10 @@ function SuggestionList({ feed, planner, mod, onWrite }: { feed: Feed; planner: 
 function SuggestionCard({ x, planner, feed }: { x: Suggestion; planner: boolean; feed: Feed }) {
   const [open, setOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [replying, setReplying] = useState(false);
+  const [replyText, setReplyText] = useState('');
   const [err, setErr] = useState<string | null>(null);
+  const replies = x.replies ?? [];
   const run = async (p: Promise<{ ok: boolean; message?: string }>) => {
     setErr(null);
     const r = await p;
@@ -291,6 +294,54 @@ function SuggestionCard({ x, planner, feed }: { x: Suggestion; planner: boolean;
         {x.mine ? <Button label="내리기" variant="ghost" onPress={() => run(feed.withdraw(x.id))} /> : null}
         {!x.mine && open && !x.reported && !reporting ? <Button label="신고" variant="ghost" onPress={() => setReporting(true)} /> : null}
       </View>
+
+      {replies.map((r) => (
+        <View key={r.id} style={{ backgroundColor: color.surfaceMuted, borderRadius: radius.control, padding: space.md, gap: 4, borderLeftWidth: 3, borderLeftColor: color.navy }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <AppText variant="label" color={color.navy} style={{ flex: 1 }}>
+              💬 기획행정부 답변 · {stampLabel(r.created_at)}
+            </AppText>
+            {planner ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="이 답변 지우기" hitSlop={8} onPress={() => run(feed.deleteReply(r.id))} style={{ minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}>
+                <AppText variant="caption" color={color.inkFaint}>
+                  지우기
+                </AppText>
+              </Pressable>
+            ) : null}
+          </View>
+          <AppText variant="body">{r.body}</AppText>
+        </View>
+      ))}
+      {planner ? (
+        replying ? (
+          <View style={{ gap: space.sm }}>
+            <TextInput
+              accessibilityLabel="기획행정부 답변 쓰기"
+              value={replyText}
+              onChangeText={(t) => setReplyText(t.slice(0, 500))}
+              placeholder="학생들에게 보이는 기획행정부 답변이에요. 누가 썼는지는 안 보여요."
+              placeholderTextColor={color.inkFaint}
+              multiline
+              style={{ minHeight: 72, borderWidth: 1, borderColor: color.line, borderRadius: radius.control, padding: space.md, fontSize: 15, color: color.ink, backgroundColor: color.surface, textAlignVertical: 'top' }}
+            />
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <Button label="취소" variant="ghost" style={{ flex: 1 }} onPress={() => (setReplying(false), setReplyText(''))} />
+              <Button
+                label="답변 달기"
+                style={{ flex: 2 }}
+                disabled={!replyText.trim()}
+                onPress={async () => {
+                  await run(feed.reply(x.id, replyText));
+                  setReplying(false);
+                  setReplyText('');
+                }}
+              />
+            </View>
+          </View>
+        ) : (
+          <Button label="💬 기획행정부 답변 달기" variant="soft" onPress={() => setReplying(true)} />
+        )
+      ) : null}
 
       {reporting ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, alignItems: 'center' }}>
@@ -345,8 +396,8 @@ function ModQueue({ items, onMod }: { items: ModSuggestion[]; onMod: (id: number
             </AppText>
           ) : null}
           <View style={{ flexDirection: 'row', gap: space.sm }}>
-            <Button label="문제없음 · 보이기" variant="soft" style={{ flex: 1 }} onPress={() => onMod(x.id, true)} />
-            {x.status === 'hidden' ? null : <Button label="숨기기" variant="ghost" style={{ flex: 1 }} onPress={() => onMod(x.id, false)} />}
+            <Button label="문제없음(보이기)" variant="soft" style={{ flex: 1 }} onPress={() => onMod(x.id, true)} />
+            <Button label={x.status === 'hidden' ? '숨긴 채로 두기' : '숨기기'} variant="ghost" style={{ flex: 1 }} onPress={() => onMod(x.id, false)} />
           </View>
         </View>
       ))}

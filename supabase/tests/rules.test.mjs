@@ -1161,6 +1161,28 @@ await sub(B, CB, 'a7');
   expect('질문에 답해도 토큰은 없음', before.rows[0].n === 0 && after.rows[0].n === 0);
 }
 
+{ // 11-17: 신고 처리 후 목록에서 빠짐 · 기획행정부 답글
+  const P = '99999999-9999-9999-9999-999999999940', CP = 'p@unjung.hs.kr';
+  const mk = await as(A, CA, `select public.post_suggestion('facility', '정수기 추가', '3층에도 정수기가 있었으면 좋겠어요') id`, '답글 테스트 청원'); const S = mk.rows[0]?.id;
+  await as(B, CB, `select public.report_suggestion(${S}, '장난·도배')`);
+  const q1 = await as(P, CP, `select count(*)::int n from public.suggestion_mod_queue where id=${S}`);
+  await as(P, CP, `select public.check_suggestion(${S}, true)`);
+  const q2 = await as(P, CP, `select count(*)::int n from public.suggestion_mod_queue where id=${S}`);
+  expect('신고 청원: 확인하면 신고 목록에서 빠짐', q1.rows[0]?.n === 1 && q2.rows[0]?.n === 0);
+  await as(E, CE, `select public.report_suggestion(${S}, '욕설·비방')`);
+  const q3 = await as(P, CP, `select count(*)::int n from public.suggestion_mod_queue where id=${S}`); expect('처리 뒤 새 신고는 다시 목록에', q3.rows[0]?.n === 1);
+  await as(P, CP, `select public.mod_suggestion(${S}, false)`);
+  const q4 = await as(P, CP, `select count(*)::int n from public.suggestion_mod_queue where id=${S}`); expect('숨기기로 처리해도 목록에서 빠짐', q4.rows[0]?.n === 0);
+  await as(P, CP, `select public.mod_suggestion(${S}, true)`);
+  const nr = await as(B, CB, `select public.reply_suggestion(${S}, '제가 답할게요')`); expect('학생은 답글 불가', !nr.ok);
+  const rp = await as(P, CP, `select public.reply_suggestion(${S}, '행정실에 요청했어요. 다음 주에 결과 알려 드릴게요')`, '기획행정부 답글');
+  const fd = await as(E, CE, `select replies, checked from public.suggestion_feed where id=${S}`); const reps = fd.rows[0]?.replies ?? [];
+  expect('답글이 청원 목록에 보이고 확인 표시됨', rp.ok && reps.length === 1 && fd.rows[0]?.checked === true && !JSON.stringify(reps).includes(P));
+  const ps = await q(`select count(*)::int n from public.push_outbox where ref like 'sugg-reply:${S}:%'`); expect('답글 → 청원 쓴 학생에게 알림', ps.rows[0]?.n >= 1);
+  const dl = await as(P, CP, `select public.delete_suggestion_reply(${reps[0]?.id})`); const fd2 = await as(E, CE, `select replies from public.suggestion_feed where id=${S}`);
+  expect('기획행정부가 답글 지우기', dl.ok && (fd2.rows[0]?.replies ?? []).length === 0);
+}
+
 // 운영용 SQL(예시 게시물 등) 문법 확인: EXTRA_SQL=파일 npm run test:db
 if (process.env.EXTRA_SQL) { try { await db.exec(fs.readFileSync(process.env.EXTRA_SQL, 'utf8')); console.log('EXTRA_SQL ok'); } catch (e) { failed++; console.log('FAIL EXTRA_SQL', e.message); } }
 console.log(failed ? `\n${failed}개 실패` : '\n모든 DB 규칙 검사 통과');
